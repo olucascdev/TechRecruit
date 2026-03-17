@@ -1,0 +1,14 @@
+{
+    "name": "techrecruit/flow",
+    "description": "TechRecruit Flow v0.1.P1",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "phpoffice/phpspreadsheet": "^1.29"
+    },
+    "autoload": {
+        "psr-4": {
+            "TechRecruit\\": "src/"
+        }
+    }
+}
