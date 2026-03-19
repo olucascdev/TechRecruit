@@ -115,6 +115,70 @@ SQL;
     }
 
     /**
+     * @param array{skill?:string,status?:string,state?:string,search?:string} $filters
+     */
+    public function countEligibleForCampaign(array $filters = []): int
+    {
+        [$whereSql, $params] = $this->buildFilterSql($filters, true);
+
+        $statement = $this->pdo->prepare(
+            'SELECT COUNT(*) FROM recruit_candidates c' . $whereSql
+        );
+        $this->bindParams($statement, $params);
+        $statement->execute();
+
+        return (int) $statement->fetchColumn();
+    }
+
+    /**
+     * @param array{skill?:string,status?:string,state?:string,search?:string} $filters
+     * @return array<int, array<string, mixed>>
+     */
+    public function findEligibleForCampaign(array $filters = [], ?int $limit = null): array
+    {
+        [$whereSql, $params] = $this->buildFilterSql($filters, true);
+
+        $limitSql = '';
+
+        if ($limit !== null) {
+            $limit = max(1, $limit);
+            $limitSql = ' LIMIT :limit';
+        }
+
+        $sql = <<<SQL
+SELECT
+    c.id,
+    c.full_name,
+    c.status,
+    COALESCE(contact_data.primary_whatsapp, contact_data.any_whatsapp, contact_data.primary_phone, contact_data.any_phone) AS destination_contact
+FROM recruit_candidates c
+LEFT JOIN (
+    SELECT
+        candidate_id,
+        MAX(CASE WHEN type = 'phone' AND is_primary = 1 THEN value END) AS primary_phone,
+        MAX(CASE WHEN type = 'phone' THEN value END) AS any_phone,
+        MAX(CASE WHEN type = 'whatsapp' AND is_primary = 1 THEN value END) AS primary_whatsapp,
+        MAX(CASE WHEN type = 'whatsapp' THEN value END) AS any_whatsapp
+    FROM recruit_candidate_contacts
+    GROUP BY candidate_id
+) AS contact_data ON contact_data.candidate_id = c.id
+{$whereSql}
+ORDER BY c.created_at DESC, c.id DESC{$limitSql}
+SQL;
+
+        $statement = $this->pdo->prepare($sql);
+        $this->bindParams($statement, $params);
+
+        if ($limit !== null) {
+            $statement->bindValue(':limit', $limit, PDO::PARAM_INT);
+        }
+
+        $statement->execute();
+
+        return $statement->fetchAll();
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     public function findById(int $id): ?array
@@ -247,10 +311,25 @@ SQL;
      * @param array{skill?:string,status?:string,state?:string,search?:string} $filters
      * @return array{0:string,1:array<string, mixed>}
      */
-    private function buildFilterSql(array $filters): array
+    private function buildFilterSql(array $filters, bool $requireCampaignContact = false): array
     {
         $conditions = [];
         $params = [];
+
+        if ($requireCampaignContact) {
+            $conditions[] = 'EXISTS (
+                SELECT 1
+                FROM recruit_candidate_contacts rcc_contact
+                WHERE rcc_contact.candidate_id = c.id
+                  AND rcc_contact.type IN (\'whatsapp\', \'phone\')
+                  AND TRIM(rcc_contact.value) <> \'\'
+            )';
+            $conditions[] = 'NOT EXISTS (
+                SELECT 1
+                FROM recruit_opt_outs roo
+                WHERE roo.candidate_id = c.id
+            )';
+        }
 
         if (isset($filters['skill']) && trim($filters['skill']) !== '') {
             $conditions[] = 'EXISTS (
@@ -279,16 +358,19 @@ SQL;
 
         if (isset($filters['search']) && trim($filters['search']) !== '') {
             $conditions[] = '(
-                c.full_name LIKE :search
-                OR c.cpf LIKE :search
+                c.full_name LIKE :search_name
+                OR c.cpf LIKE :search_cpf
                 OR EXISTS (
                     SELECT 1
                     FROM recruit_candidate_contacts rcc
                     WHERE rcc.candidate_id = c.id
-                      AND rcc.value LIKE :search
+                      AND rcc.value LIKE :search_contact
                 )
             )';
-            $params[':search'] = '%' . trim($filters['search']) . '%';
+            $searchTerm = '%' . trim($filters['search']) . '%';
+            $params[':search_name'] = $searchTerm;
+            $params[':search_cpf'] = $searchTerm;
+            $params[':search_contact'] = $searchTerm;
         }
 
         if ($conditions === []) {

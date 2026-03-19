@@ -2,6 +2,8 @@
 
 Aplicação web PHP para importar planilhas de candidatos, consolidar base de recrutamento e operar status de candidatos.
 
+`v0.2.0` inicia a base de campanhas WhatsApp: criação de campanha, segmentação simples, snapshot dos destinatários e fila inicial de mensagens pendentes.
+
 ## Requisitos
 
 - PHP `>= 8.2`
@@ -64,6 +66,8 @@ Aplique a migration SQL:
 
 ```bash
 mysql -u root -p techrecruit < database/migrations/001_create_recruit_tables.sql
+mysql -u root -p techrecruit < database/migrations/002_create_campaign_tables.sql
+mysql -u root -p techrecruit < database/migrations/003_create_whatsapp_operation_tables.sql
 ```
 
 ## 5. Rodar localmente
@@ -77,6 +81,7 @@ Abra no navegador:
 - `http://127.0.0.1:8090/`
 - `http://127.0.0.1:8090/import`
 - `http://127.0.0.1:8090/candidates`
+- `http://127.0.0.1:8090/campaigns`
 
 ## 6. Teste manual rápido
 
@@ -102,13 +107,32 @@ Abra no navegador:
 2. Altere o status para `interested`
 3. Confirme atualização no candidato e no histórico
 
+### Teste de campanha WhatsApp base
+
+1. Vá em `/campaigns`
+2. Crie uma campanha com `skill`, `estado` ou `status` opcional
+3. Informe um script usando `{first_name}` ou `{full_name}` se quiser personalização básica
+4. Abra a campanha criada e clique em `Processar fila`
+5. Simule um retorno inbound com frases como `sim tenho interesse`, `nao tenho interesse` ou `sair da lista`
+6. Confirme que a campanha foi criada com:
+   - público capturado
+   - destinatários associados
+   - fila inicial em `pending`
+   - mensagens processadas como `sent`
+   - inbound gravado com intenção interpretada
+   - status do candidato atualizado conforme o retorno
+
 ## Estrutura principal
 
 - `public/index.php`: bootstrap e rotas
 - `src/Controllers`: controllers HTTP
+- `src/Controllers/CampaignController.php`: CRUD inicial de campanhas WhatsApp
 - `src/Models`: acesso a dados
+- `src/Services/CampaignService.php`: montagem da fila inicial de campanha
 - `src/Services/ImportService.php`: regra de importação Excel
 - `database/migrations/001_create_recruit_tables.sql`: schema inicial
+- `database/migrations/002_create_campaign_tables.sql`: schema de campanhas e fila de mensagens
+- `database/migrations/003_create_whatsapp_operation_tables.sql`: inbound, opt-out e trilha operacional
 - `storage/imports`: arquivos importados (ignorado no git)
 
 ## Observações

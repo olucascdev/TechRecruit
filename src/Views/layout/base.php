@@ -70,6 +70,9 @@ $isActive = static function (string $targetPath) use ($currentPath): string {
                         <a class="nav-link <?= $isActive('/candidates') ?: ($currentPath === '/' ? 'active' : '') ?>" href="/candidates">Candidatos</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link <?= $isActive('/campaigns') ?>" href="/campaigns">Campanhas</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link <?= $isActive('/import') ?>" href="/import">Importacoes</a>
                     </li>
                 </ul>
