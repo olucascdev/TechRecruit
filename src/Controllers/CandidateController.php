@@ -7,6 +7,7 @@ namespace TechRecruit\Controllers;
 use PDO;
 use TechRecruit\Database;
 use TechRecruit\Models\CandidateModel;
+use TechRecruit\Models\PortalModel;
 
 final class CandidateController extends Controller
 {
@@ -14,10 +15,13 @@ final class CandidateController extends Controller
 
     private CandidateModel $candidateModel;
 
-    public function __construct(?CandidateModel $candidateModel = null, ?PDO $pdo = null)
+    private PortalModel $portalModel;
+
+    public function __construct(?CandidateModel $candidateModel = null, ?PortalModel $portalModel = null, ?PDO $pdo = null)
     {
         $this->pdo = $pdo ?? Database::connect();
         $this->candidateModel = $candidateModel ?? new CandidateModel($this->pdo);
+        $this->portalModel = $portalModel ?? new PortalModel($this->pdo);
     }
 
     public function index(): void
@@ -62,9 +66,16 @@ final class CandidateController extends Controller
             return;
         }
 
+        $portal = $this->portalModel->findByCandidateId($id);
+
         $this->render('candidates/show', [
             'candidate' => $candidate,
             'statuses' => CandidateModel::VALID_STATUSES,
+            'portal' => $portal,
+            'portalStatuses' => PortalModel::VALID_STATUSES,
+            'portalUrl' => $portal !== null
+                ? $this->absoluteUrl('/portal/' . $portal['access_token'])
+                : null,
         ], 'Candidato');
     }
 

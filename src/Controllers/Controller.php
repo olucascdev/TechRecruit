@@ -9,10 +9,15 @@ abstract class Controller
     /**
      * @param array<string, mixed> $data
      */
-    protected function render(string $view, array $data = [], string $title = 'TechRecruit'): void
+    protected function render(
+        string $view,
+        array $data = [],
+        string $title = 'TechRecruit',
+        string $layout = 'layout/base'
+    ): void
     {
         $viewPath = dirname(__DIR__) . '/Views/' . $view . '.php';
-        $layoutPath = dirname(__DIR__) . '/Views/layout/base.php';
+        $layoutPath = dirname(__DIR__) . '/Views/' . $layout . '.php';
 
         if (!is_file($viewPath) || !is_file($layoutPath)) {
             http_response_code(500);
@@ -61,6 +66,15 @@ abstract class Controller
         $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         echo $json === false ? '{"success":false,"message":"JSON encoding error."}' : $json;
         exit;
+    }
+
+    protected function absoluteUrl(string $path): string
+    {
+        $isHttps = isset($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off';
+        $scheme = $isHttps ? 'https' : 'http';
+        $host = (string) ($_SERVER['HTTP_HOST'] ?? '127.0.0.1:8090');
+
+        return $scheme . '://' . $host . $path;
     }
 
     protected function resolveOperator(): string

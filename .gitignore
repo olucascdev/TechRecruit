@@ -3,3 +3,4 @@
 /storage/*
 !/storage/.gitkeep
 !/storage/imports/.gitkeep
+!/storage/portal-documents/.gitkeep

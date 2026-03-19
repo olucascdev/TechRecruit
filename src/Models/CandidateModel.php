@@ -231,7 +231,7 @@ SQL;
         return $candidate;
     }
 
-    public function updateStatus(int $id, string $newStatus, string $operator): bool
+    public function updateStatus(int $id, string $newStatus, string $operator, ?string $reason = null): bool
     {
         if (!in_array($newStatus, self::VALID_STATUSES, true)) {
             return false;
@@ -292,7 +292,7 @@ SQL;
                 'from_status' => (string) $currentStatus,
                 'to_status' => $newStatus,
                 'changed_by' => $operator,
-                'reason' => null,
+                'reason' => $reason,
             ]);
 
             $this->pdo->commit();

@@ -4,6 +4,8 @@ Aplicação web PHP para importar planilhas de candidatos, consolidar base de re
 
 `v0.2.0` inicia a base de campanhas WhatsApp: criação de campanha, segmentação simples, snapshot dos destinatários e fila inicial de mensagens pendentes.
 
+`v0.4.0` adiciona o portal de cadastro e documentos: link único por token, formulário web, upload de anexos, checklist documental, aceite de termos e visualização interna no backoffice.
+
 ## Requisitos
 
 - PHP `>= 8.2`
@@ -68,6 +70,7 @@ Aplique a migration SQL:
 mysql -u root -p techrecruit < database/migrations/001_create_recruit_tables.sql
 mysql -u root -p techrecruit < database/migrations/002_create_campaign_tables.sql
 mysql -u root -p techrecruit < database/migrations/003_create_whatsapp_operation_tables.sql
+mysql -u root -p techrecruit < database/migrations/004_create_candidate_portal_tables.sql
 ```
 
 ## 5. Rodar localmente
@@ -82,6 +85,7 @@ Abra no navegador:
 - `http://127.0.0.1:8090/import`
 - `http://127.0.0.1:8090/candidates`
 - `http://127.0.0.1:8090/campaigns`
+- `http://127.0.0.1:8090/portal/{token}`
 
 ## 6. Teste manual rápido
 
@@ -122,18 +126,35 @@ Abra no navegador:
    - inbound gravado com intenção interpretada
    - status do candidato atualizado conforme o retorno
 
+### Teste do portal de cadastro e documentos
+
+1. Vá em `/candidates/{id}`
+2. Clique em `Gerar link do portal`
+3. Abra o link/token gerado
+4. Preencha o formulário, aceite os termos e envie os documentos obrigatórios
+5. Volte ao candidato no backoffice e confirme:
+   - status do portal
+   - checklist documental
+   - dados enviados pelo candidato
+   - anexos internos com visualização
+
 ## Estrutura principal
 
 - `public/index.php`: bootstrap e rotas
 - `src/Controllers`: controllers HTTP
 - `src/Controllers/CampaignController.php`: CRUD inicial de campanhas WhatsApp
+- `src/Controllers/PortalController.php`: portal público por token e ações internas do portal
 - `src/Models`: acesso a dados
+- `src/Models/PortalModel.php`: leitura do portal, checklist e anexos
 - `src/Services/CampaignService.php`: montagem da fila inicial de campanha
+- `src/Services/PortalService.php`: geração do link, submissão e sync do portal
 - `src/Services/ImportService.php`: regra de importação Excel
 - `database/migrations/001_create_recruit_tables.sql`: schema inicial
 - `database/migrations/002_create_campaign_tables.sql`: schema de campanhas e fila de mensagens
 - `database/migrations/003_create_whatsapp_operation_tables.sql`: inbound, opt-out e trilha operacional
+- `database/migrations/004_create_candidate_portal_tables.sql`: token, perfil do portal e documentos
 - `storage/imports`: arquivos importados (ignorado no git)
+- `storage/portal-documents`: anexos enviados pelos candidatos
 
 ## Observações
 

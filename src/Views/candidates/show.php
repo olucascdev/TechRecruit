@@ -24,6 +24,21 @@ $addresses = is_array($candidate['addresses'] ?? null) ? $candidate['addresses']
 $contacts = is_array($candidate['contacts'] ?? null) ? $candidate['contacts'] : [];
 $skills = is_array($candidate['skills'] ?? null) ? $candidate['skills'] : [];
 $history = is_array($candidate['status_history'] ?? null) ? $candidate['status_history'] : [];
+$portal = is_array($portal ?? null) ? $portal : null;
+$portalStatuses = $portalStatuses ?? [];
+$portalUrl = $portalUrl ?? null;
+$portalProfile = is_array($portal['profile'] ?? null) ? $portal['profile'] : [];
+$portalChecklist = is_array($portal['checklist'] ?? null) ? $portal['checklist'] : [];
+$portalDocuments = is_array($portal['documents'] ?? null) ? $portal['documents'] : [];
+
+$portalStatusBadge = static function (string $status): string {
+    return match ($status) {
+        'submitted', 'approved' => 'success',
+        'under_review' => 'warning text-dark',
+        'rejected', 'expired' => 'danger',
+        default => 'secondary',
+    };
+};
 
 $pageScripts = <<<HTML
 <script>
@@ -78,6 +93,164 @@ HTML;
         </div>
     </div>
     <a href="/candidates" class="btn btn-outline-secondary">Voltar</a>
+</div>
+
+<div class="card border-0 shadow-sm mt-4">
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+            <div>
+                <h2 class="h5 mb-1">Portal de cadastro e documentos</h2>
+                <p class="text-muted mb-0">Link unico, formulario do candidato, checklist e anexos internos.</p>
+            </div>
+            <form method="post" action="/candidates/<?= $escape($candidate['id'] ?? '') ?>/portal/generate">
+                <button type="submit" class="btn btn-outline-primary">
+                    <?= $portal === null ? 'Gerar link do portal' : 'Regenerar link/token' ?>
+                </button>
+            </form>
+        </div>
+
+        <?php if ($portal === null): ?>
+            <div class="alert alert-light border mb-0">
+                Nenhum portal gerado para este candidato ainda.
+            </div>
+        <?php else: ?>
+            <div class="row g-4">
+                <div class="col-lg-4">
+                    <div class="border rounded p-3 h-100">
+                        <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+                            <h3 class="h6 mb-0">Acesso</h3>
+                            <span class="badge bg-<?= $portalStatusBadge((string) ($portal['status'] ?? 'draft')) ?>">
+                                <?= $escape($statusLabel((string) ($portal['status'] ?? 'draft'))) ?>
+                            </span>
+                        </div>
+                        <div class="small text-muted mb-2">Link para envio ao candidato</div>
+                        <div class="small bg-light border rounded p-2 text-break mb-3"><?= $escape($portalUrl ?? '-') ?></div>
+                        <dl class="row mb-3">
+                            <dt class="col-sm-6">Ultimo acesso</dt>
+                            <dd class="col-sm-6"><?= $escape($portal['last_accessed_at'] ?? '-') ?></dd>
+                            <dt class="col-sm-6">Enviado em</dt>
+                            <dd class="col-sm-6"><?= $escape($portal['submitted_at'] ?? '-') ?></dd>
+                            <dt class="col-sm-6">Termos</dt>
+                            <dd class="col-sm-6"><?= !empty($portal['terms_accepted']) ? 'Aceito' : 'Pendente' ?></dd>
+                        </dl>
+
+                        <form method="post" action="/candidates/<?= $escape($candidate['id'] ?? '') ?>/portal/status" class="row g-2">
+                            <div class="col-12">
+                                <label for="portal_status" class="form-label">Status do portal</label>
+                                <select id="portal_status" name="portal_status" class="form-select">
+                                    <?php foreach ($portalStatuses as $status): ?>
+                                        <option value="<?= $escape($status) ?>" <?= ($portal['status'] ?? '') === $status ? 'selected' : '' ?>>
+                                            <?= $escape($statusLabel($status)) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-12 d-grid">
+                                <button type="submit" class="btn btn-outline-secondary">Salvar status do portal</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="border rounded p-3 h-100">
+                        <h3 class="h6 mb-3">Checklist documental</h3>
+                        <?php if ($portalChecklist === []): ?>
+                            <p class="text-muted mb-0">Checklist indisponivel.</p>
+                        <?php else: ?>
+                            <ul class="list-group list-group-flush">
+                                <?php foreach ($portalChecklist as $item): ?>
+                                    <li class="list-group-item px-0 d-flex justify-content-between gap-3">
+                                        <div>
+                                            <div class="fw-semibold"><?= $escape($item['label']) ?></div>
+                                            <div class="small text-muted"><?= $item['required'] ? 'Obrigatorio' : 'Opcional' ?></div>
+                                        </div>
+                                        <span class="badge text-bg-<?= $item['received'] ? 'success' : 'light' ?>">
+                                            <?= $escape($item['received'] ? 'Recebido' : 'Pendente') ?>
+                                        </span>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="border rounded p-3 h-100">
+                        <h3 class="h6 mb-3">Cadastro preenchido</h3>
+                        <?php if ($portalProfile === []): ?>
+                            <p class="text-muted mb-0">O candidato ainda nao enviou o formulario.</p>
+                        <?php else: ?>
+                            <dl class="row mb-0">
+                                <dt class="col-sm-5">Nome</dt>
+                                <dd class="col-sm-7"><?= $escape($portalProfile['full_name'] ?? '-') ?></dd>
+                                <dt class="col-sm-5">WhatsApp</dt>
+                                <dd class="col-sm-7"><?= $escape($portalProfile['whatsapp'] ?? '-') ?></dd>
+                                <dt class="col-sm-5">E-mail</dt>
+                                <dd class="col-sm-7"><?= $escape($portalProfile['email'] ?? '-') ?></dd>
+                                <dt class="col-sm-5">Cidade</dt>
+                                <dd class="col-sm-7"><?= $escape(($portalProfile['city'] ?? '-') . ' / ' . ($portalProfile['state'] ?? '-')) ?></dd>
+                                <dt class="col-sm-5">Disponibilidade</dt>
+                                <dd class="col-sm-7"><?= $escape($portalProfile['availability'] ?? '-') ?></dd>
+                            </dl>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4 mt-1">
+                <div class="col-lg-6">
+                    <div class="border rounded p-3 h-100">
+                        <h3 class="h6 mb-3">Resumo profissional</h3>
+                        <?php if ($portalProfile === []): ?>
+                            <p class="text-muted mb-0">Sem experiencia registrada no portal.</p>
+                        <?php else: ?>
+                            <p class="mb-2"><?= nl2br($escape($portalProfile['experience_summary'] ?? '-')) ?></p>
+                            <?php if (!empty($portalProfile['notes'])): ?>
+                                <div class="small text-muted"><?= nl2br($escape($portalProfile['notes'])) ?></div>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="border rounded p-3 h-100">
+                        <h3 class="h6 mb-3">Anexos internos</h3>
+                        <?php if ($portalDocuments === []): ?>
+                            <p class="text-muted mb-0">Nenhum documento enviado ainda.</p>
+                        <?php else: ?>
+                            <div class="table-responsive">
+                                <table class="table table-sm align-middle mb-0">
+                                    <thead>
+                                    <tr>
+                                        <th>Tipo</th>
+                                        <th>Arquivo</th>
+                                        <th>Data</th>
+                                        <th class="text-end">Abrir</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <?php foreach ($portalDocuments as $document): ?>
+                                        <tr>
+                                            <td><?= $escape($statusLabel((string) $document['document_type'])) ?></td>
+                                            <td>
+                                                <div class="fw-semibold"><?= $escape($document['original_name']) ?></div>
+                                                <div class="small text-muted"><?= $escape($document['review_status']) ?></div>
+                                            </td>
+                                            <td><?= $escape($document['uploaded_at']) ?></td>
+                                            <td class="text-end">
+                                                <a href="/portal/documents/<?= $escape($document['id']) ?>" target="_blank" class="btn btn-sm btn-outline-primary">Visualizar</a>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
+    </div>
 </div>
 
 <div class="row g-4">
