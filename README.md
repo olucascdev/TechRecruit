@@ -4,7 +4,9 @@ Aplicação web PHP para importar planilhas de candidatos, consolidar base de re
 
 `v0.2.0` inicia a base de campanhas WhatsApp: criação de campanha, segmentação simples, snapshot dos destinatários e fila inicial de mensagens pendentes.
 
-`v0.4.0` adiciona o portal de cadastro e documentos: link único por token, formulário web, upload de anexos, checklist documental, aceite de termos e visualização interna no backoffice.
+`v0.4.0` adiciona o portal de cadastro e documentos: link unico por token, formulario web, upload de anexos, checklist documental, aceite de termos e visualizacao interna no backoffice.
+
+`v0.5.0` adiciona a validacao operacional: fila de analise, aprovacao/reprovacao, pedido de correcao, pendencias, observacoes internas, historico de decisao e mudanca de status controlada dentro do sistema.
 
 ## Requisitos
 
@@ -71,6 +73,7 @@ mysql -u root -p techrecruit < database/migrations/001_create_recruit_tables.sql
 mysql -u root -p techrecruit < database/migrations/002_create_campaign_tables.sql
 mysql -u root -p techrecruit < database/migrations/003_create_whatsapp_operation_tables.sql
 mysql -u root -p techrecruit < database/migrations/004_create_candidate_portal_tables.sql
+mysql -u root -p techrecruit < database/migrations/005_create_operational_review_tables.sql
 ```
 
 ## 5. Rodar localmente
@@ -85,6 +88,7 @@ Abra no navegador:
 - `http://127.0.0.1:8090/import`
 - `http://127.0.0.1:8090/candidates`
 - `http://127.0.0.1:8090/campaigns`
+- `http://127.0.0.1:8090/operations`
 - `http://127.0.0.1:8090/portal/{token}`
 
 ## 6. Teste manual rápido
@@ -138,21 +142,45 @@ Abra no navegador:
    - dados enviados pelo candidato
    - anexos internos com visualização
 
+### Teste da validacao operacional
+
+1. Garanta que o candidato ja enviou o portal e os documentos obrigatorios
+2. Va em `/operations`
+3. Abra um candidato da fila operacional
+4. Registre uma observacao interna
+5. Na analise documental:
+   - aprove um documento valido
+   - ou use `Pedir correcao` / `Reprovar` com motivo
+6. Confirme no detalhe do candidato:
+   - criacao de pendencia
+   - historico de decisao
+   - status do portal e do candidato sincronizados
+7. Resolva a pendencia
+8. Registre a decisao final do candidato:
+   - `Aprovar`
+   - `Pedir correcao`
+   - `Reprovar`
+9. Confirme que a operacao passa a trabalhar inteiramente dentro do sistema, com fila, trilha e mudancas controladas
+
 ## Estrutura principal
 
 - `public/index.php`: bootstrap e rotas
 - `src/Controllers`: controllers HTTP
 - `src/Controllers/CampaignController.php`: CRUD inicial de campanhas WhatsApp
+- `src/Controllers/OperationsController.php`: fila operacional e decisoes de validacao
 - `src/Controllers/PortalController.php`: portal público por token e ações internas do portal
 - `src/Models`: acesso a dados
+- `src/Models/OperationsModel.php`: fila de analise, pendencias e historico operacional
 - `src/Models/PortalModel.php`: leitura do portal, checklist e anexos
 - `src/Services/CampaignService.php`: montagem da fila inicial de campanha
+- `src/Services/OperationsService.php`: aprovacao, reprovacao, correcao, pendencias e sync de status
 - `src/Services/PortalService.php`: geração do link, submissão e sync do portal
 - `src/Services/ImportService.php`: regra de importação Excel
 - `database/migrations/001_create_recruit_tables.sql`: schema inicial
 - `database/migrations/002_create_campaign_tables.sql`: schema de campanhas e fila de mensagens
 - `database/migrations/003_create_whatsapp_operation_tables.sql`: inbound, opt-out e trilha operacional
 - `database/migrations/004_create_candidate_portal_tables.sql`: token, perfil do portal e documentos
+- `database/migrations/005_create_operational_review_tables.sql`: pendencias e historico da validacao operacional
 - `storage/imports`: arquivos importados (ignorado no git)
 - `storage/portal-documents`: anexos enviados pelos candidatos
 

@@ -10,6 +10,8 @@ $statusBadge = static function (string $status): string {
     return match ($status) {
         'interested' => 'success',
         'not_interested' => 'danger',
+        'awaiting_docs' => 'secondary',
+        'docs_sent' => 'info text-dark',
         'under_review' => 'warning text-dark',
         'approved' => 'primary',
         'rejected' => 'dark',
@@ -35,7 +37,22 @@ $portalStatusBadge = static function (string $status): string {
     return match ($status) {
         'submitted', 'approved' => 'success',
         'under_review' => 'warning text-dark',
+        'correction_requested' => 'danger',
         'rejected', 'expired' => 'danger',
+        default => 'secondary',
+    };
+};
+$operations = is_array($operations ?? null) ? $operations : [];
+$operationSummary = is_array($operations['summary'] ?? null) ? $operations['summary'] : [];
+$operationPendencies = is_array($operations['pendencies'] ?? null) ? $operations['pendencies'] : [];
+$operationHistory = is_array($operations['history'] ?? null) ? $operations['history'] : [];
+
+$reviewActionBadge = static function (string $action): string {
+    return match ($action) {
+        'approve', 'document_approve' => 'success',
+        'reject', 'document_reject' => 'dark',
+        'request_correction', 'document_request_correction' => 'danger',
+        'pendency_resolved' => 'primary',
         default => 'secondary',
     };
 };
@@ -252,6 +269,211 @@ HTML;
         <?php endif; ?>
     </div>
 </div>
+
+<?php if ($portal !== null): ?>
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-body">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+                <div>
+                    <h2 class="h5 mb-1">Validacao operacional</h2>
+                    <p class="text-muted mb-0">Fila, decisoes, pendencias e historico da analise humana.</p>
+                </div>
+                <a href="/operations" class="btn btn-outline-dark">Ver fila operacional</a>
+            </div>
+
+            <div class="row g-4 mb-4">
+                <div class="col-md-3">
+                    <div class="border rounded p-3 h-100">
+                        <div class="text-muted small">Docs pendentes</div>
+                        <div class="fs-4 fw-semibold"><?= $escape($operationSummary['pending_documents'] ?? 0) ?></div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="border rounded p-3 h-100">
+                        <div class="text-muted small">Docs aprovados</div>
+                        <div class="fs-4 fw-semibold"><?= $escape($operationSummary['approved_documents'] ?? 0) ?></div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="border rounded p-3 h-100">
+                        <div class="text-muted small">Pendencias abertas</div>
+                        <div class="fs-4 fw-semibold"><?= $escape($operationSummary['open_pendencies'] ?? 0) ?></div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="border rounded p-3 h-100">
+                        <div class="text-muted small">Docs com correcao</div>
+                        <div class="fs-4 fw-semibold"><?= $escape($operationSummary['correction_documents'] ?? 0) ?></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-lg-4">
+                    <div class="border rounded p-3 mb-4">
+                        <h3 class="h6 mb-3">Observacao interna</h3>
+                        <form method="post" action="/operations/candidates/<?= $escape($candidate['id'] ?? '') ?>/note" class="row g-2">
+                            <div class="col-12">
+                                <textarea name="message" class="form-control" rows="4" placeholder="Ex.: Documento legivel, validar comprovante de residencia." required></textarea>
+                            </div>
+                            <div class="col-12 d-grid">
+                                <button type="submit" class="btn btn-outline-secondary">Salvar observacao</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="border rounded p-3">
+                        <h3 class="h6 mb-3">Decisao do candidato</h3>
+                        <form method="post" action="/operations/candidates/<?= $escape($candidate['id'] ?? '') ?>/decision" class="row g-2">
+                            <div class="col-12">
+                                <label for="decision" class="form-label">Acao</label>
+                                <select id="decision" name="decision" class="form-select" required>
+                                    <option value="">Selecione</option>
+                                    <option value="approve">Aprovar</option>
+                                    <option value="request_correction">Pedir correcao</option>
+                                    <option value="reject">Reprovar</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label for="decision_message" class="form-label">Observacao / motivo</label>
+                                <textarea id="decision_message" name="message" class="form-control" rows="4" placeholder="Obrigatorio para correcao ou reprovacao."></textarea>
+                            </div>
+                            <div class="col-12 d-grid">
+                                <button type="submit" class="btn btn-primary">Registrar decisao</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="col-lg-8">
+                    <div class="border rounded p-3 mb-4">
+                        <h3 class="h6 mb-3">Analise documental</h3>
+                        <?php if ($portalDocuments === []): ?>
+                            <p class="text-muted mb-0">Nenhum documento para analisar.</p>
+                        <?php else: ?>
+                            <div class="table-responsive">
+                                <table class="table table-sm align-middle">
+                                    <thead>
+                                    <tr>
+                                        <th>Documento</th>
+                                        <th>Status</th>
+                                        <th>Acao</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <?php foreach ($portalDocuments as $document): ?>
+                                        <tr>
+                                            <td>
+                                                <div class="fw-semibold"><?= $escape($statusLabel((string) $document['document_type'])) ?></div>
+                                                <div class="small text-muted"><?= $escape($document['original_name']) ?></div>
+                                                <a href="/portal/documents/<?= $escape($document['id']) ?>" target="_blank" class="small">Abrir anexo</a>
+                                            </td>
+                                            <td><?= $escape($statusLabel((string) $document['review_status'])) ?></td>
+                                            <td style="min-width: 320px;">
+                                                <form method="post" action="/operations/documents/<?= $escape($document['id']) ?>/decision" class="row g-2">
+                                                    <input type="hidden" name="candidate_id" value="<?= $escape($candidate['id'] ?? '') ?>">
+                                                    <div class="col-md-5">
+                                                        <select name="decision" class="form-select form-select-sm" required>
+                                                            <option value="">Acao</option>
+                                                            <option value="approve">Aprovar</option>
+                                                            <option value="request_correction">Pedir correcao</option>
+                                                            <option value="reject">Reprovar</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-md-7">
+                                                        <input type="text" name="message" class="form-control form-control-sm" placeholder="Motivo / observacao">
+                                                    </div>
+                                                    <div class="col-12 d-grid">
+                                                        <button type="submit" class="btn btn-sm btn-outline-primary">Salvar analise</button>
+                                                    </div>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="border rounded p-3 mb-4">
+                        <h3 class="h6 mb-3">Pendencias</h3>
+                        <?php if ($operationPendencies === []): ?>
+                            <p class="text-muted mb-0">Nenhuma pendencia registrada.</p>
+                        <?php else: ?>
+                            <div class="table-responsive">
+                                <table class="table table-sm align-middle">
+                                    <thead>
+                                    <tr>
+                                        <th>Titulo</th>
+                                        <th>Status</th>
+                                        <th>Acao</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <?php foreach ($operationPendencies as $pendency): ?>
+                                        <tr>
+                                            <td>
+                                                <div class="fw-semibold"><?= $escape($pendency['title']) ?></div>
+                                                <div class="small text-muted"><?= $escape($pendency['description'] ?: '-') ?></div>
+                                            </td>
+                                            <td><?= $escape($statusLabel((string) $pendency['status'])) ?></td>
+                                            <td style="min-width: 240px;">
+                                                <?php if (($pendency['status'] ?? '') === 'open'): ?>
+                                                    <form method="post" action="/operations/pendencies/<?= $escape($pendency['id']) ?>/resolve" class="row g-2">
+                                                        <input type="hidden" name="candidate_id" value="<?= $escape($candidate['id'] ?? '') ?>">
+                                                        <div class="col-12">
+                                                            <input type="text" name="message" class="form-control form-control-sm" placeholder="Observacao de resolucao">
+                                                        </div>
+                                                        <div class="col-12 d-grid">
+                                                            <button type="submit" class="btn btn-sm btn-outline-success">Resolver</button>
+                                                        </div>
+                                                    </form>
+                                                <?php else: ?>
+                                                    <div class="small text-muted">
+                                                        Resolvida por <?= $escape($pendency['resolved_by'] ?: '-') ?> em <?= $escape($pendency['resolved_at'] ?: '-') ?>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="border rounded p-3">
+                        <h3 class="h6 mb-3">Historico de decisao</h3>
+                        <?php if ($operationHistory === []): ?>
+                            <p class="text-muted mb-0">Nenhuma decisao registrada ainda.</p>
+                        <?php else: ?>
+                            <div class="timeline">
+                                <?php foreach ($operationHistory as $item): ?>
+                                    <div class="timeline-item">
+                                        <div class="d-flex justify-content-between gap-3 flex-wrap">
+                                            <div class="fw-semibold">
+                                                <span class="badge bg-<?= $reviewActionBadge((string) $item['action']) ?> me-2">
+                                                    <?= $escape($statusLabel((string) $item['action'])) ?>
+                                                </span>
+                                                <?= $escape($item['document_type'] ? $statusLabel((string) $item['document_type']) : 'Cadastro') ?>
+                                            </div>
+                                            <div class="small text-muted"><?= $escape($item['created_at']) ?></div>
+                                        </div>
+                                        <div class="small mb-1">Por <?= $escape($item['created_by']) ?></div>
+                                        <?php if (!empty($item['message'])): ?>
+                                            <div class="small text-muted"><?= nl2br($escape($item['message'])) ?></div>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+<?php endif; ?>
 
 <div class="row g-4">
     <div class="col-lg-8">

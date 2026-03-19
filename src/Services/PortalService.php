@@ -337,6 +337,7 @@ final class PortalService
 
         $candidateStatusMap = [
             'under_review' => 'under_review',
+            'correction_requested' => 'awaiting_docs',
             'approved' => 'approved',
             'rejected' => 'rejected',
             'submitted' => 'docs_sent',

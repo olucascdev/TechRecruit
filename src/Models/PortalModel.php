@@ -16,6 +16,7 @@ final class PortalModel
         'in_progress',
         'submitted',
         'under_review',
+        'correction_requested',
         'approved',
         'rejected',
         'expired',

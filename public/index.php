@@ -7,6 +7,7 @@ require dirname(__DIR__) . '/vendor/autoload.php';
 use TechRecruit\Controllers\CandidateController;
 use TechRecruit\Controllers\CampaignController;
 use TechRecruit\Controllers\ImportController;
+use TechRecruit\Controllers\OperationsController;
 use TechRecruit\Controllers\PortalController;
 use TechRecruit\Router;
 
@@ -49,6 +50,11 @@ try {
     $router->post('/campaigns/{id}/resume', [CampaignController::class, 'resume']);
     $router->post('/campaigns/{id}/cancel', [CampaignController::class, 'cancel']);
     $router->post('/campaigns/{id}/reply', [CampaignController::class, 'reply']);
+    $router->get('/operations', [OperationsController::class, 'index']);
+    $router->post('/operations/candidates/{id}/note', [OperationsController::class, 'addNote']);
+    $router->post('/operations/candidates/{id}/decision', [OperationsController::class, 'candidateDecision']);
+    $router->post('/operations/documents/{id}/decision', [OperationsController::class, 'documentDecision']);
+    $router->post('/operations/pendencies/{id}/resolve', [OperationsController::class, 'resolvePendency']);
     $router->get('/portal/{token}', [PortalController::class, 'show']);
     $router->post('/portal/{token}/submit', [PortalController::class, 'submit']);
     $router->get('/portal/documents/{id}', [PortalController::class, 'downloadDocument']);
