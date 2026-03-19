@@ -37,6 +37,7 @@ SELECT
     c.id,
     c.name,
     c.channel,
+    c.automation_type,
     c.status,
     c.audience_count,
     c.queued_count,
@@ -82,7 +83,7 @@ SQL;
     public function findById(int $id): ?array
     {
         $statement = $this->pdo->prepare(
-            'SELECT id, name, channel, status, message_template, segment_filters, recipient_limit, audience_count, queued_count, created_by, created_at, updated_at
+            'SELECT id, name, channel, automation_type, status, message_template, segment_filters, recipient_limit, audience_count, queued_count, created_by, created_at, updated_at
              FROM recruit_campaigns
              WHERE id = :id
              LIMIT 1'
@@ -112,6 +113,20 @@ SQL;
         $statsStatement->execute(['campaign_id' => $id]);
         $campaign['recipient_stats'] = $statsStatement->fetch() ?: [];
 
+        $triageStatsStatement = $this->pdo->prepare(
+            "SELECT
+                SUM(CASE WHEN triage_status = 'sent' THEN 1 ELSE 0 END) AS sent_count,
+                SUM(CASE WHEN triage_status = 'interested' THEN 1 ELSE 0 END) AS interested_count,
+                SUM(CASE WHEN triage_status = 'not_interested' THEN 1 ELSE 0 END) AS not_interested_count,
+                SUM(CASE WHEN triage_status = 'needs_details' THEN 1 ELSE 0 END) AS needs_details_count,
+                SUM(CASE WHEN triage_status = 'awaiting_validation' THEN 1 ELSE 0 END) AS awaiting_validation_count,
+                SUM(CASE WHEN needs_operator = 1 THEN 1 ELSE 0 END) AS operator_count
+             FROM recruit_triage_sessions
+             WHERE campaign_id = :campaign_id"
+        );
+        $triageStatsStatement->execute(['campaign_id' => $id]);
+        $campaign['triage_stats'] = $triageStatsStatement->fetch() ?: [];
+
         $queueStatsStatement = $this->pdo->prepare(
             "SELECT
                 SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending_jobs,
@@ -137,15 +152,31 @@ SQL;
                 candidate.status AS current_candidate_status,
                 queue.status AS queue_status,
                 queue.scheduled_at,
-                queue.processed_at
+                queue.processed_at,
+                triage.id AS triage_session_id,
+                triage.triage_status,
+                triage.current_step AS triage_step,
+                triage.automation_status AS triage_automation_status,
+                triage.needs_operator,
+                triage.invalid_reply_count,
+                triage.fallback_reason,
+                triage.collected_data,
+                triage.last_interaction_at
              FROM recruit_campaign_recipients r
              INNER JOIN recruit_candidates candidate ON candidate.id = r.candidate_id
              LEFT JOIN recruit_message_queue queue ON queue.campaign_recipient_id = r.id
+             LEFT JOIN recruit_triage_sessions triage ON triage.campaign_recipient_id = r.id
              WHERE r.campaign_id = :campaign_id
              ORDER BY r.id ASC"
         );
         $recipientsStatement->execute(['campaign_id' => $id]);
         $campaign['recipients'] = $recipientsStatement->fetchAll();
+
+        foreach ($campaign['recipients'] as &$recipient) {
+            $decodedTriage = json_decode((string) ($recipient['collected_data'] ?? ''), true);
+            $recipient['collected_data'] = is_array($decodedTriage) ? $decodedTriage : [];
+        }
+        unset($recipient);
 
         $logsStatement = $this->pdo->prepare(
             "SELECT
@@ -206,6 +237,7 @@ SQL;
                 'INSERT INTO recruit_campaigns (
                     name,
                     channel,
+                    automation_type,
                     status,
                     message_template,
                     segment_filters,
@@ -216,6 +248,7 @@ SQL;
                  ) VALUES (
                     :name,
                     :channel,
+                    :automation_type,
                     :status,
                     :message_template,
                     :segment_filters,
@@ -228,6 +261,7 @@ SQL;
             $campaignStatement->execute([
                 'name' => $campaignData['name'],
                 'channel' => 'whatsapp',
+                'automation_type' => $campaignData['automation_type'] ?? 'broadcast',
                 'status' => $campaignData['status'],
                 'message_template' => $campaignData['message_template'],
                 'segment_filters' => $campaignData['segment_filters'],

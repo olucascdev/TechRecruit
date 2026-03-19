@@ -8,8 +8,10 @@ $filters = is_array($campaign['segment_filters'] ?? null) ? $campaign['segment_f
 $recipients = is_array($campaign['recipients'] ?? null) ? $campaign['recipients'] : [];
 $recipientStats = is_array($campaign['recipient_stats'] ?? null) ? $campaign['recipient_stats'] : [];
 $queueStats = is_array($campaign['queue_stats'] ?? null) ? $campaign['queue_stats'] : [];
+$triageStats = is_array($campaign['triage_stats'] ?? null) ? $campaign['triage_stats'] : [];
 $activityLogs = is_array($campaign['activity_logs'] ?? null) ? $campaign['activity_logs'] : [];
 $inboundMessages = is_array($campaign['inbound_messages'] ?? null) ? $campaign['inbound_messages'] : [];
+$isTriageCampaign = ($campaign['automation_type'] ?? 'broadcast') === 'triage_w13';
 
 $campaignStatusClass = static function (string $status): string {
     return match ($status) {
@@ -28,6 +30,18 @@ $recipientStatusClass = static function (string $status): string {
         'failed' => 'danger',
         'sent' => 'info text-dark',
         'opt_out' => 'dark',
+        default => 'secondary',
+    };
+};
+
+$triageStatusClass = static function (?string $status): string {
+    return match ($status) {
+        'interested' => 'success',
+        'not_interested', 'rejected_unavailable' => 'dark',
+        'needs_details' => 'warning text-dark',
+        'awaiting_validation' => 'primary',
+        'approved' => 'success',
+        'sent' => 'info text-dark',
         default => 'secondary',
     };
 };
@@ -51,6 +65,7 @@ $activityClass = static function (string $eventType): string {
             </span>
         </div>
         <p class="text-muted mb-0">Criada em <?= $escape($campaign['created_at'] ?? '-') ?> por <?= $escape($campaign['created_by'] ?? '-') ?></p>
+        <p class="text-muted small mb-0">Modo: <?= $escape(($campaign['automation_type'] ?? 'broadcast') === 'triage_w13' ? 'Bot de triagem W13' : 'Broadcast manual') ?></p>
     </div>
     <div class="d-flex flex-wrap gap-2">
         <form method="post" action="/campaigns/<?= $escape($campaign['id'] ?? 0) ?>/process">
@@ -120,6 +135,51 @@ $activityClass = static function (string $eventType): string {
     </div>
 </div>
 
+<?php if ($isTriageCampaign): ?>
+    <div class="row g-4 mb-4">
+        <div class="col-md-2">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Interessados</div>
+                    <div class="fs-3 fw-semibold"><?= $escape($triageStats['interested_count'] ?? 0) ?></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Nao interessados</div>
+                    <div class="fs-3 fw-semibold"><?= $escape($triageStats['not_interested_count'] ?? 0) ?></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Mais detalhes</div>
+                    <div class="fs-3 fw-semibold"><?= $escape($triageStats['needs_details_count'] ?? 0) ?></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Aguardando validacao</div>
+                    <div class="fs-3 fw-semibold"><?= $escape($triageStats['awaiting_validation_count'] ?? 0) ?></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Fallback operador</div>
+                    <div class="fs-3 fw-semibold"><?= $escape($triageStats['operator_count'] ?? 0) ?></div>
+                </div>
+            </div>
+        </div>
+    </div>
+<?php endif; ?>
+
 <div class="row g-4">
     <div class="col-lg-4">
         <div class="card border-0 shadow-sm mb-4">
@@ -165,12 +225,24 @@ $activityClass = static function (string $eventType): string {
                     <div class="col-12">
                         <label for="message_body" class="form-label">Mensagem recebida</label>
                         <textarea id="message_body" name="message_body" class="form-control" rows="4" required></textarea>
-                        <div class="form-text">Exemplos: `sim tenho interesse`, `nao tenho interesse`, `sair da lista`.</div>
+                        <div class="form-text">
+                            <?php if ($isTriageCampaign): ?>
+                                Exemplos: `1`, `2`, `3`, `SIM` ou a qualificacao completa do tecnico.
+                            <?php else: ?>
+                                Exemplos: `sim tenho interesse`, `nao tenho interesse`, `sair da lista`.
+                            <?php endif; ?>
+                        </div>
                     </div>
                     <div class="col-12 d-grid">
                         <button type="submit" class="btn btn-outline-primary">Registrar retorno</button>
                     </div>
                 </form>
+                <?php if ($isTriageCampaign): ?>
+                    <div class="border rounded bg-light p-3 mt-3 small">
+                        Endpoint inbound para WhatsGW: <code>POST /triage/inbound</code><br>
+                        Campos aceitos: <code>campaign_id</code> + <code>campaign_recipient_id</code> ou <code>contact</code>, e <code>message_body</code>.
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -191,12 +263,15 @@ $activityClass = static function (string $eventType): string {
                             <th>Status campanha</th>
                             <th>Status fila</th>
                             <th>Status candidato</th>
+                            <?php if ($isTriageCampaign): ?>
+                                <th>Triagem</th>
+                            <?php endif; ?>
                         </tr>
                         </thead>
                         <tbody>
                         <?php if ($recipients === []): ?>
                             <tr>
-                                <td colspan="5" class="text-center text-muted py-4">Nenhum destinatario capturado nesta campanha.</td>
+                                <td colspan="<?= $isTriageCampaign ? '6' : '5' ?>" class="text-center text-muted py-4">Nenhum destinatario capturado nesta campanha.</td>
                             </tr>
                         <?php else: ?>
                             <?php foreach ($recipients as $recipient): ?>
@@ -213,6 +288,30 @@ $activityClass = static function (string $eventType): string {
                                     </td>
                                     <td><?= $escape($recipient['queue_status'] ?? '-') ?></td>
                                     <td><?= $escape(ucwords(str_replace('_', ' ', (string) ($recipient['current_candidate_status'] ?? '-')))) ?></td>
+                                    <?php if ($isTriageCampaign): ?>
+                                        <td>
+                                            <?php if (!empty($recipient['triage_session_id'])): ?>
+                                                <div class="mb-1">
+                                                    <span class="badge bg-<?= $triageStatusClass($recipient['triage_status'] ?? null) ?>">
+                                                        <?= $escape(ucwords(str_replace('_', ' ', (string) ($recipient['triage_status'] ?? 'sent')))) ?>
+                                                    </span>
+                                                </div>
+                                                <div class="small text-muted">Step: <?= $escape($recipient['triage_step'] ?? '-') ?></div>
+                                                <div class="small text-muted">Fluxo: <?= $escape($recipient['triage_automation_status'] ?? '-') ?></div>
+                                                <?php $qualification = is_array($recipient['collected_data']['qualification'] ?? null) ? $recipient['collected_data']['qualification'] : []; ?>
+                                                <?php if ($qualification !== []): ?>
+                                                    <div class="small mt-1">
+                                                        <?= $escape($qualification['city'] ?? '-') ?>/<?= $escape($qualification['state'] ?? '-') ?> · Tel <?= $escape($qualification['phone'] ?? '-') ?>
+                                                    </div>
+                                                <?php endif; ?>
+                                                <?php if (!empty($recipient['needs_operator'])): ?>
+                                                    <div class="small text-danger mt-1">Operador: <?= $escape($recipient['fallback_reason'] ?? 'pendente') ?></div>
+                                                <?php endif; ?>
+                                            <?php else: ?>
+                                                <span class="text-muted small">Sem sessao ainda</span>
+                                            <?php endif; ?>
+                                        </td>
+                                    <?php endif; ?>
                                 </tr>
                             <?php endforeach; ?>
                         <?php endif; ?>

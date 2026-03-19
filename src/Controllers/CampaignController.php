@@ -10,6 +10,7 @@ use TechRecruit\Database;
 use TechRecruit\Models\CampaignModel;
 use TechRecruit\Models\CandidateModel;
 use TechRecruit\Services\CampaignService;
+use TechRecruit\Services\TriageBotService;
 use Throwable;
 
 final class CampaignController extends Controller
@@ -31,7 +32,13 @@ final class CampaignController extends Controller
         $this->pdo = $pdo ?? Database::connect();
         $this->campaignModel = $campaignModel ?? new CampaignModel($this->pdo);
         $this->candidateModel = $candidateModel ?? new CandidateModel($this->pdo);
-        $this->campaignService = $campaignService ?? new CampaignService($this->candidateModel, $this->campaignModel, $this->pdo);
+        $this->campaignService = $campaignService ?? new CampaignService(
+            $this->candidateModel,
+            $this->campaignModel,
+            null,
+            null,
+            $this->pdo
+        );
     }
 
     public function index(): void
@@ -47,6 +54,7 @@ final class CampaignController extends Controller
 
         $formData = [
             'name' => trim((string) ($_POST['name'] ?? '')),
+            'automation_type' => trim((string) ($_POST['automation_type'] ?? '')),
             'skill' => trim((string) ($_POST['skill'] ?? '')),
             'status' => trim((string) ($_POST['status'] ?? '')),
             'state' => trim((string) ($_POST['state'] ?? '')),
@@ -182,13 +190,27 @@ final class CampaignController extends Controller
         $messageBody = trim((string) ($_POST['message_body'] ?? ''));
 
         try {
-            $intent = $this->campaignService->registerInboundReply(
+            $result = $this->campaignService->registerInboundReply(
                 $id,
                 $recipientId,
                 $messageBody,
                 $this->resolveOperator()
             );
-            $this->setFlash('success', sprintf('Retorno registrado com sucesso. Intencao identificada: %s.', $intent));
+            $message = sprintf('Retorno registrado com sucesso. Intencao identificada: %s.', $result['intent'] ?? 'unknown');
+
+            if (!empty($result['auto_reply'])) {
+                $message .= ' Resposta automatica gerada pelo bot.';
+            }
+
+            if (isset($result['auto_reply_dispatch']['success']) && $result['auto_reply_dispatch']['success'] === false) {
+                $message .= ' O envio automatico pelo WhatsGW falhou e precisa de conferência manual.';
+            }
+
+            if (!empty($result['needs_operator'])) {
+                $message .= ' Sessao encaminhada para operador.';
+            }
+
+            $this->setFlash('success', $message);
         } catch (InvalidArgumentException $exception) {
             $this->setFlash('error', $exception->getMessage());
         } catch (Throwable $exception) {
@@ -223,17 +245,22 @@ final class CampaignController extends Controller
 
         $this->render('campaigns/index', [
             'campaigns' => $this->campaignModel->findAll(),
+            'automationTypes' => [
+                'broadcast' => 'Broadcast manual',
+                TriageBotService::AUTOMATION_TYPE => 'Bot de triagem W13',
+            ],
             'skills' => $this->fetchDistinctValues('SELECT DISTINCT skill FROM recruit_candidate_skills ORDER BY skill ASC'),
             'states' => $this->fetchDistinctValues('SELECT DISTINCT state FROM recruit_candidate_addresses ORDER BY state ASC'),
             'candidateStatuses' => CandidateModel::VALID_STATUSES,
             'formData' => array_merge([
                 'name' => '',
+                'automation_type' => TriageBotService::AUTOMATION_TYPE,
                 'skill' => '',
                 'status' => '',
                 'state' => '',
                 'search' => '',
                 'recipient_limit' => '',
-                'message_template' => "Oi {first_name}, tudo bem?\nEstamos com uma oportunidade tecnica e queria validar seu interesse por aqui.",
+                'message_template' => (new TriageBotService(null, $this->pdo))->buildInitialOfferMessage('[CIDADE/UF]'),
             ], $formData),
             'errorMessage' => $errorMessage,
             'audienceEstimate' => $audienceEstimate,

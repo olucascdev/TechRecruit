@@ -7,6 +7,7 @@ $campaigns = $campaigns ?? [];
 $skills = $skills ?? [];
 $states = $states ?? [];
 $candidateStatuses = $candidateStatuses ?? [];
+$automationTypes = $automationTypes ?? [];
 $formData = $formData ?? [];
 $errorMessage = $errorMessage ?? null;
 $audienceEstimate = $audienceEstimate ?? null;
@@ -24,7 +25,7 @@ $campaignStatusClass = static function (string $status): string {
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
     <div>
         <h1 class="h3 mb-1">Campanhas WhatsApp</h1>
-        <p class="text-muted mb-0">Monte o segmento, gere a fila inicial e acompanhe a base de disparo.</p>
+        <p class="text-muted mb-0">Monte o segmento, gere a fila inicial e acompanhe o disparo e a triagem.</p>
     </div>
 </div>
 
@@ -34,8 +35,8 @@ $campaignStatusClass = static function (string $status): string {
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
                     <div>
-                        <h2 class="h5 mb-1">Nova campanha base</h2>
-                        <p class="text-muted mb-0 small">Cria a campanha, snapshot dos destinatarios e fila de mensagens pendentes.</p>
+                        <h2 class="h5 mb-1">Nova campanha</h2>
+                        <p class="text-muted mb-0 small">Cria a campanha, snapshot dos destinatarios, fila de mensagens e, se aplicavel, sessao do bot de triagem.</p>
                     </div>
                     <?php if ($audienceEstimate !== null): ?>
                         <span class="badge text-bg-light border">
@@ -60,6 +61,16 @@ $campaignStatusClass = static function (string $status): string {
                             placeholder="Ex.: VSAT Nordeste - Abril"
                             required
                         >
+                    </div>
+                    <div class="col-12">
+                        <label for="automation_type" class="form-label">Modo da automacao</label>
+                        <select id="automation_type" name="automation_type" class="form-select">
+                            <?php foreach ($automationTypes as $value => $label): ?>
+                                <option value="<?= $escape($value) ?>" <?= ($formData['automation_type'] ?? '') === $value ? 'selected' : '' ?>>
+                                    <?= $escape($label) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div class="col-md-6">
                         <label for="skill" class="form-label">Skill</label>
@@ -149,6 +160,7 @@ $campaignStatusClass = static function (string $status): string {
                         <thead>
                         <tr>
                             <th>Campanha</th>
+                            <th>Modo</th>
                             <th>Status</th>
                             <th>Publico</th>
                             <th>Fila</th>
@@ -159,7 +171,7 @@ $campaignStatusClass = static function (string $status): string {
                         <tbody>
                         <?php if ($campaigns === []): ?>
                             <tr>
-                                <td colspan="6" class="text-center text-muted py-4">Nenhuma campanha criada ainda.</td>
+                                <td colspan="7" class="text-center text-muted py-4">Nenhuma campanha criada ainda.</td>
                             </tr>
                         <?php else: ?>
                             <?php foreach ($campaigns as $campaign): ?>
@@ -167,6 +179,11 @@ $campaignStatusClass = static function (string $status): string {
                                     <td>
                                         <div class="fw-semibold"><?= $escape($campaign['name']) ?></div>
                                         <div class="text-muted small"><?= $escape($campaign['created_at']) ?> · por <?= $escape($campaign['created_by']) ?></div>
+                                    </td>
+                                    <td>
+                                        <span class="badge text-bg-light border">
+                                            <?= $escape(($automationTypes[$campaign['automation_type'] ?? 'broadcast'] ?? ($campaign['automation_type'] ?? 'broadcast'))) ?>
+                                        </span>
                                     </td>
                                     <td>
                                         <span class="badge bg-<?= $campaignStatusClass((string) $campaign['status']) ?>">

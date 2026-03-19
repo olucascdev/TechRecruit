@@ -9,6 +9,7 @@ use TechRecruit\Controllers\CampaignController;
 use TechRecruit\Controllers\ImportController;
 use TechRecruit\Controllers\OperationsController;
 use TechRecruit\Controllers\PortalController;
+use TechRecruit\Controllers\TriageController;
 use TechRecruit\Router;
 
 $envPath = dirname(__DIR__) . '/.env';
@@ -50,6 +51,7 @@ try {
     $router->post('/campaigns/{id}/resume', [CampaignController::class, 'resume']);
     $router->post('/campaigns/{id}/cancel', [CampaignController::class, 'cancel']);
     $router->post('/campaigns/{id}/reply', [CampaignController::class, 'reply']);
+    $router->post('/triage/inbound', [TriageController::class, 'inbound']);
     $router->get('/operations', [OperationsController::class, 'index']);
     $router->post('/operations/candidates/{id}/note', [OperationsController::class, 'addNote']);
     $router->post('/operations/candidates/{id}/decision', [OperationsController::class, 'candidateDecision']);

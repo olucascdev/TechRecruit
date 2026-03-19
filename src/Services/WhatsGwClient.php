@@ -1,0 +1,196 @@
+<?php
+
+declare(strict_types=1);
+
+namespace TechRecruit\Services;
+
+use InvalidArgumentException;
+
+final class WhatsGwClient
+{
+    private string $baseUrl;
+
+    private ?string $apiKey;
+
+    private ?string $phoneNumber;
+
+    private ?int $instanceId;
+
+    private int $checkStatus;
+
+    private int $simulateTyping;
+
+    private int $timeoutSeconds;
+
+    public function __construct()
+    {
+        $this->baseUrl = rtrim($this->env('WHATSGW_BASE_URL', 'https://app.whatsgw.com.br/api/WhatsGw'), '/');
+        $this->apiKey = $this->normalizeNullableString($this->env('WHATSGW_API_KEY'));
+        $this->phoneNumber = $this->normalizePhone($this->env('WHATSGW_PHONE_NUMBER'));
+        $this->instanceId = $this->normalizeNullableInt($this->env('WHATSGW_INSTANCE_ID'));
+        $this->checkStatus = $this->normalizeFlag($this->env('WHATSGW_CHECK_STATUS', '1'));
+        $this->simulateTyping = $this->normalizeFlag($this->env('WHATSGW_SIMULATE_TYPING', '0'));
+        $this->timeoutSeconds = max(5, (int) $this->env('WHATSGW_TIMEOUT_SECONDS', '30'));
+    }
+
+    public function isConfigured(): bool
+    {
+        return $this->apiKey !== null && ($this->phoneNumber !== null || $this->instanceId !== null);
+    }
+
+    public function matchesApiKey(?string $incomingApiKey): bool
+    {
+        if ($this->apiKey === null || $incomingApiKey === null) {
+            return false;
+        }
+
+        return hash_equals($this->apiKey, trim($incomingApiKey));
+    }
+
+    /**
+     * @param array<string, mixed> $options
+     * @return array<string, mixed>
+     */
+    public function sendTextMessage(string $contactPhoneNumber, string $messageBody, array $options = []): array
+    {
+        if (!$this->isConfigured()) {
+            throw new InvalidArgumentException('WhatsGW nao configurado. Defina WHATSGW_API_KEY e WHATSGW_PHONE_NUMBER ou WHATSGW_INSTANCE_ID.');
+        }
+
+        $contactPhoneNumber = $this->normalizePhone($contactPhoneNumber);
+        $messageBody = trim($messageBody);
+
+        if ($contactPhoneNumber === null || $contactPhoneNumber === '') {
+            throw new InvalidArgumentException('Contato de destino invalido para envio no WhatsGW.');
+        }
+
+        if ($messageBody === '') {
+            throw new InvalidArgumentException('Mensagem vazia para envio no WhatsGW.');
+        }
+
+        $payload = [
+            'apikey' => $this->apiKey,
+            'phone_number' => $this->phoneNumber ?? '',
+            'contact_phone_number' => $contactPhoneNumber,
+            'message_custom_id' => $options['message_custom_id'] ?? null,
+            'message_type' => 'text',
+            'message_body' => $messageBody,
+            'check_status' => $options['check_status'] ?? $this->checkStatus,
+            'simule_typing' => $options['simule_typing'] ?? $this->simulateTyping,
+        ];
+
+        if ($this->instanceId !== null) {
+            $payload['w_instancia_id'] = $this->instanceId;
+        }
+
+        $response = $this->postJson('/Send', $payload);
+
+        return array_merge($response, [
+            'request_payload' => $payload,
+            'message_custom_id' => $payload['message_custom_id'],
+            'provider_message_id' => $response['decoded_body']['message_id'] ?? null,
+            'provider_waid' => $response['decoded_body']['waid'] ?? null,
+        ]);
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     * @return array<string, mixed>
+     */
+    private function postJson(string $path, array $payload): array
+    {
+        if (!function_exists('curl_init')) {
+            throw new InvalidArgumentException('Extensao curl nao disponivel para integrar com o WhatsGW.');
+        }
+
+        $encodedPayload = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        if ($encodedPayload === false) {
+            throw new InvalidArgumentException('Falha ao serializar o payload de envio para o WhatsGW.');
+        }
+
+        $curl = curl_init();
+
+        curl_setopt_array($curl, [
+            CURLOPT_URL => $this->baseUrl . $path,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_ENCODING => '',
+            CURLOPT_MAXREDIRS => 5,
+            CURLOPT_TIMEOUT => $this->timeoutSeconds,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CUSTOMREQUEST => 'POST',
+            CURLOPT_POSTFIELDS => $encodedPayload,
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json',
+            ],
+        ]);
+
+        $rawBody = curl_exec($curl);
+        $curlError = curl_error($curl);
+        $httpStatus = (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+        curl_close($curl);
+
+        if ($rawBody === false) {
+            throw new InvalidArgumentException(
+                trim($curlError) !== '' ? $curlError : 'Falha desconhecida ao chamar o WhatsGW.'
+            );
+        }
+
+        $decodedBody = json_decode((string) $rawBody, true);
+
+        return [
+            'success' => $httpStatus >= 200 && $httpStatus < 300,
+            'http_status' => $httpStatus,
+            'raw_body' => (string) $rawBody,
+            'decoded_body' => is_array($decodedBody) ? $decodedBody : [],
+        ];
+    }
+
+    private function env(string $key, ?string $default = null): ?string
+    {
+        $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
+
+        if ($value === false || $value === null || trim((string) $value) === '') {
+            return $default;
+        }
+
+        return trim((string) $value);
+    }
+
+    private function normalizeNullableString(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $value = trim($value);
+
+        return $value === '' ? null : $value;
+    }
+
+    private function normalizeNullableInt(?string $value): ?int
+    {
+        if ($value === null || trim($value) === '') {
+            return null;
+        }
+
+        return max(0, (int) $value);
+    }
+
+    private function normalizeFlag(?string $value): int
+    {
+        return in_array(trim((string) $value), ['1', 'true', 'yes'], true) ? 1 : 0;
+    }
+
+    private function normalizePhone(?string $phoneNumber): ?string
+    {
+        if ($phoneNumber === null) {
+            return null;
+        }
+
+        $digits = preg_replace('/\D+/', '', $phoneNumber);
+
+        return $digits === '' ? null : $digits;
+    }
+}

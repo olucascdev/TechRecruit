@@ -19,14 +19,22 @@ final class CampaignService
 
     private CampaignModel $campaignModel;
 
+    private TriageBotService $triageBotService;
+
+    private WhatsGwClient $whatsGwClient;
+
     public function __construct(
         ?CandidateModel $candidateModel = null,
         ?CampaignModel $campaignModel = null,
+        ?TriageBotService $triageBotService = null,
+        ?WhatsGwClient $whatsGwClient = null,
         ?PDO $pdo = null
     ) {
         $this->pdo = $pdo ?? Database::connect();
         $this->candidateModel = $candidateModel ?? new CandidateModel($this->pdo);
         $this->campaignModel = $campaignModel ?? new CampaignModel($this->pdo);
+        $this->triageBotService = $triageBotService ?? new TriageBotService(null, $this->pdo);
+        $this->whatsGwClient = $whatsGwClient ?? new WhatsGwClient();
     }
 
     /**
@@ -38,6 +46,7 @@ final class CampaignService
         $messageTemplate = trim((string) ($input['message_template'] ?? ''));
         $filters = $this->normalizeFilters($input);
         $recipientLimit = $this->normalizeRecipientLimit($input['recipient_limit'] ?? null);
+        $automationType = $this->normalizeAutomationType($input['automation_type'] ?? null);
 
         if ($name === '') {
             throw new InvalidArgumentException('Informe um nome para a campanha.');
@@ -82,6 +91,7 @@ final class CampaignService
 
         return $this->campaignModel->createWithRecipients([
             'name' => $name,
+            'automation_type' => $automationType,
             'status' => 'queued',
             'message_template' => $messageTemplate,
             'segment_filters' => $encodedFilters === false ? '{}' : $encodedFilters,
@@ -109,6 +119,21 @@ final class CampaignService
             $filters,
             static fn (string $value): bool => $value !== ''
         );
+    }
+
+    public function normalizeAutomationType(mixed $value): string
+    {
+        $automationType = trim((string) $value);
+
+        if ($automationType === '') {
+            return TriageBotService::AUTOMATION_TYPE;
+        }
+
+        if (!in_array($automationType, ['broadcast', TriageBotService::AUTOMATION_TYPE], true)) {
+            throw new InvalidArgumentException('Tipo de automacao invalido.');
+        }
+
+        return $automationType;
     }
 
     private function normalizeRecipientLimit(mixed $value): ?int
@@ -197,6 +222,14 @@ final class CampaignService
         ];
 
         foreach ($jobs as $job) {
+            $queueId = (int) $job['id'];
+            $campaignRecipientId = (int) $job['campaign_recipient_id'];
+            $candidateId = (int) $job['candidate_id'];
+            $destinationContact = (string) $job['destination_contact'];
+            $messageBody = (string) $job['message_body'];
+            $attemptCount = ((int) $job['attempt_count']) + 1;
+            $messageCustomId = $this->buildQueueMessageCustomId($queueId);
+
             try {
                 $this->pdo->beginTransaction();
 
@@ -207,14 +240,14 @@ final class CampaignService
                          updated_at = CURRENT_TIMESTAMP
                      WHERE id = :id"
                 );
-                $queueUpdateStatement->execute(['id' => $job['id']]);
+                $queueUpdateStatement->execute(['id' => $queueId]);
 
-                if ($this->candidateHasOptOut((int) $job['candidate_id'])) {
+                if ($this->candidateHasOptOut($candidateId)) {
                     $this->markRecipientAsOptOut(
                         $campaignId,
-                        (int) $job['campaign_recipient_id'],
-                        (int) $job['candidate_id'],
-                        (string) $job['destination_contact'],
+                        $campaignRecipientId,
+                        $candidateId,
+                        $destinationContact,
                         'Opt-out ja registrado antes do envio.'
                     );
 
@@ -225,38 +258,28 @@ final class CampaignService
                     continue;
                 }
 
-                $sentStatement = $this->pdo->prepare(
-                    "UPDATE recruit_message_queue
-                     SET status = 'sent',
-                         processed_at = CURRENT_TIMESTAMP,
-                         error_message = NULL,
-                         updated_at = CURRENT_TIMESTAMP
-                     WHERE id = :id"
-                );
-                $sentStatement->execute(['id' => $job['id']]);
+                $this->pdo->commit();
 
-                $recipientStatement = $this->pdo->prepare(
-                    "UPDATE recruit_campaign_recipients
-                     SET status = 'sent',
-                         updated_at = CURRENT_TIMESTAMP
-                     WHERE id = :id"
+                $providerResult = $this->sendOutboundMessage(
+                    $destinationContact,
+                    $messageBody,
+                    $messageCustomId
                 );
-                $recipientStatement->execute(['id' => $job['campaign_recipient_id']]);
 
-                $this->advanceCandidateToMessageSent((int) $job['candidate_id'], $operator);
-                $this->logMessageEvent(
+                $this->pdo->beginTransaction();
+                $this->markQueueAsSent(
                     $campaignId,
-                    (int) $job['campaign_recipient_id'],
-                    (int) $job['candidate_id'],
-                    'outbound',
-                    'sent',
-                    (string) $job['message_body'],
-                    [
-                        'destination_contact' => $job['destination_contact'],
-                        'attempt_count' => ((int) $job['attempt_count']) + 1,
-                    ]
+                    $queueId,
+                    $campaignRecipientId,
+                    $candidateId,
+                    $destinationContact,
+                    $messageBody,
+                    $attemptCount,
+                    $messageCustomId,
+                    $providerResult,
+                    $operator,
+                    (string) ($campaign['automation_type'] ?? 'broadcast')
                 );
-
                 $this->pdo->commit();
 
                 $result['processed']++;
@@ -268,9 +291,9 @@ final class CampaignService
 
                 $this->markQueueAsFailed(
                     $campaignId,
-                    (int) $job['id'],
-                    (int) $job['campaign_recipient_id'],
-                    (int) $job['candidate_id'],
+                    $queueId,
+                    $campaignRecipientId,
+                    $candidateId,
                     trim($exception->getMessage()) !== '' ? $exception->getMessage() : 'Falha ao processar envio.'
                 );
 
@@ -395,12 +418,16 @@ final class CampaignService
         }
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function registerInboundReply(
         int $campaignId,
         int $campaignRecipientId,
         string $messageBody,
-        string $operator
-    ): string {
+        string $operator,
+        array $providerMetadata = []
+    ): array {
         $messageBody = trim($messageBody);
 
         if ($messageBody === '') {
@@ -412,7 +439,8 @@ final class CampaignService
                 r.id,
                 r.candidate_id,
                 r.destination_contact,
-                c.status AS campaign_status
+                c.status AS campaign_status,
+                c.automation_type
              FROM recruit_campaign_recipients r
              INNER JOIN recruit_campaigns c ON c.id = r.campaign_id
              WHERE r.id = :recipient_id
@@ -433,17 +461,47 @@ final class CampaignService
             throw new InvalidArgumentException('Nao e possivel registrar retorno em campanha cancelada.');
         }
 
-        $intent = $this->resolveInboundIntent($messageBody);
-
         $this->pdo->beginTransaction();
 
         try {
+            $botResult = $this->triageBotService->isTriageAutomationType((string) ($recipient['automation_type'] ?? 'broadcast'))
+                ? $this->triageBotService->handleInbound(
+                    $campaignId,
+                    $campaignRecipientId,
+                    (int) $recipient['candidate_id'],
+                    $messageBody,
+                    $operator
+                )
+                : [
+                    'parsed_intent' => $this->resolveInboundIntent($messageBody),
+                    'triage_status' => null,
+                    'current_step' => null,
+                    'automation_status' => null,
+                    'needs_operator' => false,
+                    'candidate_status' => null,
+                    'auto_reply' => null,
+                    'metadata' => [],
+                ];
+
+            $intent = (string) ($botResult['parsed_intent'] ?? 'unknown');
+
             $inboundStatement = $this->pdo->prepare(
                 'INSERT INTO recruit_whatsapp_inbound (
                     campaign_id,
                     campaign_recipient_id,
                     candidate_id,
                     source_contact,
+                    contact_name,
+                    chat_type,
+                    provider_message_id,
+                    provider_waid,
+                    group_id,
+                    message_type,
+                    message_state,
+                    context_type,
+                    context_waid,
+                    received_unix_time,
+                    provider_payload,
                     message_body,
                     parsed_intent
                  ) VALUES (
@@ -451,15 +509,45 @@ final class CampaignService
                     :campaign_recipient_id,
                     :candidate_id,
                     :source_contact,
+                    :contact_name,
+                    :chat_type,
+                    :provider_message_id,
+                    :provider_waid,
+                    :group_id,
+                    :message_type,
+                    :message_state,
+                    :context_type,
+                    :context_waid,
+                    :received_unix_time,
+                    :provider_payload,
                     :message_body,
                     :parsed_intent
                  )'
+            );
+            $encodedProviderPayload = json_encode(
+                $providerMetadata['provider_payload'] ?? $providerMetadata,
+                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
             );
             $inboundStatement->execute([
                 'campaign_id' => $campaignId,
                 'campaign_recipient_id' => $campaignRecipientId,
                 'candidate_id' => $recipient['candidate_id'],
                 'source_contact' => $recipient['destination_contact'],
+                'contact_name' => $providerMetadata['contact_name'] ?? null,
+                'chat_type' => $providerMetadata['chat_type'] ?? null,
+                'provider_message_id' => isset($providerMetadata['provider_message_id']) ? (string) $providerMetadata['provider_message_id'] : null,
+                'provider_waid' => isset($providerMetadata['provider_waid']) ? (string) $providerMetadata['provider_waid'] : null,
+                'group_id' => isset($providerMetadata['group_id']) ? (string) $providerMetadata['group_id'] : null,
+                'message_type' => isset($providerMetadata['message_type']) ? (string) $providerMetadata['message_type'] : null,
+                'message_state' => isset($providerMetadata['message_state']) ? (string) $providerMetadata['message_state'] : null,
+                'context_type' => isset($providerMetadata['context_type']) && $providerMetadata['context_type'] !== ''
+                    ? (int) $providerMetadata['context_type']
+                    : null,
+                'context_waid' => isset($providerMetadata['context_waid']) ? (string) $providerMetadata['context_waid'] : null,
+                'received_unix_time' => isset($providerMetadata['received_unix_time']) && $providerMetadata['received_unix_time'] !== ''
+                    ? (int) $providerMetadata['received_unix_time']
+                    : null,
+                'provider_payload' => $encodedProviderPayload === false ? null : $encodedProviderPayload,
                 'message_body' => $messageBody,
                 'parsed_intent' => $intent,
             ]);
@@ -485,18 +573,20 @@ final class CampaignService
                 );
             }
 
-            $candidateStatus = match ($intent) {
+            $candidateStatus = $botResult['candidate_status'] ?? match ($intent) {
                 'interested' => 'interested',
                 'not_interested', 'opt_out' => 'not_interested',
                 default => 'responded',
             };
 
-            $this->applyCandidateStatus(
-                (int) $recipient['candidate_id'],
-                $candidateStatus,
-                $operator,
-                'Atualizado a partir de retorno WhatsApp.'
-            );
+            if (is_string($candidateStatus) && $candidateStatus !== '') {
+                $this->applyCandidateStatus(
+                    (int) $recipient['candidate_id'],
+                    $candidateStatus,
+                    $operator,
+                    'Atualizado a partir de retorno WhatsApp.'
+                );
+            }
 
             $this->logMessageEvent(
                 $campaignId,
@@ -505,12 +595,53 @@ final class CampaignService
                 'inbound',
                 $intent === 'opt_out' ? 'opt_out' : 'reply',
                 $messageBody,
-                ['intent' => $intent]
+                array_merge(
+                    ['intent' => $intent],
+                    array_filter([
+                        'provider_message_id' => $providerMetadata['provider_message_id'] ?? null,
+                        'provider_waid' => $providerMetadata['provider_waid'] ?? null,
+                        'message_type' => $providerMetadata['message_type'] ?? null,
+                        'message_state' => $providerMetadata['message_state'] ?? null,
+                    ], static fn (mixed $value): bool => $value !== null),
+                    is_array($botResult['metadata'] ?? null) ? $botResult['metadata'] : [],
+                    array_filter([
+                        'triage_status' => $botResult['triage_status'] ?? null,
+                        'current_step' => $botResult['current_step'] ?? null,
+                        'automation_status' => $botResult['automation_status'] ?? null,
+                        'needs_operator' => $botResult['needs_operator'] ?? null,
+                    ], static fn (mixed $value): bool => $value !== null)
+                )
             );
+
+            $autoReply = trim((string) ($botResult['auto_reply'] ?? ''));
 
             $this->pdo->commit();
 
-            return $intent;
+            $autoReplyDispatch = null;
+
+            if ($autoReply !== '') {
+                $autoReplyDispatch = $this->dispatchAutoReply(
+                    $campaignId,
+                    $campaignRecipientId,
+                    (int) $recipient['candidate_id'],
+                    (string) $recipient['destination_contact'],
+                    $autoReply,
+                    [
+                        'triage_status' => $botResult['triage_status'] ?? null,
+                        'current_step' => $botResult['current_step'] ?? null,
+                    ]
+                );
+            }
+
+            return [
+                'intent' => $intent,
+                'auto_reply' => $autoReply !== '' ? $autoReply : null,
+                'auto_reply_dispatch' => $autoReplyDispatch,
+                'triage_status' => $botResult['triage_status'] ?? null,
+                'current_step' => $botResult['current_step'] ?? null,
+                'automation_status' => $botResult['automation_status'] ?? null,
+                'needs_operator' => (bool) ($botResult['needs_operator'] ?? false),
+            ];
         } catch (Throwable $exception) {
             if ($this->pdo->inTransaction()) {
                 $this->pdo->rollBack();
@@ -521,12 +652,211 @@ final class CampaignService
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    public function registerInboundReplyByContact(
+        ?int $campaignId,
+        string $contact,
+        string $messageBody,
+        string $operator,
+        array $providerMetadata = []
+    ): array {
+        $contact = trim($contact);
+
+        if ($contact === '') {
+            throw new InvalidArgumentException('Informe o contato do remetente.');
+        }
+
+        $session = $this->triageBotService->findSessionByContact($contact, $campaignId);
+
+        if ($session === null) {
+            throw new InvalidArgumentException('Nenhuma sessao ativa de triagem foi encontrada para esse contato.');
+        }
+
+        return $this->registerInboundReply(
+            (int) $session['campaign_id'],
+            (int) $session['campaign_recipient_id'],
+            $messageBody,
+            $operator,
+            $providerMetadata
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     * @return array<string, mixed>
+     */
+    public function recordWhatsGwStatusEvent(array $payload): array
+    {
+        $providerMessageCustomId = isset($payload['message_custom_id']) ? trim((string) $payload['message_custom_id']) : null;
+        $providerMessageId = isset($payload['message_id']) ? trim((string) $payload['message_id']) : null;
+        $providerWaid = isset($payload['waid']) ? trim((string) $payload['waid']) : null;
+        $contactPhoneNumber = trim((string) ($payload['contact_phone_number'] ?? ''));
+        $messageState = strtolower(trim((string) ($payload['message_state'] ?? '')));
+
+        $queue = $this->findQueueByProviderIdentifiers(
+            $providerMessageCustomId,
+            $providerMessageId,
+            $providerWaid,
+            $contactPhoneNumber
+        );
+
+        if ($queue === null) {
+            return [
+                'event' => 'status',
+                'status' => 'ignored',
+                'message' => 'Status recebido sem correlacao automatica com a fila.',
+            ];
+        }
+
+        $this->pdo->beginTransaction();
+
+        try {
+            $metadata = [
+                'provider_message_id' => $providerMessageId,
+                'provider_waid' => $providerWaid,
+                'provider_message_custom_id' => $providerMessageCustomId,
+                'provider_state' => $messageState,
+            ];
+
+            $this->updateQueueProviderData((int) $queue['id'], [
+                'provider_message_custom_id' => $providerMessageCustomId,
+                'provider_message_id' => $providerMessageId,
+                'provider_waid' => $providerWaid,
+                'provider_message_state' => $messageState,
+                'provider_last_event' => 'status',
+                'provider_payload' => $payload,
+                'delivered_at' => in_array($messageState, ['delivered2server', 'delivered2user', 'read'], true)
+                    ? date('Y-m-d H:i:s')
+                    : null,
+                'read_at' => $messageState === 'read' ? date('Y-m-d H:i:s') : null,
+            ]);
+
+            if (in_array($messageState, ['notwa', 'notsent'], true)) {
+                $failureReason = sprintf('WhatsGW status: %s', $messageState !== '' ? $messageState : 'failed');
+
+                $queueFailureStatement = $this->pdo->prepare(
+                    "UPDATE recruit_message_queue
+                     SET status = 'failed',
+                         error_message = :error_message,
+                         updated_at = CURRENT_TIMESTAMP
+                     WHERE id = :id"
+                );
+                $queueFailureStatement->execute([
+                    'error_message' => $failureReason,
+                    'id' => $queue['id'],
+                ]);
+
+                $recipientFailureStatement = $this->pdo->prepare(
+                    "UPDATE recruit_campaign_recipients
+                     SET status = 'failed',
+                         updated_at = CURRENT_TIMESTAMP
+                     WHERE id = :id"
+                );
+                $recipientFailureStatement->execute(['id' => $queue['campaign_recipient_id']]);
+            }
+
+            $eventType = match ($messageState) {
+                'read' => 'read',
+                'delivered2server', 'delivered2user' => 'delivered',
+                default => 'status_update',
+            };
+
+            $this->logMessageEvent(
+                (int) $queue['campaign_id'],
+                (int) $queue['campaign_recipient_id'],
+                (int) $queue['candidate_id'],
+                'system',
+                $eventType,
+                null,
+                $metadata
+            );
+
+            $this->pdo->commit();
+
+            return [
+                'event' => 'status',
+                'status' => 'processed',
+                'message' => 'Status do WhatsGW registrado.',
+                'campaign_id' => (int) $queue['campaign_id'],
+                'queue_id' => (int) $queue['id'],
+            ];
+        } catch (Throwable $exception) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+
+            throw $exception;
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     * @return array<string, mixed>
+     */
+    public function recordWhatsGwPhoneStateEvent(array $payload): array
+    {
+        $phoneNumber = $this->normalizePhoneDigits((string) ($payload['phone_number'] ?? ''));
+        $state = trim((string) ($payload['state'] ?? ''));
+
+        if ($phoneNumber === '' || $state === '') {
+            return [
+                'event' => 'phonestate',
+                'status' => 'ignored',
+                'message' => 'Evento de telefone sem phone_number/state.',
+            ];
+        }
+
+        $statement = $this->pdo->prepare(
+            'INSERT INTO recruit_whatsgw_phone_states (
+                phone_number,
+                w_instancia_id,
+                state,
+                last_event_at,
+                provider_payload
+             ) VALUES (
+                :phone_number,
+                :w_instancia_id,
+                :state,
+                :last_event_at,
+                :provider_payload
+             )
+             ON DUPLICATE KEY UPDATE
+                w_instancia_id = VALUES(w_instancia_id),
+                state = VALUES(state),
+                last_event_at = VALUES(last_event_at),
+                provider_payload = VALUES(provider_payload),
+                updated_at = CURRENT_TIMESTAMP'
+        );
+
+        $encodedPayload = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        $statement->execute([
+            'phone_number' => $phoneNumber,
+            'w_instancia_id' => isset($payload['w_instancia_id']) && $payload['w_instancia_id'] !== ''
+                ? (int) $payload['w_instancia_id']
+                : null,
+            'state' => $state,
+            'last_event_at' => date('Y-m-d H:i:s'),
+            'provider_payload' => $encodedPayload === false ? '{}' : $encodedPayload,
+        ]);
+
+        return [
+            'event' => 'phonestate',
+            'status' => 'processed',
+            'message' => 'Estado do telefone atualizado.',
+            'phone_number' => $phoneNumber,
+            'state' => $state,
+        ];
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     private function fetchCampaign(int $campaignId): ?array
     {
         $statement = $this->pdo->prepare(
-            'SELECT id, status
+            'SELECT id, status, automation_type
              FROM recruit_campaigns
              WHERE id = :id
              LIMIT 1'
@@ -606,7 +936,6 @@ final class CampaignService
                  SET status = 'failed',
                      processed_at = CURRENT_TIMESTAMP,
                      error_message = :error_message,
-                     attempt_count = attempt_count + 1,
                      updated_at = CURRENT_TIMESTAMP
                  WHERE id = :id"
             );
@@ -641,6 +970,375 @@ final class CampaignService
 
             throw $exception;
         }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    /**
+     * @param array<string, mixed> $options
+     * @return array<string, mixed>
+     */
+    private function sendOutboundMessage(
+        string $destinationContact,
+        string $messageBody,
+        string $messageCustomId,
+        array $options = []
+    ): array
+    {
+        if (!$this->whatsGwClient->isConfigured()) {
+            return [
+                'success' => true,
+                'simulated' => true,
+                'http_status' => 200,
+                'raw_body' => '',
+                'decoded_body' => [],
+                'request_payload' => [
+                    'contact_phone_number' => $destinationContact,
+                    'message_body' => $messageBody,
+                    'message_custom_id' => $messageCustomId,
+                ],
+                'message_custom_id' => $messageCustomId,
+                'provider_message_id' => null,
+                'provider_waid' => null,
+            ];
+        }
+
+        $result = $this->whatsGwClient->sendTextMessage(
+            $destinationContact,
+            $messageBody,
+            array_merge($options, [
+                'message_custom_id' => $messageCustomId,
+            ])
+        );
+
+        if (!($result['success'] ?? false)) {
+            $rawBody = trim((string) ($result['raw_body'] ?? ''));
+            $httpStatus = (int) ($result['http_status'] ?? 0);
+
+            throw new InvalidArgumentException(
+                sprintf(
+                    'WhatsGW retornou falha no envio. HTTP %d%s',
+                    $httpStatus,
+                    $rawBody !== '' ? ': ' . $rawBody : ''
+                )
+            );
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param array<string, mixed> $metadata
+     * @return array<string, mixed>
+     */
+    private function dispatchAutoReply(
+        int $campaignId,
+        int $campaignRecipientId,
+        int $candidateId,
+        string $destinationContact,
+        string $messageBody,
+        array $metadata
+    ): array {
+        $messageCustomId = $this->buildAutoReplyCustomId($campaignRecipientId);
+
+        try {
+            $result = $this->sendOutboundMessage($destinationContact, $messageBody, $messageCustomId, [
+                'check_status' => 0,
+            ]);
+
+            $this->logMessageEvent(
+                $campaignId,
+                $campaignRecipientId,
+                $candidateId,
+                'outbound',
+                'sent',
+                $messageBody,
+                array_merge($metadata, [
+                    'source' => ($result['simulated'] ?? false) ? 'triage_bot_simulated' : 'triage_bot_whatsgw',
+                    'provider_message_custom_id' => $result['message_custom_id'] ?? $messageCustomId,
+                    'provider_message_id' => $result['provider_message_id'] ?? null,
+                    'provider_waid' => $result['provider_waid'] ?? null,
+                ])
+            );
+
+            return [
+                'success' => true,
+                'provider_message_custom_id' => $result['message_custom_id'] ?? $messageCustomId,
+                'provider_message_id' => $result['provider_message_id'] ?? null,
+                'provider_waid' => $result['provider_waid'] ?? null,
+                'simulated' => (bool) ($result['simulated'] ?? false),
+            ];
+        } catch (Throwable $exception) {
+            $this->logMessageEvent(
+                $campaignId,
+                $campaignRecipientId,
+                $candidateId,
+                'outbound',
+                'failed',
+                $messageBody,
+                array_merge($metadata, [
+                    'source' => 'triage_bot_whatsgw',
+                    'provider_message_custom_id' => $messageCustomId,
+                    'error' => $exception->getMessage(),
+                ])
+            );
+
+            return [
+                'success' => false,
+                'provider_message_custom_id' => $messageCustomId,
+                'error' => $exception->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $providerResult
+     */
+    private function markQueueAsSent(
+        int $campaignId,
+        int $queueId,
+        int $campaignRecipientId,
+        int $candidateId,
+        string $destinationContact,
+        string $messageBody,
+        int $attemptCount,
+        string $messageCustomId,
+        array $providerResult,
+        string $operator,
+        string $automationType
+    ): void {
+        $queueStatement = $this->pdo->prepare(
+            "UPDATE recruit_message_queue
+             SET status = 'sent',
+                 processed_at = CURRENT_TIMESTAMP,
+                 error_message = NULL,
+                 provider_message_custom_id = :provider_message_custom_id,
+                 provider_message_id = :provider_message_id,
+                 provider_waid = :provider_waid,
+                 provider_message_state = :provider_message_state,
+                 provider_last_event = :provider_last_event,
+                 provider_payload = :provider_payload,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = :id"
+        );
+        $queueStatement->execute([
+            'provider_message_custom_id' => $messageCustomId,
+            'provider_message_id' => $providerResult['provider_message_id'] ?? null,
+            'provider_waid' => $providerResult['provider_waid'] ?? null,
+            'provider_message_state' => 'sent',
+            'provider_last_event' => ($providerResult['simulated'] ?? false) ? 'simulation' : 'send_api',
+            'provider_payload' => $this->encodeJson($providerResult),
+            'id' => $queueId,
+        ]);
+
+        $recipientStatement = $this->pdo->prepare(
+            "UPDATE recruit_campaign_recipients
+             SET status = 'sent',
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = :id"
+        );
+        $recipientStatement->execute(['id' => $campaignRecipientId]);
+
+        $this->advanceCandidateToMessageSent($candidateId, $operator);
+
+        if ($this->triageBotService->isTriageAutomationType($automationType)) {
+            $this->triageBotService->activateInitialSession(
+                $campaignId,
+                $campaignRecipientId,
+                $candidateId,
+                $messageBody
+            );
+        }
+
+        $this->logMessageEvent(
+            $campaignId,
+            $campaignRecipientId,
+            $candidateId,
+            'outbound',
+            'sent',
+            $messageBody,
+            [
+                'destination_contact' => $destinationContact,
+                'attempt_count' => $attemptCount,
+                'provider_message_custom_id' => $messageCustomId,
+                'provider_message_id' => $providerResult['provider_message_id'] ?? null,
+                'provider_waid' => $providerResult['provider_waid'] ?? null,
+                'source' => ($providerResult['simulated'] ?? false) ? 'simulation' : 'whatsgw',
+            ]
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $attributes
+     */
+    private function updateQueueProviderData(int $queueId, array $attributes): void
+    {
+        if ($attributes === []) {
+            return;
+        }
+
+        $allowedColumns = [
+            'provider_message_custom_id',
+            'provider_message_id',
+            'provider_waid',
+            'provider_message_state',
+            'provider_last_event',
+            'provider_payload',
+            'delivered_at',
+            'read_at',
+        ];
+
+        $params = ['id' => $queueId];
+        $sets = [];
+
+        foreach ($allowedColumns as $column) {
+            if (!array_key_exists($column, $attributes)) {
+                continue;
+            }
+
+            $sets[] = sprintf('%s = :%s', $column, $column);
+            $params[$column] = $column === 'provider_payload'
+                ? $this->encodeJson($attributes[$column])
+                : $attributes[$column];
+        }
+
+        if ($sets === []) {
+            return;
+        }
+
+        $sql = sprintf(
+            'UPDATE recruit_message_queue SET %s, updated_at = CURRENT_TIMESTAMP WHERE id = :id',
+            implode(', ', $sets)
+        );
+
+        $statement = $this->pdo->prepare($sql);
+        $statement->execute($params);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function findQueueByProviderIdentifiers(
+        ?string $providerMessageCustomId,
+        ?string $providerMessageId,
+        ?string $providerWaid,
+        string $contactPhoneNumber
+    ): ?array {
+        $providerMessageCustomId = $providerMessageCustomId !== null ? trim($providerMessageCustomId) : null;
+        $providerMessageId = $providerMessageId !== null ? trim($providerMessageId) : null;
+        $providerWaid = $providerWaid !== null ? trim($providerWaid) : null;
+        $normalizedContact = $this->normalizePhoneDigits($contactPhoneNumber);
+
+        if ($providerMessageCustomId !== null && $providerMessageCustomId !== '') {
+            $queue = $this->findQueueByColumn('provider_message_custom_id', $providerMessageCustomId);
+
+            if ($queue !== null) {
+                return $queue;
+            }
+        }
+
+        if ($providerMessageId !== null && $providerMessageId !== '') {
+            $queue = $this->findQueueByColumn('provider_message_id', $providerMessageId);
+
+            if ($queue !== null) {
+                return $queue;
+            }
+        }
+
+        if ($providerWaid !== null && $providerWaid !== '') {
+            $queue = $this->findQueueByColumn('provider_waid', $providerWaid);
+
+            if ($queue !== null) {
+                return $queue;
+            }
+        }
+
+        if ($normalizedContact === '') {
+            return null;
+        }
+
+        return $this->findLatestQueueByContact($normalizedContact);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function findQueueByColumn(string $column, string $value): ?array
+    {
+        $allowedColumns = [
+            'provider_message_custom_id',
+            'provider_message_id',
+            'provider_waid',
+        ];
+
+        if (!in_array($column, $allowedColumns, true)) {
+            return null;
+        }
+
+        $statement = $this->pdo->prepare(
+            sprintf(
+                'SELECT id, campaign_id, campaign_recipient_id, candidate_id
+                 FROM recruit_message_queue
+                 WHERE %s = :value
+                 ORDER BY id DESC
+                 LIMIT 1',
+                $column
+            )
+        );
+        $statement->execute(['value' => $value]);
+        $queue = $statement->fetch();
+
+        return $queue === false ? null : $queue;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function findLatestQueueByContact(string $normalizedContact): ?array
+    {
+        $contactLength = max(1, strlen($normalizedContact));
+        $statement = $this->pdo->prepare(
+            "SELECT
+                queue.id,
+                queue.campaign_id,
+                queue.campaign_recipient_id,
+                queue.candidate_id
+             FROM recruit_message_queue queue
+             WHERE RIGHT(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(queue.destination_contact, '+', ''), '-', ''), '(', ''), ')', ''), ' ', ''), '.', ''), '/', ''), {$contactLength}) = :contact
+             ORDER BY queue.processed_at DESC, queue.id DESC
+             LIMIT 1"
+        );
+        $statement->execute(['contact' => $normalizedContact]);
+        $queue = $statement->fetch();
+
+        return $queue === false ? null : $queue;
+    }
+
+    private function buildQueueMessageCustomId(int $queueId): string
+    {
+        return 'queue-' . $queueId;
+    }
+
+    private function buildAutoReplyCustomId(int $campaignRecipientId): string
+    {
+        return 'triage-' . $campaignRecipientId . '-' . time();
+    }
+
+    private function normalizePhoneDigits(string $value): string
+    {
+        return preg_replace('/\D+/', '', $value) ?? '';
+    }
+
+    private function encodeJson(mixed $payload): ?string
+    {
+        if ($payload === null) {
+            return null;
+        }
+
+        $encoded = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        return $encoded === false ? null : $encoded;
     }
 
     private function advanceCandidateToMessageSent(int $candidateId, string $operator): void
@@ -873,6 +1571,15 @@ final class CampaignService
             || str_contains($normalized, 'sem interesse')
         ) {
             return 'not_interested';
+        }
+
+        if (
+            $normalized === '3'
+            || str_contains($normalized, 'mais detalhes')
+            || str_contains($normalized, 'preciso de detalhes')
+            || str_contains($normalized, 'talvez')
+        ) {
+            return 'needs_details';
         }
 
         if (
