@@ -23,6 +23,7 @@ final class UserService
     {
         $fullName = $this->normalizeName((string) ($input['full_name'] ?? ''));
         $email = $this->normalizeEmail((string) ($input['email'] ?? ''));
+        $username = $this->normalizeUsername((string) ($input['username'] ?? ''));
         $password = (string) ($input['password'] ?? '');
         $role = trim((string) ($input['role'] ?? UserModel::ROLE_MANAGER));
 
@@ -32,6 +33,18 @@ final class UserService
 
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             throw new InvalidArgumentException('Informe um e-mail válido.');
+        }
+
+        if ($username === '') {
+            $username = $this->normalizeUsername((string) strstr($email, '@', true));
+        }
+
+        if (mb_strlen($username) < 3) {
+            throw new InvalidArgumentException('Informe um username com pelo menos 3 caracteres.');
+        }
+
+        if (!preg_match('/^[a-z0-9](?:[a-z0-9._-]{1,58}[a-z0-9])?$/', $username)) {
+            throw new InvalidArgumentException('O username deve usar apenas letras minúsculas, números, ponto, hífen ou underscore.');
         }
 
         if (!in_array($role, UserModel::VALID_ROLES, true)) {
@@ -50,6 +63,10 @@ final class UserService
             throw new InvalidArgumentException('Já existe um usuário interno com este e-mail.');
         }
 
+        if ($this->userModel->findByUsername($username) !== null) {
+            throw new InvalidArgumentException('Já existe um usuário interno com este username.');
+        }
+
         $passwordHash = password_hash($password, PASSWORD_DEFAULT);
 
         if (!is_string($passwordHash) || $passwordHash === '') {
@@ -58,6 +75,7 @@ final class UserService
 
         return $this->userModel->create([
             'full_name' => $fullName,
+            'username' => $username,
             'email' => $email,
             'password_hash' => $passwordHash,
             'role' => $role,
@@ -119,5 +137,28 @@ final class UserService
     private function normalizeName(string $name): string
     {
         return trim(preg_replace('/\s+/', ' ', $name) ?? '');
+    }
+
+    private function normalizeUsername(string $username): string
+    {
+        $normalized = trim($username);
+
+        if ($normalized === '') {
+            return '';
+        }
+
+        $transliterated = function_exists('iconv')
+            ? iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $normalized)
+            : false;
+
+        if (is_string($transliterated) && $transliterated !== '') {
+            $normalized = $transliterated;
+        }
+
+        $normalized = mb_strtolower($normalized);
+        $normalized = preg_replace('/[^a-z0-9._-]+/', '.', $normalized) ?? '';
+        $normalized = preg_replace('/[._-]{2,}/', '.', $normalized) ?? '';
+
+        return trim($normalized, '._-');
     }
 }

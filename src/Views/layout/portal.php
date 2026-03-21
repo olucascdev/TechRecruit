@@ -16,6 +16,7 @@ require __DIR__ . '/_ui.php';
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="<?= $escape($csrfToken ?? '') ?>">
     <title><?= $escape($pageTitle) ?> | TechRecruit</title>
     <?php $renderTailwindHead(); ?>
     <?= $pageStyles ?>

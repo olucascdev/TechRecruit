@@ -106,22 +106,35 @@ mysql -u root -p techrecruit < database/migrations/006_create_triage_bot_tables.
 mysql -u root -p techrecruit < database/migrations/007_create_whatsgw_integration_tables.sql
 mysql -u root -p techrecruit < database/migrations/008_expand_w13_flow.sql
 mysql -u root -p techrecruit < database/migrations/009_create_management_users.sql
+mysql -u root -p techrecruit < database/migrations/010_add_management_usernames.sql
 ```
 
 ## 4.1 Criar o primeiro usuário interno
 
-O login do backoffice agora é restrito a usuários internos da gestão. O cadastro não é público.
+O login do backoffice agora segue a mesma lógica do `recargaaki`:
 
-Crie o primeiro administrador via CLI:
+- se não existir nenhum usuário interno, o primeiro administrador é criado em `http://127.0.0.1:8090/setup`
+- depois do bootstrap inicial, o setup é bloqueado
+- o login aceita `username` ou e-mail
+- novos acessos continuam restritos a um admin em `/management/users`
+
+Opção 1, setup web:
+
+- acesse `http://127.0.0.1:8090/setup`
+- cadastre `nome`, `email`, `username` e `senha`
+- depois entre em `http://127.0.0.1:8090/login`
+
+Opção 2, CLI:
 
 ```bash
-php bin/create_management_user.php --name="Admin TechRecruit" --email="admin@empresa.com" --password="SENHA_SEGURA" --role=admin
+php bin/create_management_user.php --name="Admin TechRecruit" --email="admin@empresa.com" --username="admin.techrecruit" --password="SENHA_SEGURA" --role=admin
 ```
 
 Depois disso:
 
+- acesse `http://127.0.0.1:8090/setup` e confirme que o setup redireciona para login
 - acesse `http://127.0.0.1:8090/login`
-- entre com o usuário criado
+- entre com o `username` ou e-mail do usuário criado
 - use `/management/users` para cadastrar outros usuários internos com role `admin` ou `manager`
 
 ## 5. Rodar localmente
@@ -132,6 +145,7 @@ php -S 127.0.0.1:8090 -t public
 
 Abra no navegador:
 
+- `http://127.0.0.1:8090/setup`
 - `http://127.0.0.1:8090/login`
 - `http://127.0.0.1:8090/`
 - `http://127.0.0.1:8090/import`
@@ -272,13 +286,14 @@ curl -X POST http://127.0.0.1:8090/triage/inbound \
 
 ### Teste de autenticação interna
 
-1. Acesse `/login`
-2. Entre com um usuário criado pela CLI ou por `/management/users`
-3. Confirme que sem login o backoffice redireciona para `/login`
-4. Acesse `/management/users` com um admin
-5. Crie um usuário `manager`
-6. Atualize role/status de um usuário e confirme persistência
-7. Faça logout pelo cabeçalho e valide que a sessão é encerrada
+1. Se o banco estiver vazio, acesse `/setup` e crie o primeiro admin
+2. Confirme que depois disso `/setup` deixa de aceitar novo cadastro e volta para `/login`
+3. Entre em `/login` usando `username` ou e-mail
+4. Confirme que sem login o backoffice redireciona para `/login` e, sem usuários, para `/setup`
+5. Acesse `/management/users` com um admin
+6. Crie um usuário `manager`
+7. Atualize role/status de um usuário e confirme persistência
+8. Faça logout pelo cabeçalho e valide que a sessão é encerrada
 
 ### Teste do WhatsGW real
 

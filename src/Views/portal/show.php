@@ -72,6 +72,7 @@ $statusClass = static function (string $status): string {
                     <div class="card-body">
                         <h2 class="h5 mb-3">Finalize seu cadastro W13 e envie os documentos</h2>
                         <form action="<?= $escape($portalFormAction ?? '') ?>" method="post" enctype="multipart/form-data" class="row g-3">
+                            <?= $csrfField ?>
                             <div class="col-md-6">
                                 <label for="full_name" class="form-label">Nome completo</label>
                                 <input type="text" class="form-control" id="full_name" name="full_name" value="<?= $escape($value('full_name', $profile, $portal)) ?>" <?= $isReadOnly ? 'disabled' : '' ?> required>

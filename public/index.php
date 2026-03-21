@@ -10,15 +10,131 @@ use TechRecruit\Controllers\CampaignController;
 use TechRecruit\Controllers\ImportController;
 use TechRecruit\Controllers\OperationsController;
 use TechRecruit\Controllers\PortalController;
+use TechRecruit\Controllers\FaqController;
+use TechRecruit\Controllers\SetupController;
 use TechRecruit\Controllers\TriageController;
 use TechRecruit\Controllers\UserController;
 use TechRecruit\Router;
+use TechRecruit\Security\Csrf;
+
+function techRecruitRequestPath(): string
+{
+    $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+
+    return $path !== '/' ? (rtrim($path, '/') ?: '/') : '/';
+}
+
+function techRecruitExpectsJson(string $path): bool
+{
+    $accept = strtolower((string) ($_SERVER['HTTP_ACCEPT'] ?? ''));
+    $requestedWith = strtolower((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? ''));
+
+    return str_contains($accept, 'application/json')
+        || $requestedWith === 'xmlhttprequest'
+        || str_contains($path, '/run');
+}
+
+function techRecruitFallbackRedirect(string $requestPath): string
+{
+    $referer = trim((string) ($_SERVER['HTTP_REFERER'] ?? ''));
+
+    if ($referer !== '') {
+        $path = parse_url($referer, PHP_URL_PATH);
+        $query = parse_url($referer, PHP_URL_QUERY);
+
+        if (is_string($path) && $path !== '' && str_starts_with($path, '/') && !str_starts_with($path, '//')) {
+            return $path . (is_string($query) && $query !== '' ? '?' . $query : '');
+        }
+    }
+
+    if ($requestPath === '/login' || $requestPath === '/setup') {
+        return $requestPath;
+    }
+
+    if (preg_match('#^(/portal/[^/]+)/submit$#', $requestPath, $matches) === 1) {
+        return $matches[1];
+    }
+
+    if (preg_match('#^/candidates/(\d+)/(delete|portal/generate|portal/status)$#', $requestPath, $matches) === 1) {
+        return '/candidates/' . $matches[1];
+    }
+
+    if (
+        $requestPath === '/candidates/status'
+        || $requestPath === '/candidates/bulk-delete'
+        || str_starts_with($requestPath, '/operations/')
+        || str_starts_with($requestPath, '/portal/documents/')
+    ) {
+        return '/candidates';
+    }
+
+    if (preg_match('#^/campaigns/(\d+)/(process|pause|resume|cancel|delete|reply|process/run)$#', $requestPath, $matches) === 1) {
+        return '/campaigns/' . $matches[1];
+    }
+
+    if (
+        $requestPath === '/campaigns'
+        || $requestPath === '/campaigns/process-due'
+        || $requestPath === '/campaigns/process-due/run'
+    ) {
+        return '/campaigns';
+    }
+
+    if (str_starts_with($requestPath, '/import/')) {
+        return '/import';
+    }
+
+    if (str_starts_with($requestPath, '/management/users')) {
+        return '/management/users';
+    }
+
+    return '/candidates';
+}
+
+function techRecruitHandleCsrfFailure(string $requestPath): never
+{
+    $message = 'Sessão expirada ou token inválido. Atualize a página e tente novamente.';
+
+    if (techRecruitExpectsJson($requestPath)) {
+        http_response_code(419);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'success' => false,
+            'message' => $message,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    $_SESSION['error'] = $message;
+    header('Location: ' . techRecruitFallbackRedirect($requestPath));
+    exit;
+}
+
+$isHttps = (
+    (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off')
+    || strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https'
+);
+
+session_set_cookie_params([
+    'httponly' => true,
+    'samesite' => 'Lax',
+    'secure' => $isHttps,
+]);
 
 session_start();
 
 try {
+    $requestPath = techRecruitRequestPath();
+    $requestMethod = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
+
+    if ($requestMethod === 'POST' && $requestPath !== '/triage/inbound' && !Csrf::isValid(Csrf::requestToken())) {
+        techRecruitHandleCsrfFailure($requestPath);
+    }
+
     $router = new Router();
 
+    $router->get('/setup', [SetupController::class, 'show']);
+    $router->post('/setup', [SetupController::class, 'store']);
     $router->get('/login', [AuthController::class, 'showLogin']);
     $router->post('/login', [AuthController::class, 'authenticate']);
     $router->post('/logout', [AuthController::class, 'logout']);
@@ -26,6 +142,7 @@ try {
     $router->get('/candidates', [CandidateController::class, 'index']);
     $router->get('/candidates/{id}', [CandidateController::class, 'show']);
     $router->post('/candidates/status', [CandidateController::class, 'updateStatus']);
+    $router->post('/candidates/bulk-delete', [CandidateController::class, 'bulkDestroy']);
     $router->post('/candidates/{id}/delete', [CandidateController::class, 'destroy']);
     $router->post('/candidates/{id}/portal/generate', [PortalController::class, 'generate']);
     $router->post('/candidates/{id}/portal/status', [PortalController::class, 'updateStatus']);
@@ -43,6 +160,7 @@ try {
     $router->post('/campaigns/{id}/reply', [CampaignController::class, 'reply']);
     $router->post('/triage/inbound', [TriageController::class, 'inbound']);
     $router->get('/operations', [OperationsController::class, 'index']);
+    $router->get('/faq', [FaqController::class, 'index']);
     $router->post('/operations/candidates/{id}/note', [OperationsController::class, 'addNote']);
     $router->post('/operations/candidates/{id}/decision', [OperationsController::class, 'candidateDecision']);
     $router->post('/operations/documents/{id}/decision', [OperationsController::class, 'documentDecision']);

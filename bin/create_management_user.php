@@ -7,14 +7,15 @@ require dirname(__DIR__) . '/bootstrap.php';
 
 use TechRecruit\Services\UserService;
 
-$options = getopt('', ['name:', 'email:', 'password:', 'role::']);
+$options = getopt('', ['name:', 'email:', 'username::', 'password:', 'role::']);
 $name = trim((string) ($options['name'] ?? ''));
 $email = trim((string) ($options['email'] ?? ''));
+$username = trim((string) ($options['username'] ?? ''));
 $password = (string) ($options['password'] ?? '');
 $role = trim((string) ($options['role'] ?? 'manager'));
 
 if ($name === '' || $email === '' || $password === '') {
-    fwrite(STDERR, "Uso: php bin/create_management_user.php --name=\"Nome\" --email=\"email@empresa.com\" --password=\"senha-segura\" [--role=admin|manager]\n");
+    fwrite(STDERR, "Uso: php bin/create_management_user.php --name=\"Nome\" --email=\"email@empresa.com\" [--username=\"usuario\"] --password=\"senha-segura\" [--role=admin|manager]\n");
     exit(1);
 }
 
@@ -23,6 +24,7 @@ try {
     $userId = $userService->create([
         'full_name' => $name,
         'email' => $email,
+        'username' => $username,
         'password' => $password,
         'role' => $role,
     ], 'cli-bootstrap');

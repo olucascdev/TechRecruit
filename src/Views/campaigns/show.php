@@ -79,6 +79,7 @@ $actionIcon = static function (string $name): string {
     </div>
     <div class="flex flex-nowrap items-center gap-2 overflow-x-auto pb-1">
         <form method="post" action="/campaigns/<?= $escape($campaign['id'] ?? 0) ?>/process" class="d-flex flex-wrap align-items-end gap-2">
+            <?= $csrfField ?>
             <div>
                 <label for="batch_limit" class="form-label small mb-1">Lote</label>
                 <input
@@ -109,15 +110,19 @@ $actionIcon = static function (string $name): string {
             </div>
         </form>
         <form method="post" action="/campaigns/<?= $escape($campaign['id'] ?? 0) ?>/pause" class="m-0">
+            <?= $csrfField ?>
             <button type="submit" class="btn btn-outline-secondary">Pausar</button>
         </form>
         <form method="post" action="/campaigns/<?= $escape($campaign['id'] ?? 0) ?>/resume" class="m-0">
+            <?= $csrfField ?>
             <button type="submit" class="btn btn-outline-success">Retomar</button>
         </form>
         <form method="post" action="/campaigns/<?= $escape($campaign['id'] ?? 0) ?>/cancel" class="m-0">
+            <?= $csrfField ?>
             <button type="submit" class="btn btn-outline-danger">Cancelar</button>
         </form>
         <form method="post" action="/campaigns/<?= $escape($campaign['id'] ?? 0) ?>/delete" class="m-0" onsubmit="return confirm('Excluir esta campanha e toda a fila vinculada?');">
+            <?= $csrfField ?>
             <button type="submit" class="action-icon action-icon-danger" title="Excluir campanha" aria-label="Excluir campanha">
                 <?= $actionIcon('delete') ?>
             </button>
@@ -239,10 +244,15 @@ $pageScripts = <<<HTML
         try {
             const payload = new URLSearchParams();
             payload.set('batch_limit', batchInput && batchInput.value !== '' ? batchInput.value : String({$defaultBatchLimit}));
+            payload.set('_token', window.TechRecruit?.csrfToken || '');
 
             const response = await fetch(endpoint, {
                 method: 'POST',
-                headers: {
+                headers: window.TechRecruit?.csrfHeaders ? window.TechRecruit.csrfHeaders({
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }) : {
                     'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest'
@@ -374,6 +384,7 @@ HTML;
             <div class="card-body">
                 <h2 class="h5 mb-3">Simular retorno inbound</h2>
                 <form method="post" action="/campaigns/<?= $escape($campaign['id'] ?? 0) ?>/reply" class="row g-3">
+                    <?= $csrfField ?>
                     <div class="col-12">
                         <label for="campaign_recipient_id" class="form-label">Destinatário</label>
                         <select id="campaign_recipient_id" name="campaign_recipient_id" class="form-select" required>

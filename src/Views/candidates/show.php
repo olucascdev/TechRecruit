@@ -109,8 +109,17 @@ document.addEventListener('DOMContentLoaded', function () {
         const formData = new FormData(form);
 
         try {
+            formData.set('_token', window.TechRecruit?.csrfToken || '');
+
             const response = await fetch('/candidates/status', {
                 method: 'POST',
+                headers: window.TechRecruit?.csrfHeaders ? window.TechRecruit.csrfHeaders({
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }) : {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
                 body: formData
             });
             const result = await response.json();
@@ -147,6 +156,7 @@ HTML;
             <?= $actionIcon('back') ?>
         </a>
         <form method="post" action="/candidates/<?= $escape($candidate['id'] ?? '') ?>/delete" class="m-0" onsubmit="return confirm('Excluir este candidato e todos os dados vinculados?');">
+            <?= $csrfField ?>
             <button type="submit" class="action-icon action-icon-danger" title="Excluir candidato" aria-label="Excluir candidato">
                 <?= $actionIcon('delete') ?>
             </button>
@@ -253,6 +263,7 @@ HTML;
             </div>
             <div class="d-flex flex-wrap gap-2">
                 <form method="post" action="/candidates/<?= $escape($candidate['id'] ?? '') ?>/portal/generate">
+                    <?= $csrfField ?>
                     <button type="submit" class="btn btn-outline-primary">
                         <?= $portal === null ? 'Gerar e enviar portal' : 'Regenerar e reenviar portal' ?>
                     </button>
@@ -286,6 +297,7 @@ HTML;
                         </dl>
 
                         <form method="post" action="/candidates/<?= $escape($candidate['id'] ?? '') ?>/portal/status" class="row g-2">
+                            <?= $csrfField ?>
                             <div class="col-12">
                                 <label for="portal_status" class="form-label">Status do portal</label>
                                 <select id="portal_status" name="portal_status" class="form-select">
@@ -398,6 +410,7 @@ HTML;
                                                         <?= $actionIcon('view') ?>
                                                     </a>
                                                     <form method="post" action="/portal/documents/<?= $escape($document['id']) ?>/delete" class="m-0" onsubmit="return confirm('Excluir este anexo?');">
+                                                        <?= $csrfField ?>
                                                         <input type="hidden" name="candidate_id" value="<?= $escape($candidate['id'] ?? '') ?>">
                                                         <button type="submit" class="action-icon action-icon-sm action-icon-danger" title="Excluir anexo" aria-label="Excluir anexo">
                                                             <?= $actionIcon('delete') ?>
@@ -461,6 +474,7 @@ HTML;
                     <div class="border rounded p-3 mb-4">
                         <h3 class="h6 mb-3">Observação interna</h3>
                         <form method="post" action="/operations/candidates/<?= $escape($candidate['id'] ?? '') ?>/note" class="row g-2">
+                            <?= $csrfField ?>
                             <div class="col-12">
                                 <textarea name="message" class="form-control" rows="4" placeholder="Ex.: Documento legível, validar comprovante de residência." required></textarea>
                             </div>
@@ -473,6 +487,7 @@ HTML;
                     <div class="border rounded p-3">
                         <h3 class="h6 mb-3">Decisão do candidato</h3>
                         <form method="post" action="/operations/candidates/<?= $escape($candidate['id'] ?? '') ?>/decision" class="row g-2">
+                            <?= $csrfField ?>
                             <div class="col-12">
                                 <label for="decision" class="form-label">Ação</label>
                                 <select id="decision" name="decision" class="form-select" required>
@@ -519,6 +534,7 @@ HTML;
                                             <td><?= $escape($statusLabel((string) $document['review_status'])) ?></td>
                                             <td style="min-width: 320px;">
                                                 <form method="post" action="/operations/documents/<?= $escape($document['id']) ?>/decision" class="row g-2">
+                                                    <?= $csrfField ?>
                                                     <input type="hidden" name="candidate_id" value="<?= $escape($candidate['id'] ?? '') ?>">
                                                     <div class="col-md-5">
                                                         <select name="decision" class="form-select form-select-sm" required>
@@ -569,6 +585,7 @@ HTML;
                                             <td style="min-width: 240px;">
                                                 <?php if (($pendency['status'] ?? '') === 'open'): ?>
                                                     <form method="post" action="/operations/pendencies/<?= $escape($pendency['id']) ?>/resolve" class="row g-2">
+                                                        <?= $csrfField ?>
                                                         <input type="hidden" name="candidate_id" value="<?= $escape($candidate['id'] ?? '') ?>">
                                                         <div class="col-12">
                                                             <input type="text" name="message" class="form-control form-control-sm" placeholder="Observação de resolução">
@@ -716,6 +733,7 @@ HTML;
                 <h2 class="h5 mb-3">Alterar status</h2>
                 <div id="status-feedback" class="d-none"></div>
                 <form id="candidate-status-form">
+                    <?= $csrfField ?>
                     <input type="hidden" name="candidate_id" value="<?= $escape($candidate['id'] ?? '') ?>">
                     <div class="mb-3">
                         <label for="new_status" class="form-label">Novo status</label>

@@ -35,13 +35,14 @@ final class UserController extends Controller
 
         $formData = [
             'full_name' => trim((string) ($_POST['full_name'] ?? '')),
+            'username' => trim((string) ($_POST['username'] ?? '')),
             'email' => trim((string) ($_POST['email'] ?? '')),
             'role' => trim((string) ($_POST['role'] ?? UserModel::ROLE_MANAGER)),
         ];
 
         try {
             $currentUser = $this->currentUser();
-            $createdBy = $currentUser['full_name'] ?? $currentUser['email'] ?? 'system';
+            $createdBy = $currentUser['username'] ?? $currentUser['full_name'] ?? $currentUser['email'] ?? 'system';
             $this->userService->create($_POST, is_string($createdBy) ? $createdBy : 'system');
             $this->setFlash('success', 'Usuário interno criado com sucesso.');
             $this->redirect('/management/users');
@@ -92,6 +93,7 @@ final class UserController extends Controller
             'statuses' => UserModel::STATUS_LABELS,
             'formData' => array_merge([
                 'full_name' => '',
+                'username' => '',
                 'email' => '',
                 'role' => UserModel::ROLE_MANAGER,
             ], $formData),

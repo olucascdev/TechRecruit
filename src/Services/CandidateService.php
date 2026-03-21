@@ -69,6 +69,44 @@ final class CandidateService
         $this->cleanupCandidateStorage($candidateId);
     }
 
+    /**
+     * @param array<int|string, mixed> $candidateIds
+     * @return array{requested:int,deleted:int,errors:list<string>}
+     */
+    public function deleteCandidates(array $candidateIds): array
+    {
+        $normalizedIds = array_values(array_unique(array_filter(
+            array_map(static fn (mixed $value): int => max(0, (int) $value), $candidateIds),
+            static fn (int $candidateId): bool => $candidateId > 0
+        )));
+
+        if ($normalizedIds === []) {
+            throw new InvalidArgumentException('Selecione pelo menos um candidato para excluir.');
+        }
+
+        $deleted = 0;
+        $errors = [];
+
+        foreach ($normalizedIds as $candidateId) {
+            try {
+                $this->deleteCandidate($candidateId);
+                $deleted++;
+            } catch (Throwable $exception) {
+                $errors[] = sprintf(
+                    'Candidato #%d: %s',
+                    $candidateId,
+                    trim($exception->getMessage()) !== '' ? $exception->getMessage() : 'falha ao excluir.'
+                );
+            }
+        }
+
+        return [
+            'requested' => count($normalizedIds),
+            'deleted' => $deleted,
+            'errors' => $errors,
+        ];
+    }
+
     private function refreshCampaignSnapshots(int $campaignId): void
     {
         $statement = $this->pdo->prepare(

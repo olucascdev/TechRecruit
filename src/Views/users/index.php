@@ -6,7 +6,7 @@ $escape = static fn (mixed $value): string => htmlspecialchars((string) $value, 
 $users = $users ?? [];
 $roles = $roles ?? [];
 $statuses = $statuses ?? [];
-$formData = $formData ?? ['full_name' => '', 'email' => '', 'role' => 'manager'];
+$formData = $formData ?? ['full_name' => '', 'username' => '', 'email' => '', 'role' => 'manager'];
 $errorMessage = $errorMessage ?? null;
 $authUser = is_array($authUser ?? null) ? $authUser : null;
 $activeUsers = array_values(array_filter(
@@ -48,10 +48,11 @@ $badgeClassForStatus = static function (string $status): string {
             <div class="card-body">
                 <div class="mb-4">
                     <h2 class="h5 mb-1">Novo usuário da gestão</h2>
-                    <p class="text-muted mb-0">O cadastro não fica público. Cada acesso nasce com role e status ativo.</p>
+                    <p class="text-muted mb-0">Depois do setup inicial, todo cadastro segue por aqui. Cada acesso nasce com role e status ativo.</p>
                 </div>
 
                 <form action="/management/users" method="post" class="row g-3">
+                    <?= $csrfField ?>
                     <div class="col-12">
                         <label for="full_name" class="form-label">Nome completo</label>
                         <input
@@ -63,6 +64,19 @@ $badgeClassForStatus = static function (string $status): string {
                             placeholder="Nome da pessoa"
                             required
                         >
+                    </div>
+                    <div class="col-12">
+                        <label for="username" class="form-label">Username</label>
+                        <input
+                            id="username"
+                            name="username"
+                            type="text"
+                            class="form-control"
+                            value="<?= $escape($formData['username'] ?? '') ?>"
+                            placeholder="maria.gestao"
+                            required
+                        >
+                        <div class="form-text">Usado no login junto com o e-mail.</div>
                     </div>
                     <div class="col-12">
                         <label for="email" class="form-label">E-mail</label>
@@ -111,7 +125,7 @@ $badgeClassForStatus = static function (string $status): string {
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body">
                 <h2 class="h5 mb-1">Modelo de acesso</h2>
-                <p class="text-muted mb-4">`admin` gerencia login, register interno e roles. `manager` usa o backoffice normalmente.</p>
+                <p class="text-muted mb-4">O fluxo segue a base do RecargaAki: setup inicial do primeiro admin, login por username ou e-mail e gestão interna de roles.</p>
 
                 <div class="grid gap-3 sm:grid-cols-2">
                     <div class="rounded-3xl border border-brand-100 bg-brand-50/80 px-4 py-4">
@@ -142,6 +156,7 @@ $badgeClassForStatus = static function (string $status): string {
                 <thead>
                 <tr>
                     <th>Usuário</th>
+                    <th>Login</th>
                     <th>Role</th>
                     <th>Status</th>
                     <th>Último login</th>
@@ -152,17 +167,20 @@ $badgeClassForStatus = static function (string $status): string {
                 <tbody>
                 <?php if ($users === []): ?>
                     <tr>
-                        <td colspan="6" class="text-center text-muted py-4">Nenhum usuário interno cadastrado.</td>
+                        <td colspan="7" class="text-center text-muted py-4">Nenhum usuário interno cadastrado.</td>
                     </tr>
                 <?php else: ?>
                     <?php foreach ($users as $user): ?>
                         <tr>
                             <td>
                                 <div class="fw-semibold"><?= $escape($user['full_name']) ?></div>
-                                <div class="small text-muted"><?= $escape($user['email']) ?></div>
                                 <?php if ($authUser !== null && (int) ($authUser['id'] ?? 0) === (int) ($user['id'] ?? 0)): ?>
                                     <div class="small text-primary">Seu usuário atual</div>
                                 <?php endif; ?>
+                            </td>
+                            <td>
+                                <div class="fw-semibold">@<?= $escape($user['username'] ?? '-') ?></div>
+                                <div class="small text-muted"><?= $escape($user['email']) ?></div>
                             </td>
                             <td>
                                 <span class="badge bg-<?= $badgeClassForRole((string) $user['role']) ?>">
@@ -181,6 +199,7 @@ $badgeClassForStatus = static function (string $status): string {
                             </td>
                             <td class="text-end">
                                 <form action="/management/users/<?= $escape($user['id']) ?>/access" method="post" class="flex flex-col items-stretch gap-2 md:min-w-[18rem] md:flex-row md:items-center md:justify-end">
+                                    <?= $csrfField ?>
                                     <select name="role" class="form-select form-select-sm">
                                         <?php foreach ($roles as $role => $label): ?>
                                             <option value="<?= $escape($role) ?>" <?= $user['role'] === $role ? 'selected' : '' ?>>

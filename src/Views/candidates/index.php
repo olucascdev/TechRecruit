@@ -33,6 +33,90 @@ $actionIcon = static function (string $name): string {
         default => '',
     };
 };
+$pageScripts = <<<'HTML'
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('candidate-bulk-delete-form');
+    const selectAllButton = document.querySelector('[data-candidate-select-all]');
+    const clearAllButton = document.querySelector('[data-candidate-clear-all]');
+    const deleteButton = document.querySelector('[data-candidate-bulk-delete]');
+    const masterCheckbox = document.querySelector('[data-candidate-master]');
+    const counter = document.querySelector('[data-candidate-selection-count]');
+
+    if (!form || !deleteButton || !counter) {
+        return;
+    }
+
+    const checkboxes = Array.from(document.querySelectorAll('[data-candidate-select-item]'));
+
+    const updateState = function () {
+        const selected = checkboxes.filter(function (checkbox) {
+            return checkbox.checked;
+        }).length;
+        const total = checkboxes.length;
+
+        counter.textContent = selected === 0
+            ? 'Nenhum candidato selecionado nesta página.'
+            : selected + ' candidato(s) selecionado(s) nesta página.';
+
+        deleteButton.disabled = selected === 0;
+
+        if (masterCheckbox) {
+            masterCheckbox.checked = total > 0 && selected === total;
+            masterCheckbox.indeterminate = selected > 0 && selected < total;
+        }
+    };
+
+    const setAll = function (checked) {
+        checkboxes.forEach(function (checkbox) {
+            checkbox.checked = checked;
+        });
+
+        updateState();
+    };
+
+    checkboxes.forEach(function (checkbox) {
+        checkbox.addEventListener('change', updateState);
+    });
+
+    if (masterCheckbox) {
+        masterCheckbox.addEventListener('change', function () {
+            setAll(masterCheckbox.checked);
+        });
+    }
+
+    if (selectAllButton) {
+        selectAllButton.addEventListener('click', function () {
+            setAll(true);
+        });
+    }
+
+    if (clearAllButton) {
+        clearAllButton.addEventListener('click', function () {
+            setAll(false);
+        });
+    }
+
+    form.addEventListener('submit', function (event) {
+        const selected = checkboxes.filter(function (checkbox) {
+            return checkbox.checked;
+        }).length;
+
+        if (selected < 1) {
+            event.preventDefault();
+            updateState();
+            return;
+        }
+
+        if (!window.confirm('Excluir ' + selected + ' candidato(s) selecionado(s) e todos os dados vinculados?')) {
+            event.preventDefault();
+        }
+    });
+
+    updateState();
+});
+</script>
+HTML;
 $buildPageUrl = static function (int $targetPage) use ($filters): string {
     $query = array_filter([
         'skill' => $filters['skill'] ?? '',
@@ -110,10 +194,34 @@ $buildPageUrl = static function (int $targetPage) use ($filters): string {
 
 <div class="card border-0 shadow-sm">
     <div class="card-body">
+        <form id="candidate-bulk-delete-form" method="post" action="/candidates/bulk-delete" class="mb-4">
+            <?= $csrfField ?>
+            <div class="flex flex-col gap-3 rounded-[28px] border border-slate-200 bg-slate-50/80 p-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                    <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Ação em lote</div>
+                    <div class="mt-1 text-sm font-medium text-ink-950">Selecione os candidatos desta página para excluir em conjunto.</div>
+                    <div class="mt-1 text-sm text-slate-600" data-candidate-selection-count aria-live="polite">Nenhum candidato selecionado nesta página.</div>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-candidate-select-all>Marcar todos</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-candidate-clear-all>Desmarcar todos</button>
+                    <button type="submit" class="btn btn-danger btn-sm" data-candidate-bulk-delete disabled>Excluir selecionados</button>
+                </div>
+            </div>
+        </form>
+
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead>
                 <tr>
+                    <th class="w-[56px]">
+                        <input
+                            type="checkbox"
+                            class="form-check-input"
+                            data-candidate-master
+                            aria-label="Selecionar todos os candidatos desta página"
+                        >
+                    </th>
                     <th>Nome</th>
                     <th>Skills</th>
                     <th>WhatsApp</th>
@@ -125,11 +233,22 @@ $buildPageUrl = static function (int $targetPage) use ($filters): string {
                 <tbody>
                 <?php if ($candidates === []): ?>
                     <tr>
-                        <td colspan="6" class="text-center text-muted py-4">Nenhum candidato encontrado para os filtros informados.</td>
+                        <td colspan="7" class="text-center text-muted py-4">Nenhum candidato encontrado para os filtros informados.</td>
                     </tr>
                 <?php else: ?>
                     <?php foreach ($candidates as $candidate): ?>
                         <tr>
+                            <td>
+                                <input
+                                    type="checkbox"
+                                    class="form-check-input"
+                                    name="candidate_ids[]"
+                                    value="<?= $escape($candidate['id']) ?>"
+                                    form="candidate-bulk-delete-form"
+                                    data-candidate-select-item
+                                    aria-label="Selecionar <?= $escape($candidate['full_name']) ?>"
+                                >
+                            </td>
                             <td>
                                 <div class="fw-semibold"><?= $escape($candidate['full_name']) ?></div>
                                 <div class="small text-muted"><?= $escape($candidate['cpf'] ?: '-') ?></div>
@@ -148,6 +267,7 @@ $buildPageUrl = static function (int $targetPage) use ($filters): string {
                                         <?= $actionIcon('view') ?>
                                     </a>
                                     <form method="post" action="/candidates/<?= $escape($candidate['id']) ?>/delete" class="m-0" onsubmit="return confirm('Excluir este candidato e todos os dados vinculados?');">
+                                        <?= $csrfField ?>
                                         <button type="submit" class="action-icon action-icon-sm action-icon-danger" title="Excluir candidato" aria-label="Excluir candidato">
                                             <?= $actionIcon('delete') ?>
                                         </button>

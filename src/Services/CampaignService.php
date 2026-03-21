@@ -236,6 +236,8 @@ final class CampaignService
             ];
         }
 
+        $this->assertWhatsGwConfigured();
+
         $this->setCampaignStatus($campaignId, 'sending');
 
         $result = [
@@ -1092,23 +1094,7 @@ final class CampaignService
         array $options = []
     ): array
     {
-        if (!$this->whatsGwClient->isConfigured()) {
-            return [
-                'success' => true,
-                'simulated' => true,
-                'http_status' => 200,
-                'raw_body' => '',
-                'decoded_body' => [],
-                'request_payload' => [
-                    'contact_phone_number' => $destinationContact,
-                    'message_body' => $messageBody,
-                    'message_custom_id' => $messageCustomId,
-                ],
-                'message_custom_id' => $messageCustomId,
-                'provider_message_id' => null,
-                'provider_waid' => null,
-            ];
-        }
+        $this->assertWhatsGwConfigured();
 
         $result = $this->whatsGwClient->sendTextMessage(
             $destinationContact,
@@ -1132,6 +1118,17 @@ final class CampaignService
         }
 
         return $result;
+    }
+
+    private function assertWhatsGwConfigured(): void
+    {
+        if ($this->whatsGwClient->isConfigured()) {
+            return;
+        }
+
+        throw new InvalidArgumentException(
+            'WhatsGW não configurado. Defina WHATSGW_API_KEY e WHATSGW_PHONE_NUMBER ou WHATSGW_INSTANCE_ID antes de processar envios.'
+        );
     }
 
     /**

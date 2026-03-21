@@ -37,6 +37,7 @@ foreach ($rows as $row) {
             <?= $actionIcon('candidates') ?>
         </a>
         <form method="post" action="/import/<?= $escape($batch['id'] ?? '') ?>/delete" class="m-0" onsubmit="return confirm('Excluir este lote de importação? Os candidatos importados serão mantidos.');">
+            <?= $csrfField ?>
             <button type="submit" class="action-icon action-icon-danger" title="Excluir lote" aria-label="Excluir lote">
                 <?= $actionIcon('delete') ?>
             </button>

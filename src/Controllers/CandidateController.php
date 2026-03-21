@@ -163,6 +163,41 @@ final class CandidateController extends Controller
         }
     }
 
+    public function bulkDestroy(): void
+    {
+        if (strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+            $this->redirect('/candidates');
+        }
+
+        try {
+            $result = $this->candidateService->deleteCandidates($_POST['candidate_ids'] ?? []);
+
+            if ($result['deleted'] > 0) {
+                $message = sprintf(
+                    '%d candidato(s) excluído(s) com sucesso.',
+                    $result['deleted']
+                );
+
+                if ($result['errors'] !== []) {
+                    $message .= ' Algumas exclusões falharam.';
+                }
+
+                $this->setFlash('success', $message);
+            }
+
+            if ($result['errors'] !== []) {
+                $this->setFlash('error', implode(' ', array_slice($result['errors'], 0, 3)));
+            }
+        } catch (Throwable $exception) {
+            $this->setFlash(
+                'error',
+                trim($exception->getMessage()) !== '' ? $exception->getMessage() : 'Falha ao excluir os candidatos selecionados.'
+            );
+        }
+
+        $this->redirectBack('/candidates');
+    }
+
     /**
      * @return list<string>
      */

@@ -37,6 +37,7 @@ $actionIcon = static function (string $name): string {
         <p class="text-muted mb-0">Monte o segmento, gere a fila inicial e acompanhe o disparo e a triagem.</p>
     </div>
     <form method="post" action="/campaigns/process-due" class="d-flex flex-wrap align-items-end gap-2">
+        <?= $csrfField ?>
         <div>
             <label for="global_batch_limit" class="form-label small mb-1">Lote global</label>
             <input
@@ -89,6 +90,7 @@ $actionIcon = static function (string $name): string {
                 <?php endif; ?>
 
                 <form method="post" action="/campaigns" class="row g-3">
+                    <?= $csrfField ?>
                     <div class="col-12">
                         <label for="name" class="form-label">Nome da campanha</label>
                         <input
@@ -241,6 +243,7 @@ $actionIcon = static function (string $name): string {
                                                 <?= $actionIcon('view') ?>
                                             </a>
                                             <form method="post" action="/campaigns/<?= $escape($campaign['id']) ?>/delete" class="m-0" onsubmit="return confirm('Excluir esta campanha e toda a fila vinculada?');">
+                                                <?= $csrfField ?>
                                                 <button type="submit" class="action-icon action-icon-sm action-icon-danger" title="Excluir campanha" aria-label="Excluir campanha">
                                                     <?= $actionIcon('delete') ?>
                                                 </button>
@@ -317,10 +320,15 @@ $pageScripts = <<<HTML
         try {
             const payload = new URLSearchParams();
             payload.set('batch_limit', batchInput && batchInput.value !== '' ? batchInput.value : String({$defaultBatchLimit}));
+            payload.set('_token', window.TechRecruit?.csrfToken || '');
 
             const response = await fetch(endpoint, {
                 method: 'POST',
-                headers: {
+                headers: window.TechRecruit?.csrfHeaders ? window.TechRecruit.csrfHeaders({
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }) : {
                     'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest'

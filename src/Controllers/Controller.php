@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace TechRecruit\Controllers;
 
 use TechRecruit\Models\UserModel;
+use TechRecruit\Security\Csrf;
 use TechRecruit\Services\AuthService;
 
 abstract class Controller
@@ -36,6 +37,11 @@ abstract class Controller
         $pageScripts = '';
         $pageStyles = '';
         $data['authUser'] = $this->currentUser();
+        $data['csrfToken'] = $this->csrfToken();
+        $data['csrfField'] = sprintf(
+            '<input type="hidden" name="_token" value="%s">',
+            htmlspecialchars($this->csrfToken(), ENT_QUOTES, 'UTF-8')
+        );
 
         extract($data, EXTR_SKIP);
 
@@ -52,6 +58,22 @@ abstract class Controller
         exit;
     }
 
+    protected function redirectBack(string $fallback = '/candidates'): never
+    {
+        $referer = trim((string) ($_SERVER['HTTP_REFERER'] ?? ''));
+
+        if ($referer !== '') {
+            $path = parse_url($referer, PHP_URL_PATH);
+            $query = parse_url($referer, PHP_URL_QUERY);
+
+            if (is_string($path) && $path !== '' && str_starts_with($path, '/') && !str_starts_with($path, '//')) {
+                $this->redirect($path . (is_string($query) && $query !== '' ? '?' . $query : ''));
+            }
+        }
+
+        $this->redirect($fallback);
+    }
+
     /**
      * @return array<string, mixed>|null
      */
@@ -65,6 +87,18 @@ abstract class Controller
      */
     protected function requireAuth(): array
     {
+        try {
+            $hasAnyUser = $this->authService()->hasAnyUser();
+        } catch (\Throwable) {
+            $this->setFlash('error', 'A estrutura de usuários internos não está pronta. Rode as migrations de acesso e abra /setup.');
+            $this->redirect('/setup');
+        }
+
+        if (!$hasAnyUser) {
+            $this->setFlash('error', 'Configure o primeiro administrador antes de acessar o backoffice.');
+            $this->redirect('/setup');
+        }
+
         $user = $this->currentUser();
 
         if ($user !== null) {
@@ -199,5 +233,10 @@ abstract class Controller
         return str_contains($accept, 'application/json')
             || $requestedWith === 'xmlhttprequest'
             || str_contains($requestUri, '/run');
+    }
+
+    protected function csrfToken(): string
+    {
+        return Csrf::token();
     }
 }

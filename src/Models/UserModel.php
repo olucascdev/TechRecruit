@@ -55,10 +55,31 @@ final class UserModel
     /**
      * @return array<string, mixed>|null
      */
+    public function findByLogin(string $identifier): ?array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT id, full_name, username, email, password_hash, role, status, last_login_at, created_by, created_at, updated_at
+             FROM recruit_management_users
+             WHERE email = :email
+                OR username = :username
+             LIMIT 1'
+        );
+        $statement->execute([
+            'email' => $identifier,
+            'username' => $identifier,
+        ]);
+        $user = $statement->fetch();
+
+        return $user === false ? null : $user;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
     public function findByEmail(string $email): ?array
     {
         $statement = $this->pdo->prepare(
-            'SELECT id, full_name, email, password_hash, role, status, last_login_at, created_by, created_at, updated_at
+            'SELECT id, full_name, username, email, password_hash, role, status, last_login_at, created_by, created_at, updated_at
              FROM recruit_management_users
              WHERE email = :email
              LIMIT 1'
@@ -72,10 +93,27 @@ final class UserModel
     /**
      * @return array<string, mixed>|null
      */
+    public function findByUsername(string $username): ?array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT id, full_name, username, email, password_hash, role, status, last_login_at, created_by, created_at, updated_at
+             FROM recruit_management_users
+             WHERE username = :username
+             LIMIT 1'
+        );
+        $statement->execute(['username' => $username]);
+        $user = $statement->fetch();
+
+        return $user === false ? null : $user;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
     public function findById(int $id): ?array
     {
         $statement = $this->pdo->prepare(
-            'SELECT id, full_name, email, role, status, last_login_at, created_by, created_at, updated_at
+            'SELECT id, full_name, username, email, role, status, last_login_at, created_by, created_at, updated_at
              FROM recruit_management_users
              WHERE id = :id
              LIMIT 1'
@@ -92,7 +130,7 @@ final class UserModel
     public function findAll(): array
     {
         $statement = $this->pdo->query(
-            "SELECT id, full_name, email, role, status, last_login_at, created_by, created_at, updated_at
+            "SELECT id, full_name, username, email, role, status, last_login_at, created_by, created_at, updated_at
              FROM recruit_management_users
              ORDER BY
                  CASE role
@@ -113,6 +151,7 @@ final class UserModel
     /**
      * @param array{
      *     full_name:string,
+     *     username:string,
      *     email:string,
      *     password_hash:string,
      *     role:string,
@@ -125,6 +164,7 @@ final class UserModel
         $statement = $this->pdo->prepare(
             'INSERT INTO recruit_management_users (
                 full_name,
+                username,
                 email,
                 password_hash,
                 role,
@@ -132,6 +172,7 @@ final class UserModel
                 created_by
             ) VALUES (
                 :full_name,
+                :username,
                 :email,
                 :password_hash,
                 :role,
@@ -141,6 +182,7 @@ final class UserModel
         );
         $statement->execute([
             'full_name' => $userData['full_name'],
+            'username' => $userData['username'],
             'email' => $userData['email'],
             'password_hash' => $userData['password_hash'],
             'role' => $userData['role'],

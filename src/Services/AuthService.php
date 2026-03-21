@@ -31,15 +31,15 @@ final class AuthService
     /**
      * @return array<string, mixed>|null
      */
-    public function attempt(string $email, string $password): ?array
+    public function attempt(string $login, string $password): ?array
     {
-        $normalizedEmail = $this->normalizeEmail($email);
+        $normalizedLogin = $this->normalizeLogin($login);
 
-        if ($normalizedEmail === '' || $password === '') {
+        if ($normalizedLogin === '' || $password === '') {
             return null;
         }
 
-        $user = $this->userModel->findByEmail($normalizedEmail);
+        $user = $this->userModel->findByLogin($normalizedLogin);
 
         if ($user === null) {
             return null;
@@ -138,9 +138,9 @@ final class AuthService
         session_regenerate_id(true);
     }
 
-    private function normalizeEmail(string $email): string
+    private function normalizeLogin(string $login): string
     {
-        return mb_strtolower(trim($email));
+        return mb_strtolower(trim($login));
     }
 
     private function isSafeInternalPath(string $path): bool
@@ -149,6 +149,8 @@ final class AuthService
             return false;
         }
 
-        return !str_starts_with($path, '/login') && !str_starts_with($path, '/logout');
+        return !str_starts_with($path, '/login')
+            && !str_starts_with($path, '/logout')
+            && !str_starts_with($path, '/setup');
     }
 }

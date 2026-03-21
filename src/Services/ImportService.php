@@ -16,14 +16,14 @@ final class ImportService
     /** @var array<string, list<string>> */
     private const HEADER_ALIASES = [
         'full_name' => ['nome', 'name', 'full_name'],
-        'cpf' => ['cpf', 'documento'],
+        'cpf' => ['cpf', 'documento', 'cpf/cnpj', 'cpf cnpj'],
         'phone' => ['telefone', 'phone', 'celular', 'tel'],
         'whatsapp' => ['whatsapp', 'wpp', 'zap'],
         'email' => ['email', 'e-mail'],
         'skill' => ['skill', 'habilidade', 'perfil'],
         'level' => ['nivel', 'level', 'seniority'],
-        'state' => ['estado', 'uf', 'state'],
-        'city' => ['cidade', 'city'],
+        'state' => ['estado', 'uf', 'state', 'endereco estado', 'endereço estado'],
+        'city' => ['cidade', 'city', 'endereco cidade', 'endereço cidade'],
     ];
 
     /** @var array<string, string> */
@@ -157,7 +157,7 @@ final class ImportService
     public function deleteBatch(int $batchId): void
     {
         $statement = $this->pdo->prepare(
-            'SELECT id, status
+            'SELECT id, filename, status
              FROM recruit_import_batches
              WHERE id = :id
              LIMIT 1'
@@ -178,6 +178,16 @@ final class ImportService
              WHERE id = :id'
         );
         $deleteStatement->execute(['id' => $batchId]);
+
+        $filename = trim((string) ($batch['filename'] ?? ''));
+
+        if ($filename !== '') {
+            $filepath = dirname(__DIR__, 2) . '/storage/imports/' . basename($filename);
+
+            if (is_file($filepath)) {
+                @unlink($filepath);
+            }
+        }
     }
 
     private function loadWorksheet(string $filepath): Worksheet
@@ -464,13 +474,21 @@ final class ImportService
             return null;
         }
 
-        $value = mb_strtolower(trim($value));
+        $candidates = preg_split('/[\\s]*[\\/,;|]+[\\s]*/u', trim($value)) ?: [];
 
-        if ($value === '') {
-            return null;
+        foreach ($candidates as $candidate) {
+            $candidate = mb_strtolower(trim($candidate));
+
+            if ($candidate === '') {
+                continue;
+            }
+
+            if (filter_var($candidate, FILTER_VALIDATE_EMAIL) !== false) {
+                return $candidate;
+            }
         }
 
-        return filter_var($value, FILTER_VALIDATE_EMAIL) !== false ? $value : null;
+        return null;
     }
 
     private function normalizeSkill(?string $value): ?string

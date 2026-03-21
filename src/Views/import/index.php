@@ -36,6 +36,7 @@ $actionIcon = static function (string $name): string {
             </div>
             <div class="col-lg-5">
                 <form action="/import/upload" method="post" enctype="multipart/form-data" class="row g-2">
+                    <?= $csrfField ?>
                     <div class="col-12">
                         <input type="file" class="form-control" name="excel_file" accept=".xlsx,.xls" required>
                     </div>
@@ -88,6 +89,7 @@ $actionIcon = static function (string $name): string {
                                         <?= $actionIcon('view') ?>
                                     </a>
                                     <form method="post" action="/import/<?= $escape($batch['id']) ?>/delete" class="m-0" onsubmit="return confirm('Excluir este lote de importação? Os candidatos importados serão mantidos.');">
+                                        <?= $csrfField ?>
                                         <button type="submit" class="action-icon action-icon-sm action-icon-danger" title="Excluir lote" aria-label="Excluir lote">
                                             <?= $actionIcon('delete') ?>
                                         </button>

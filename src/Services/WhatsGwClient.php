@@ -93,8 +93,8 @@ final class WhatsGwClient
         return array_merge($response, [
             'request_payload' => $payload,
             'message_custom_id' => $payload['message_custom_id'],
-            'provider_message_id' => $response['decoded_body']['message_id'] ?? null,
-            'provider_waid' => $response['decoded_body']['waid'] ?? null,
+            'provider_message_id' => $this->extractProviderValue($response['decoded_body'], ['message_id']),
+            'provider_waid' => $this->extractProviderValue($response['decoded_body'], ['waid']),
         ]);
     }
 
@@ -143,13 +143,75 @@ final class WhatsGwClient
         }
 
         $decodedBody = json_decode((string) $rawBody, true);
+        $decodedPayload = is_array($decodedBody) ? $decodedBody : [];
 
         return [
-            'success' => $httpStatus >= 200 && $httpStatus < 300,
+            'success' => $this->isSuccessfulResponse($httpStatus, $decodedPayload),
             'http_status' => $httpStatus,
             'raw_body' => (string) $rawBody,
-            'decoded_body' => is_array($decodedBody) ? $decodedBody : [],
+            'decoded_body' => $decodedPayload,
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $decodedBody
+     */
+    private function isSuccessfulResponse(int $httpStatus, array $decodedBody): bool
+    {
+        if ($httpStatus < 200 || $httpStatus >= 300) {
+            return false;
+        }
+
+        if ($decodedBody === []) {
+            return true;
+        }
+
+        $result = strtolower(trim((string) ($decodedBody['result'] ?? '')));
+        $status = strtolower(trim((string) ($decodedBody['status'] ?? '')));
+        $phoneState = strtolower(trim((string) ($decodedBody['phone_state'] ?? '')));
+        $providerMessageId = $this->extractProviderValue($decodedBody, ['message_id']);
+
+        return ($decodedBody['ok'] ?? null) === true
+            || ($decodedBody['success'] ?? null) === true
+            || ($decodedBody['result'] ?? null) === true
+            || ($decodedBody['status'] ?? null) === true
+            || in_array($result, ['success', 'ok', 'sent', 'queued'], true)
+            || in_array($status, ['success', 'ok', 'sent', 'queued'], true)
+            || (
+                $providerMessageId !== null
+                && ($phoneState === '' || in_array($phoneState, ['conectado', 'connected'], true))
+            );
+    }
+
+    /**
+     * @param array<string, mixed> $decodedBody
+     * @param list<string> $path
+     */
+    private function extractProviderValue(array $decodedBody, array $path): ?string
+    {
+        $directKey = $path[0] ?? null;
+
+        if (is_string($directKey) && array_key_exists($directKey, $decodedBody)) {
+            $value = trim((string) $decodedBody[$directKey]);
+
+            return $value !== '' ? $value : null;
+        }
+
+        foreach (['data', 'result'] as $containerKey) {
+            $nested = $decodedBody[$containerKey] ?? null;
+
+            if (!is_array($nested) || !is_string($directKey) || !array_key_exists($directKey, $nested)) {
+                continue;
+            }
+
+            $value = trim((string) $nested[$directKey]);
+
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        return null;
     }
 
     private function env(string $key, ?string $default = null): ?string

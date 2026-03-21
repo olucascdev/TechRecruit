@@ -8,6 +8,7 @@ $flashError = isset($_SESSION['error']) ? (string) $_SESSION['error'] : null;
 unset($_SESSION['success'], $_SESSION['error']);
 $pageStyles = $pageStyles ?? '';
 $pageScripts = $pageScripts ?? '';
+$authContext = $authContext ?? 'login';
 
 require __DIR__ . '/_ui.php';
 ?>
@@ -16,6 +17,7 @@ require __DIR__ . '/_ui.php';
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="<?= $escape($csrfToken ?? '') ?>">
     <title><?= $escape($pageTitle) ?> | TechRecruit</title>
     <?php $renderTailwindHead(); ?>
     <?= $pageStyles ?>
@@ -36,16 +38,20 @@ require __DIR__ . '/_ui.php';
 
                     <div class="mt-8 space-y-5 text-sm leading-7 text-slate-600">
                         <p>
-                            Este ambiente é exclusivo para usuários da gestão. O cadastro não é público e a criação de novos acessos fica centralizada em administradores.
+                            <?php if ($authContext === 'setup'): ?>
+                                O setup inicial replica a lógica do RecargaAki: se não existe usuário interno, o primeiro administrador é criado no navegador e o fluxo público é bloqueado depois disso.
+                            <?php else: ?>
+                                Este ambiente é exclusivo para usuários da gestão. Depois do bootstrap inicial, o cadastro deixa de ser público e a criação de novos acessos fica centralizada em administradores.
+                            <?php endif; ?>
                         </p>
                         <div class="grid gap-3 sm:grid-cols-3">
                             <div class="rounded-3xl border border-brand-100 bg-brand-50/80 px-4 py-4">
                                 <div class="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">Login</div>
-                                <p class="mt-2 text-sm text-brand-900">Sessão protegida com senha hash e verificação de status ativo.</p>
+                                <p class="mt-2 text-sm text-brand-900">Sessão protegida com senha hash, status ativo e autenticação por username ou e-mail.</p>
                             </div>
                             <div class="rounded-3xl border border-emerald-100 bg-emerald-50/80 px-4 py-4">
                                 <div class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Cadastro</div>
-                                <p class="mt-2 text-sm text-emerald-900">Novos usuários são criados só no ambiente interno de gestão.</p>
+                                <p class="mt-2 text-sm text-emerald-900">O primeiro admin nasce no setup. Depois disso, novos usuários são criados só no ambiente interno de gestão.</p>
                             </div>
                             <div class="rounded-3xl border border-slate-200 bg-slate-50/90 px-4 py-4">
                                 <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-700">Roles</div>
