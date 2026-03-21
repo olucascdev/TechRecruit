@@ -11,6 +11,8 @@ $automationTypes = $automationTypes ?? [];
 $formData = $formData ?? [];
 $errorMessage = $errorMessage ?? null;
 $audienceEstimate = $audienceEstimate ?? null;
+$defaultBatchLimit = max(1, (int) ($defaultBatchLimit ?? 25));
+$autoProcessIntervalSeconds = max(5, (int) ($autoProcessIntervalSeconds ?? 15));
 
 $campaignStatusClass = static function (string $status): string {
     return match ($status) {
@@ -27,6 +29,36 @@ $campaignStatusClass = static function (string $status): string {
         <h1 class="h3 mb-1">Campanhas WhatsApp</h1>
         <p class="text-muted mb-0">Monte o segmento, gere a fila inicial e acompanhe o disparo e a triagem.</p>
     </div>
+    <form method="post" action="/campaigns/process-due" class="d-flex flex-wrap align-items-end gap-2">
+        <div>
+            <label for="global_batch_limit" class="form-label small mb-1">Lote global</label>
+            <input
+                type="number"
+                min="1"
+                max="500"
+                class="form-control"
+                id="global_batch_limit"
+                name="batch_limit"
+                value="<?= $escape($defaultBatchLimit) ?>"
+            >
+        </div>
+        <div class="form-check mb-2">
+            <input
+                class="form-check-input"
+                type="checkbox"
+                value="1"
+                id="auto_process_global"
+                data-auto-process-toggle="global"
+            >
+            <label class="form-check-label small" for="auto_process_global">
+                Auto a cada <?= $escape($autoProcessIntervalSeconds) ?>s
+            </label>
+        </div>
+        <button type="submit" class="btn btn-outline-primary">Processar fila pendente</button>
+        <div class="small text-muted w-100" data-auto-process-status="global">
+            Use esta opcao se quiser deixar a tela rodando como agendador interno no navegador.
+        </div>
+    </form>
 </div>
 
 <div class="row g-4">
@@ -209,3 +241,121 @@ $campaignStatusClass = static function (string $status): string {
         </div>
     </div>
 </div>
+<?php
+$pageScripts = <<<HTML
+<script>
+(() => {
+    const form = document.querySelector('form[action="/campaigns/process-due"]');
+    const toggle = document.querySelector('[data-auto-process-toggle="global"]');
+    const statusNode = document.querySelector('[data-auto-process-status="global"]');
+
+    if (!form || !toggle || !statusNode) {
+        return;
+    }
+
+    const batchInput = form.querySelector('input[name="batch_limit"]');
+    const endpoint = '/campaigns/process-due/run';
+    const intervalMs = {$autoProcessIntervalSeconds} * 1000;
+    const storageKey = 'techrecruit:auto-process:global';
+    let timerId = null;
+    let busy = false;
+
+    const setStatus = (message, className = 'text-muted') => {
+        statusNode.className = `small w-100 \${className}`;
+        statusNode.textContent = message;
+    };
+
+    const scheduleNext = () => {
+        window.clearTimeout(timerId);
+
+        if (!toggle.checked) {
+            return;
+        }
+
+        timerId = window.setTimeout(runCycle, intervalMs);
+    };
+
+    const persistToggle = () => {
+        window.localStorage.setItem(storageKey, toggle.checked ? '1' : '0');
+    };
+
+    async function runCycle() {
+        if (!toggle.checked) {
+            return;
+        }
+
+        if (document.visibilityState !== 'visible') {
+            setStatus('Auto-processamento pausado em aba oculta.', 'text-muted');
+            scheduleNext();
+            return;
+        }
+
+        if (busy) {
+            scheduleNext();
+            return;
+        }
+
+        busy = true;
+        setStatus('Processando lote global...', 'text-primary');
+
+        try {
+            const payload = new URLSearchParams();
+            payload.set('batch_limit', batchInput && batchInput.value !== '' ? batchInput.value : String({$defaultBatchLimit}));
+
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: payload.toString()
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                throw new Error(result.message || 'Falha ao processar a fila global.');
+            }
+
+            setStatus(
+                `Ultimo lote: \${result.processed} item(ns), \${result.sent} enviado(s), \${result.failed} falha(s), \${result.opt_out} opt-out em \${result.campaigns} campanha(s).`,
+                'text-success'
+            );
+
+            if (Number(result.processed || 0) > 0) {
+                window.setTimeout(() => window.location.reload(), 1200);
+                return;
+            }
+        } catch (error) {
+            setStatus(error instanceof Error ? error.message : 'Falha inesperada no auto-processamento.', 'text-danger');
+        } finally {
+            busy = false;
+            scheduleNext();
+        }
+    }
+
+    toggle.checked = window.localStorage.getItem(storageKey) === '1';
+
+    if (toggle.checked) {
+        setStatus('Auto-processamento ativo. A tela vai verificar a fila periodicamente.', 'text-success');
+        runCycle();
+    }
+
+    toggle.addEventListener('change', () => {
+        persistToggle();
+
+        if (toggle.checked) {
+            setStatus('Auto-processamento ativo. Primeiro lote sera executado agora.', 'text-success');
+            runCycle();
+            return;
+        }
+
+        window.clearTimeout(timerId);
+        busy = false;
+        setStatus('Auto-processamento pausado.', 'text-muted');
+    });
+})();
+</script>
+HTML;
+?>

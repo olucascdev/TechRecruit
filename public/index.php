@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-require dirname(__DIR__) . '/vendor/autoload.php';
+require dirname(__DIR__) . '/bootstrap.php';
 
 use TechRecruit\Controllers\CandidateController;
 use TechRecruit\Controllers\CampaignController;
@@ -11,26 +11,6 @@ use TechRecruit\Controllers\OperationsController;
 use TechRecruit\Controllers\PortalController;
 use TechRecruit\Controllers\TriageController;
 use TechRecruit\Router;
-
-$envPath = dirname(__DIR__) . '/.env';
-
-if (is_file($envPath) && is_readable($envPath)) {
-    $envValues = parse_ini_file($envPath, false, INI_SCANNER_RAW);
-
-    if (is_array($envValues)) {
-        foreach ($envValues as $key => $value) {
-            if (!is_string($key)) {
-                continue;
-            }
-
-            $stringValue = is_scalar($value) ? (string) $value : '';
-
-            putenv(sprintf('%s=%s', $key, $stringValue));
-            $_ENV[$key] = $stringValue;
-            $_SERVER[$key] = $stringValue;
-        }
-    }
-}
 
 session_start();
 
@@ -45,8 +25,11 @@ try {
     $router->post('/candidates/{id}/portal/status', [PortalController::class, 'updateStatus']);
     $router->get('/campaigns', [CampaignController::class, 'index']);
     $router->post('/campaigns', [CampaignController::class, 'store']);
+    $router->post('/campaigns/process-due', [CampaignController::class, 'processDue']);
+    $router->post('/campaigns/process-due/run', [CampaignController::class, 'processDueApi']);
     $router->get('/campaigns/{id}', [CampaignController::class, 'show']);
     $router->post('/campaigns/{id}/process', [CampaignController::class, 'process']);
+    $router->post('/campaigns/{id}/process/run', [CampaignController::class, 'processApi']);
     $router->post('/campaigns/{id}/pause', [CampaignController::class, 'pause']);
     $router->post('/campaigns/{id}/resume', [CampaignController::class, 'resume']);
     $router->post('/campaigns/{id}/cancel', [CampaignController::class, 'cancel']);

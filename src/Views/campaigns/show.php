@@ -12,6 +12,9 @@ $triageStats = is_array($campaign['triage_stats'] ?? null) ? $campaign['triage_s
 $activityLogs = is_array($campaign['activity_logs'] ?? null) ? $campaign['activity_logs'] : [];
 $inboundMessages = is_array($campaign['inbound_messages'] ?? null) ? $campaign['inbound_messages'] : [];
 $isTriageCampaign = ($campaign['automation_type'] ?? 'broadcast') === 'triage_w13';
+$defaultBatchLimit = max(1, (int) ($defaultBatchLimit ?? 25));
+$autoProcessIntervalSeconds = max(5, (int) ($autoProcessIntervalSeconds ?? 15));
+$campaignId = (int) ($campaign['id'] ?? 0);
 
 $campaignStatusClass = static function (string $status): string {
     return match ($status) {
@@ -68,8 +71,35 @@ $activityClass = static function (string $eventType): string {
         <p class="text-muted small mb-0">Modo: <?= $escape(($campaign['automation_type'] ?? 'broadcast') === 'triage_w13' ? 'Bot de triagem W13' : 'Broadcast manual') ?></p>
     </div>
     <div class="d-flex flex-wrap gap-2">
-        <form method="post" action="/campaigns/<?= $escape($campaign['id'] ?? 0) ?>/process">
+        <form method="post" action="/campaigns/<?= $escape($campaign['id'] ?? 0) ?>/process" class="d-flex flex-wrap align-items-end gap-2">
+            <div>
+                <label for="batch_limit" class="form-label small mb-1">Lote</label>
+                <input
+                    type="number"
+                    min="1"
+                    max="500"
+                    class="form-control"
+                    id="batch_limit"
+                    name="batch_limit"
+                    value="<?= $escape($defaultBatchLimit) ?>"
+                >
+            </div>
+            <div class="form-check mb-2">
+                <input
+                    class="form-check-input"
+                    type="checkbox"
+                    value="1"
+                    id="auto_process_campaign"
+                    data-auto-process-toggle="campaign"
+                >
+                <label class="form-check-label small" for="auto_process_campaign">
+                    Auto a cada <?= $escape($autoProcessIntervalSeconds) ?>s
+                </label>
+            </div>
             <button type="submit" class="btn btn-primary">Processar fila</button>
+            <div class="small text-muted w-100" data-auto-process-status="campaign">
+                Deixe ligado se quiser esta campanha rodando sozinha no navegador.
+            </div>
         </form>
         <form method="post" action="/campaigns/<?= $escape($campaign['id'] ?? 0) ?>/pause">
             <button type="submit" class="btn btn-outline-secondary">Pausar</button>
@@ -83,6 +113,7 @@ $activityClass = static function (string $eventType): string {
         <a href="/campaigns" class="btn btn-outline-dark">Voltar</a>
     </div>
 </div>
+<p class="text-muted small mt-1 mb-4">O processamento roda em lotes. Falhas de envio entram em retry automatico com backoff e jobs travados sao recolocados na fila.</p>
 
 <div class="row g-4 mb-4">
     <div class="col-md-2">
@@ -134,6 +165,124 @@ $activityClass = static function (string $eventType): string {
         </div>
     </div>
 </div>
+<?php
+$pageScripts = <<<HTML
+<script>
+(() => {
+    const form = document.querySelector('form[action="/campaigns/{$campaignId}/process"]');
+    const toggle = document.querySelector('[data-auto-process-toggle="campaign"]');
+    const statusNode = document.querySelector('[data-auto-process-status="campaign"]');
+
+    if (!form || !toggle || !statusNode) {
+        return;
+    }
+
+    const batchInput = form.querySelector('input[name="batch_limit"]');
+    const endpoint = '/campaigns/{$campaignId}/process/run';
+    const intervalMs = {$autoProcessIntervalSeconds} * 1000;
+    const storageKey = 'techrecruit:auto-process:campaign:{$campaignId}';
+    let timerId = null;
+    let busy = false;
+
+    const setStatus = (message, className = 'text-muted') => {
+        statusNode.className = `small w-100 \${className}`;
+        statusNode.textContent = message;
+    };
+
+    const scheduleNext = () => {
+        window.clearTimeout(timerId);
+
+        if (!toggle.checked) {
+            return;
+        }
+
+        timerId = window.setTimeout(runCycle, intervalMs);
+    };
+
+    const persistToggle = () => {
+        window.localStorage.setItem(storageKey, toggle.checked ? '1' : '0');
+    };
+
+    async function runCycle() {
+        if (!toggle.checked) {
+            return;
+        }
+
+        if (document.visibilityState !== 'visible') {
+            setStatus('Auto-processamento pausado em aba oculta.', 'text-muted');
+            scheduleNext();
+            return;
+        }
+
+        if (busy) {
+            scheduleNext();
+            return;
+        }
+
+        busy = true;
+        setStatus('Processando lote da campanha...', 'text-primary');
+
+        try {
+            const payload = new URLSearchParams();
+            payload.set('batch_limit', batchInput && batchInput.value !== '' ? batchInput.value : String({$defaultBatchLimit}));
+
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: payload.toString()
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                throw new Error(result.message || 'Falha ao processar a campanha.');
+            }
+
+            setStatus(
+                `Ultimo lote: \${result.processed} item(ns), \${result.sent} enviado(s), \${result.failed} falha(s), \${result.opt_out} opt-out. Status: \${result.status || '-'}.`,
+                'text-success'
+            );
+
+            if (Number(result.processed || 0) > 0) {
+                window.setTimeout(() => window.location.reload(), 1200);
+                return;
+            }
+        } catch (error) {
+            setStatus(error instanceof Error ? error.message : 'Falha inesperada no auto-processamento.', 'text-danger');
+        } finally {
+            busy = false;
+            scheduleNext();
+        }
+    }
+
+    toggle.checked = window.localStorage.getItem(storageKey) === '1';
+
+    if (toggle.checked) {
+        setStatus('Auto-processamento ativo nesta campanha.', 'text-success');
+        runCycle();
+    }
+
+    toggle.addEventListener('change', () => {
+        persistToggle();
+
+        if (toggle.checked) {
+            setStatus('Auto-processamento ativo. Primeiro lote sera executado agora.', 'text-success');
+            runCycle();
+            return;
+        }
+
+        window.clearTimeout(timerId);
+        busy = false;
+        setStatus('Auto-processamento pausado.', 'text-muted');
+    });
+})();
+</script>
+HTML;
+?>
 
 <?php if ($isTriageCampaign): ?>
     <div class="row g-4 mb-4">

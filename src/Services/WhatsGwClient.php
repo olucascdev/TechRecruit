@@ -8,6 +8,8 @@ use InvalidArgumentException;
 
 final class WhatsGwClient
 {
+    private const DEFAULT_COUNTRY_CODE = '55';
+
     private string $baseUrl;
 
     private ?string $apiKey;
@@ -22,10 +24,13 @@ final class WhatsGwClient
 
     private int $timeoutSeconds;
 
+    private string $defaultCountryCode;
+
     public function __construct()
     {
         $this->baseUrl = rtrim($this->env('WHATSGW_BASE_URL', 'https://app.whatsgw.com.br/api/WhatsGw'), '/');
         $this->apiKey = $this->normalizeNullableString($this->env('WHATSGW_API_KEY'));
+        $this->defaultCountryCode = $this->normalizeCountryCode($this->env('WHATSGW_DEFAULT_COUNTRY_CODE', self::DEFAULT_COUNTRY_CODE));
         $this->phoneNumber = $this->normalizePhone($this->env('WHATSGW_PHONE_NUMBER'));
         $this->instanceId = $this->normalizeNullableInt($this->env('WHATSGW_INSTANCE_ID'));
         $this->checkStatus = $this->normalizeFlag($this->env('WHATSGW_CHECK_STATUS', '1'));
@@ -191,6 +196,26 @@ final class WhatsGwClient
 
         $digits = preg_replace('/\D+/', '', $phoneNumber);
 
-        return $digits === '' ? null : $digits;
+        if ($digits === null || $digits === '') {
+            return null;
+        }
+
+        if (str_starts_with($digits, $this->defaultCountryCode) && strlen($digits) >= 12) {
+            return $digits;
+        }
+
+        // Accept BR contacts informed as DDD+numero and normalize to country+DDD+numero.
+        if (strlen($digits) === 10 || strlen($digits) === 11) {
+            return $this->defaultCountryCode . $digits;
+        }
+
+        return strlen($digits) >= 12 ? $digits : null;
+    }
+
+    private function normalizeCountryCode(?string $value): string
+    {
+        $digits = preg_replace('/\D+/', '', (string) $value);
+
+        return $digits !== null && $digits !== '' ? $digits : self::DEFAULT_COUNTRY_CODE;
     }
 }

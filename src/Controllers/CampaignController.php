@@ -92,6 +92,8 @@ final class CampaignController extends Controller
 
         $this->render('campaigns/show', [
             'campaign' => $campaign,
+            'defaultBatchLimit' => $this->defaultBatchLimit(),
+            'autoProcessIntervalSeconds' => $this->autoProcessIntervalSeconds(),
         ], 'Campanha WhatsApp');
     }
 
@@ -101,12 +103,14 @@ final class CampaignController extends Controller
             $this->redirect('/campaigns/' . $id);
         }
 
+        $batchLimit = $this->resolveBatchLimit($_POST['batch_limit'] ?? null);
+
         try {
-            $result = $this->campaignService->processCampaign($id, $this->resolveOperator());
+            $result = $this->campaignService->processCampaign($id, $this->resolveOperator(), $batchLimit);
             $this->setFlash(
                 'success',
                 sprintf(
-                    'Fila processada. %d item(ns), %d enviado(s), %d falha(s), %d opt-out.',
+                    'Fila processada em lote. %d item(ns), %d enviado(s), %d falha(s), %d opt-out.',
                     $result['processed'],
                     $result['sent'],
                     $result['failed'],
@@ -121,6 +125,117 @@ final class CampaignController extends Controller
         }
 
         $this->redirect('/campaigns/' . $id);
+    }
+
+    public function processDue(): void
+    {
+        if (strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+            $this->redirect('/campaigns');
+        }
+
+        $batchLimit = $this->resolveBatchLimit($_POST['batch_limit'] ?? null);
+
+        try {
+            $result = $this->campaignService->processDueQueue($this->resolveOperator(), $batchLimit);
+            $this->setFlash(
+                'success',
+                sprintf(
+                    'Fila global processada. %d campanha(s), %d item(ns), %d enviado(s), %d falha(s), %d opt-out.',
+                    $result['campaigns'],
+                    $result['processed'],
+                    $result['sent'],
+                    $result['failed'],
+                    $result['opt_out']
+                )
+            );
+        } catch (InvalidArgumentException $exception) {
+            $this->setFlash('error', $exception->getMessage());
+        } catch (Throwable $exception) {
+            error_log((string) $exception);
+            $this->setFlash(
+                'error',
+                trim($exception->getMessage()) !== '' ? $exception->getMessage() : 'Falha ao processar a fila global.'
+            );
+        }
+
+        $this->redirect('/campaigns');
+    }
+
+    public function processApi(int $id): void
+    {
+        if (strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+            $this->json([
+                'success' => false,
+                'message' => 'Metodo nao permitido.',
+            ], 405);
+        }
+
+        $batchLimit = $this->resolveBatchLimit($_POST['batch_limit'] ?? null);
+
+        try {
+            $result = $this->campaignService->processCampaign($id, $this->resolveOperator(), $batchLimit);
+            $this->json([
+                'success' => true,
+                'scope' => 'campaign',
+                'campaign_id' => $id,
+                'batch_limit' => $batchLimit ?? $this->defaultBatchLimit(),
+                'processed' => $result['processed'],
+                'sent' => $result['sent'],
+                'failed' => $result['failed'],
+                'opt_out' => $result['opt_out'],
+                'status' => $result['status'] ?? null,
+                'processed_at' => date(DATE_ATOM),
+            ]);
+        } catch (InvalidArgumentException $exception) {
+            $this->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+            ], 422);
+        } catch (Throwable $exception) {
+            error_log((string) $exception);
+            $this->json([
+                'success' => false,
+                'message' => trim($exception->getMessage()) !== '' ? $exception->getMessage() : 'Falha ao processar a campanha.',
+            ], 500);
+        }
+    }
+
+    public function processDueApi(): void
+    {
+        if (strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+            $this->json([
+                'success' => false,
+                'message' => 'Metodo nao permitido.',
+            ], 405);
+        }
+
+        $batchLimit = $this->resolveBatchLimit($_POST['batch_limit'] ?? null);
+
+        try {
+            $result = $this->campaignService->processDueQueue($this->resolveOperator(), $batchLimit);
+            $this->json([
+                'success' => true,
+                'scope' => 'global',
+                'batch_limit' => $batchLimit ?? $this->defaultBatchLimit(),
+                'campaigns' => $result['campaigns'],
+                'processed' => $result['processed'],
+                'sent' => $result['sent'],
+                'failed' => $result['failed'],
+                'opt_out' => $result['opt_out'],
+                'processed_at' => date(DATE_ATOM),
+            ]);
+        } catch (InvalidArgumentException $exception) {
+            $this->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+            ], 422);
+        } catch (Throwable $exception) {
+            error_log((string) $exception);
+            $this->json([
+                'success' => false,
+                'message' => trim($exception->getMessage()) !== '' ? $exception->getMessage() : 'Falha ao processar a fila global.',
+            ], 500);
+        }
     }
 
     public function pause(int $id): void
@@ -264,6 +379,8 @@ final class CampaignController extends Controller
             ], $formData),
             'errorMessage' => $errorMessage,
             'audienceEstimate' => $audienceEstimate,
+            'defaultBatchLimit' => $this->defaultBatchLimit(),
+            'autoProcessIntervalSeconds' => $this->autoProcessIntervalSeconds(),
         ], 'Campanhas WhatsApp');
     }
 
@@ -279,5 +396,41 @@ final class CampaignController extends Controller
             array_map(static fn (mixed $value): string => trim((string) $value), $values),
             static fn (string $value): bool => $value !== ''
         ));
+    }
+
+    private function resolveBatchLimit(mixed $value): ?int
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $limit = trim((string) $value);
+
+        if ($limit === '') {
+            return null;
+        }
+
+        return max(1, min(500, (int) $limit));
+    }
+
+    private function defaultBatchLimit(): int
+    {
+        return $this->envInt('CAMPAIGN_QUEUE_BATCH_SIZE', 25, 1, 500);
+    }
+
+    private function autoProcessIntervalSeconds(): int
+    {
+        return $this->envInt('CAMPAIGN_QUEUE_AUTO_INTERVAL_SECONDS', 15, 5, 3600);
+    }
+
+    private function envInt(string $key, int $default, int $min, int $max): int
+    {
+        $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
+
+        if ($value === false || $value === null || trim((string) $value) === '') {
+            return $default;
+        }
+
+        return max($min, min($max, (int) $value));
     }
 }

@@ -60,10 +60,16 @@ DB_USER=root
 DB_PASS=password
 WHATSGW_BASE_URL=https://app.whatsgw.com.br/api/WhatsGw
 WHATSGW_API_KEY=seu-token
+WHATSGW_DEFAULT_COUNTRY_CODE=55
 WHATSGW_PHONE_NUMBER=5511999999999
 WHATSGW_INSTANCE_ID=
 WHATSGW_CHECK_STATUS=1
 WHATSGW_SIMULATE_TYPING=0
+WHATSGW_TIMEOUT_SECONDS=30
+CAMPAIGN_QUEUE_BATCH_SIZE=25
+CAMPAIGN_QUEUE_MAX_ATTEMPTS=5
+CAMPAIGN_QUEUE_STALE_MINUTES=10
+CAMPAIGN_QUEUE_AUTO_INTERVAL_SECONDS=15
 ```
 
 ## 4. Criar banco e tabelas
@@ -135,14 +141,52 @@ Abra no navegador:
    - `Broadcast manual` para o fluxo simples de campanha
 4. Informe um script usando `{first_name}` ou `{full_name}` se quiser personalização básica
 5. Abra a campanha criada e clique em `Processar fila`
+   - o processamento agora roda por lote, com tamanho configuravel na tela
+   - por padrão, o lote sugerido é `25`
 6. Simule um retorno inbound com frases como `sim tenho interesse`, `nao tenho interesse` ou `sair da lista`
 7. Confirme que a campanha foi criada com:
    - público capturado
    - destinatários associados
    - fila inicial em `pending`
    - mensagens processadas como `sent`
+   - falhas transitórias voltando para retry com `scheduled_at`
    - inbound gravado com intenção interpretada
    - status do candidato atualizado conforme o retorno
+
+### Execucao automatica da fila
+
+Voce pode operar de dois jeitos:
+
+1. Agendador interno via navegador
+   - abra `/campaigns` ou a tela de detalhe da campanha
+   - marque `Auto a cada 15s`
+   - deixe a tela aberta em uma aba visivel
+   - a interface dispara lotes periodicos e atualiza a pagina
+
+2. Agendador externo via CLI
+   - execute manualmente:
+
+```bash
+php bin/process_campaign_queue.php --limit=25
+```
+
+   - para uma campanha especifica:
+
+```bash
+php bin/process_campaign_queue.php --campaign-id=12 --limit=25
+```
+
+   - exemplo de cron Linux:
+
+```bash
+* * * * * cd /caminho/para/TechRecruit && php bin/process_campaign_queue.php --limit=25 >> storage_campaign_queue.log 2>&1
+```
+
+   - exemplo de Windows Task Scheduler:
+
+```powershell
+php.exe C:\caminho\TechRecruit\bin\process_campaign_queue.php --limit=25
+```
 
 ### Teste do bot de triagem W13
 

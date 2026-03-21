@@ -13,6 +13,14 @@ use Throwable;
 
 final class CampaignService
 {
+    private const DEFAULT_BATCH_SIZE = 25;
+
+    private const MAX_BATCH_SIZE = 500;
+
+    private const DEFAULT_MAX_ATTEMPTS = 5;
+
+    private const DEFAULT_STALE_PROCESSING_MINUTES = 10;
+
     private PDO $pdo;
 
     private CandidateModel $candidateModel;
@@ -164,9 +172,11 @@ final class CampaignService
     /**
      * @return array{processed:int,sent:int,failed:int,opt_out:int,status:string}
      */
-    public function processCampaign(int $campaignId, string $operator): array
+    public function processCampaign(int $campaignId, string $operator, ?int $limit = null): array
     {
         $campaign = $this->fetchCampaign($campaignId);
+        $batchSize = $this->resolveBatchSize($limit);
+        $maxAttempts = $this->resolveMaxAttempts();
 
         if ($campaign === null) {
             throw new InvalidArgumentException('Campanha nao encontrada.');
@@ -184,8 +194,11 @@ final class CampaignService
             throw new InvalidArgumentException('A campanha ja foi concluida.');
         }
 
+        $this->releaseStaleProcessingJobs($campaignId);
+
         $jobsStatement = $this->pdo->prepare(
-            "SELECT
+            sprintf(
+                "SELECT
                 queue.id,
                 queue.campaign_recipient_id,
                 queue.candidate_id,
@@ -194,10 +207,21 @@ final class CampaignService
                 queue.attempt_count
              FROM recruit_message_queue queue
              WHERE queue.campaign_id = :campaign_id
-               AND queue.status = 'pending'
-             ORDER BY queue.scheduled_at ASC, queue.id ASC"
+               AND queue.status IN ('pending', 'failed')
+               AND queue.scheduled_at <= CURRENT_TIMESTAMP
+               AND (queue.status = 'pending' OR queue.attempt_count < :max_attempts)
+             ORDER BY
+                CASE WHEN queue.status = 'pending' THEN 0 ELSE 1 END,
+                queue.scheduled_at ASC,
+                queue.id ASC
+             LIMIT %d",
+                $batchSize
+            )
         );
-        $jobsStatement->execute(['campaign_id' => $campaignId]);
+        $jobsStatement->execute([
+            'campaign_id' => $campaignId,
+            'max_attempts' => $maxAttempts,
+        ]);
         $jobs = $jobsStatement->fetchAll();
 
         if ($jobs === []) {
@@ -233,14 +257,26 @@ final class CampaignService
             try {
                 $this->pdo->beginTransaction();
 
-                $queueUpdateStatement = $this->pdo->prepare(
+                $claimStatement = $this->pdo->prepare(
                     "UPDATE recruit_message_queue
                      SET status = 'processing',
                          attempt_count = attempt_count + 1,
                          updated_at = CURRENT_TIMESTAMP
-                     WHERE id = :id"
+                     WHERE id = :id
+                       AND status IN ('pending', 'failed')
+                       AND scheduled_at <= CURRENT_TIMESTAMP
+                       AND (status = 'pending' OR attempt_count < :max_attempts)"
                 );
-                $queueUpdateStatement->execute(['id' => $queueId]);
+                $claimStatement->execute([
+                    'id' => $queueId,
+                    'max_attempts' => $maxAttempts,
+                ]);
+
+                if ($claimStatement->rowCount() !== 1) {
+                    $this->pdo->commit();
+
+                    continue;
+                }
 
                 if ($this->candidateHasOptOut($candidateId)) {
                     $this->markRecipientAsOptOut(
@@ -294,6 +330,7 @@ final class CampaignService
                     $queueId,
                     $campaignRecipientId,
                     $candidateId,
+                    $attemptCount,
                     trim($exception->getMessage()) !== '' ? $exception->getMessage() : 'Falha ao processar envio.'
                 );
 
@@ -305,6 +342,43 @@ final class CampaignService
         $result['status'] = $this->refreshCampaignStatus($campaignId, $operator);
 
         return $result;
+    }
+
+    /**
+     * @return array{campaigns:int,processed:int,sent:int,failed:int,opt_out:int}
+     */
+    public function processDueQueue(string $operator, ?int $limit = null): array
+    {
+        $remaining = $this->resolveBatchSize($limit);
+        $campaignIds = $this->findCampaignIdsWithDueQueue($remaining);
+        $summary = [
+            'campaigns' => 0,
+            'processed' => 0,
+            'sent' => 0,
+            'failed' => 0,
+            'opt_out' => 0,
+        ];
+
+        foreach ($campaignIds as $campaignId) {
+            if ($remaining <= 0) {
+                break;
+            }
+
+            $result = $this->processCampaign($campaignId, $operator, $remaining);
+
+            if (($result['processed'] ?? 0) < 1) {
+                continue;
+            }
+
+            $summary['campaigns']++;
+            $summary['processed'] += (int) $result['processed'];
+            $summary['sent'] += (int) $result['sent'];
+            $summary['failed'] += (int) $result['failed'];
+            $summary['opt_out'] += (int) $result['opt_out'];
+            $remaining -= (int) $result['processed'];
+        }
+
+        return $summary;
     }
 
     public function pauseCampaign(int $campaignId): void
@@ -347,14 +421,7 @@ final class CampaignService
             return (string) $campaign['status'];
         }
 
-        $hasPendingStatement = $this->pdo->prepare(
-            "SELECT COUNT(*)
-             FROM recruit_message_queue
-             WHERE campaign_id = :campaign_id
-               AND status = 'pending'"
-        );
-        $hasPendingStatement->execute(['campaign_id' => $campaignId]);
-        $hasPending = (int) $hasPendingStatement->fetchColumn() > 0;
+        $hasPending = $this->hasOpenQueueJobs($campaignId);
 
         $newStatus = $hasPending ? 'queued' : $this->refreshCampaignStatus($campaignId, $operator);
 
@@ -392,9 +459,15 @@ final class CampaignService
                      processed_at = CURRENT_TIMESTAMP,
                      updated_at = CURRENT_TIMESTAMP
                  WHERE campaign_id = :campaign_id
-                   AND status IN ('pending', 'processing')"
+                   AND (
+                        status IN ('pending', 'processing')
+                        OR (status = 'failed' AND attempt_count < :max_attempts)
+                   )"
             );
-            $queueStatement->execute(['campaign_id' => $campaignId]);
+            $queueStatement->execute([
+                'campaign_id' => $campaignId,
+                'max_attempts' => $this->resolveMaxAttempts(),
+            ]);
 
             $recipientStatement = $this->pdo->prepare(
                 "UPDATE recruit_campaign_recipients
@@ -894,7 +967,7 @@ final class CampaignService
                  error_message = :reason,
                  updated_at = CURRENT_TIMESTAMP
              WHERE campaign_recipient_id = :campaign_recipient_id
-               AND status IN ('pending', 'processing')"
+               AND status IN ('pending', 'processing', 'failed')"
         );
         $queueStatement->execute([
             'reason' => $reason,
@@ -926,31 +999,43 @@ final class CampaignService
         int $queueId,
         int $campaignRecipientId,
         int $candidateId,
+        int $attemptCount,
         string $errorMessage
     ): void {
         $this->pdo->beginTransaction();
 
         try {
+            $maxAttempts = $this->resolveMaxAttempts();
+            $isFinalFailure = $attemptCount >= $maxAttempts;
+            $retryDelayMinutes = $isFinalFailure ? null : $this->retryDelayMinutesForAttempt($attemptCount);
+            $nextScheduledAt = $retryDelayMinutes === null
+                ? null
+                : date('Y-m-d H:i:s', time() + ($retryDelayMinutes * 60));
             $queueStatement = $this->pdo->prepare(
                 "UPDATE recruit_message_queue
                  SET status = 'failed',
-                     processed_at = CURRENT_TIMESTAMP,
+                     processed_at = :processed_at,
+                     scheduled_at = :scheduled_at,
                      error_message = :error_message,
                      updated_at = CURRENT_TIMESTAMP
                  WHERE id = :id"
             );
             $queueStatement->execute([
                 'error_message' => $errorMessage,
+                'processed_at' => $isFinalFailure ? date('Y-m-d H:i:s') : null,
+                'scheduled_at' => $nextScheduledAt,
                 'id' => $queueId,
             ]);
 
-            $recipientStatement = $this->pdo->prepare(
-                "UPDATE recruit_campaign_recipients
-                 SET status = 'failed',
-                     updated_at = CURRENT_TIMESTAMP
-                 WHERE id = :id"
-            );
-            $recipientStatement->execute(['id' => $campaignRecipientId]);
+            if ($isFinalFailure) {
+                $recipientStatement = $this->pdo->prepare(
+                    "UPDATE recruit_campaign_recipients
+                     SET status = 'failed',
+                         updated_at = CURRENT_TIMESTAMP
+                     WHERE id = :id"
+                );
+                $recipientStatement->execute(['id' => $campaignRecipientId]);
+            }
 
             $this->logMessageEvent(
                 $campaignId,
@@ -959,7 +1044,13 @@ final class CampaignService
                 'outbound',
                 'failed',
                 $errorMessage,
-                []
+                array_filter([
+                    'attempt_count' => $attemptCount,
+                    'max_attempts' => $maxAttempts,
+                    'is_final_failure' => $isFinalFailure,
+                    'retry_in_minutes' => $retryDelayMinutes,
+                    'scheduled_at' => $nextScheduledAt,
+                ], static fn (mixed $value): bool => $value !== null)
             );
 
             $this->pdo->commit();
@@ -1320,6 +1411,45 @@ final class CampaignService
         return 'queue-' . $queueId;
     }
 
+    private function resolveBatchSize(?int $limit = null): int
+    {
+        $resolvedLimit = $limit ?? $this->envInt('CAMPAIGN_QUEUE_BATCH_SIZE', self::DEFAULT_BATCH_SIZE);
+
+        return max(1, min(self::MAX_BATCH_SIZE, $resolvedLimit));
+    }
+
+    private function resolveMaxAttempts(): int
+    {
+        return max(1, min(10, $this->envInt('CAMPAIGN_QUEUE_MAX_ATTEMPTS', self::DEFAULT_MAX_ATTEMPTS)));
+    }
+
+    private function resolveStaleProcessingMinutes(): int
+    {
+        return max(1, min(240, $this->envInt('CAMPAIGN_QUEUE_STALE_MINUTES', self::DEFAULT_STALE_PROCESSING_MINUTES)));
+    }
+
+    private function envInt(string $key, int $default): int
+    {
+        $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
+
+        if ($value === false || $value === null || trim((string) $value) === '') {
+            return $default;
+        }
+
+        return (int) $value;
+    }
+
+    private function retryDelayMinutesForAttempt(int $attemptCount): int
+    {
+        return match (true) {
+            $attemptCount <= 1 => 1,
+            $attemptCount === 2 => 5,
+            $attemptCount === 3 => 15,
+            $attemptCount === 4 => 60,
+            default => 180,
+        };
+    }
+
     private function buildAutoReplyCustomId(int $campaignRecipientId): string
     {
         return 'triage-' . $campaignRecipientId . '-' . time();
@@ -1429,6 +1559,82 @@ final class CampaignService
         ]);
     }
 
+    private function hasOpenQueueJobs(int $campaignId): bool
+    {
+        $statement = $this->pdo->prepare(
+            "SELECT COUNT(*)
+             FROM recruit_message_queue
+             WHERE campaign_id = :campaign_id
+               AND (
+                    status IN ('pending', 'processing')
+                    OR (status = 'failed' AND attempt_count < :max_attempts)
+               )"
+        );
+        $statement->execute([
+            'campaign_id' => $campaignId,
+            'max_attempts' => $this->resolveMaxAttempts(),
+        ]);
+
+        return (int) $statement->fetchColumn() > 0;
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function findCampaignIdsWithDueQueue(int $limit): array
+    {
+        $statement = $this->pdo->prepare(
+            sprintf(
+                "SELECT
+                    queue.campaign_id
+                 FROM recruit_message_queue queue
+                 INNER JOIN recruit_campaigns campaign ON campaign.id = queue.campaign_id
+                 WHERE campaign.status IN ('queued', 'sending')
+                   AND queue.status IN ('pending', 'failed')
+                   AND queue.scheduled_at <= CURRENT_TIMESTAMP
+                   AND (queue.status = 'pending' OR queue.attempt_count < :max_attempts)
+                 GROUP BY queue.campaign_id
+                 ORDER BY MIN(queue.scheduled_at) ASC, MIN(queue.id) ASC
+                 LIMIT %d",
+                max(1, $limit)
+            )
+        );
+        $statement->execute([
+            'max_attempts' => $this->resolveMaxAttempts(),
+        ]);
+
+        return array_map(
+            static fn (array $row): int => (int) $row['campaign_id'],
+            $statement->fetchAll()
+        );
+    }
+
+    private function releaseStaleProcessingJobs(?int $campaignId = null): int
+    {
+        $sql = "UPDATE recruit_message_queue
+                SET status = 'failed',
+                    scheduled_at = CURRENT_TIMESTAMP,
+                    error_message = CASE
+                        WHEN error_message IS NULL OR error_message = '' THEN 'PROCESSING expirado automaticamente.'
+                        ELSE CONCAT(error_message, ' | PROCESSING expirado automaticamente.')
+                    END,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE status = 'processing'
+                  AND updated_at < DATE_SUB(CURRENT_TIMESTAMP, INTERVAL %d MINUTE)";
+
+        $params = [];
+
+        if ($campaignId !== null) {
+            $sql .= ' AND campaign_id = :campaign_id';
+            $params['campaign_id'] = $campaignId;
+        }
+
+        $statement = $this->pdo->prepare(sprintf($sql, $this->resolveStaleProcessingMinutes()));
+        $statement->execute($params);
+
+        return $statement->rowCount();
+    }
+
     private function refreshCampaignStatus(int $campaignId, string $operator): string
     {
         $campaign = $this->fetchCampaign($campaignId);
@@ -1448,15 +1654,20 @@ final class CampaignService
         $statement = $this->pdo->prepare(
             "SELECT
                 SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending_jobs,
-                SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) AS processing_jobs
+                SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) AS processing_jobs,
+                SUM(CASE WHEN status = 'failed' AND attempt_count < :max_attempts THEN 1 ELSE 0 END) AS retryable_failed_jobs
              FROM recruit_message_queue
              WHERE campaign_id = :campaign_id"
         );
-        $statement->execute(['campaign_id' => $campaignId]);
+        $statement->execute([
+            'campaign_id' => $campaignId,
+            'max_attempts' => $this->resolveMaxAttempts(),
+        ]);
         $stats = $statement->fetch() ?: [];
 
         $pendingJobs = (int) ($stats['pending_jobs'] ?? 0);
         $processingJobs = (int) ($stats['processing_jobs'] ?? 0);
+        $retryableFailedJobs = (int) ($stats['retryable_failed_jobs'] ?? 0);
 
         if ($processingJobs > 0) {
             $this->setCampaignStatus($campaignId, 'sending');
@@ -1464,7 +1675,7 @@ final class CampaignService
             return 'sending';
         }
 
-        if ($pendingJobs > 0) {
+        if ($pendingJobs > 0 || $retryableFailedJobs > 0) {
             $this->setCampaignStatus($campaignId, 'queued');
 
             return 'queued';
