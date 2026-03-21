@@ -21,14 +21,18 @@ final class PortalService
 
     private PortalModel $portalModel;
 
+    private WhatsGwClient $whatsGwClient;
+
     public function __construct(
         ?CandidateModel $candidateModel = null,
         ?PortalModel $portalModel = null,
+        ?WhatsGwClient $whatsGwClient = null,
         ?PDO $pdo = null
     ) {
         $this->pdo = $pdo ?? Database::connect();
         $this->candidateModel = $candidateModel ?? new CandidateModel($this->pdo);
         $this->portalModel = $portalModel ?? new PortalModel($this->pdo);
+        $this->whatsGwClient = $whatsGwClient ?? new WhatsGwClient();
     }
 
     /**
@@ -131,6 +135,71 @@ final class PortalService
         }
 
         return $portal;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function sendPortalLink(int $candidateId, string $portalUrl): array
+    {
+        $candidate = $this->candidateModel->findById($candidateId);
+
+        if ($candidate === null) {
+            return [
+                'success' => false,
+                'error' => 'Candidato nao encontrado para envio do portal.',
+            ];
+        }
+
+        $destinationContact = $this->resolveCandidateDestinationContact($candidate);
+
+        if ($destinationContact === null) {
+            return [
+                'success' => false,
+                'error' => 'Nenhum WhatsApp ou telefone valido foi encontrado para enviar o link do portal.',
+            ];
+        }
+
+        $messageBody = $this->buildPortalLinkMessage((string) ($candidate['full_name'] ?? ''), $portalUrl);
+        $messageCustomId = sprintf('portal-link-%d-%d', $candidateId, time());
+
+        try {
+            $result = $this->whatsGwClient->sendTextMessage($destinationContact, $messageBody, [
+                'message_custom_id' => $messageCustomId,
+                'check_status' => 1,
+            ]);
+
+            if (!($result['success'] ?? false)) {
+                $rawBody = trim((string) ($result['raw_body'] ?? ''));
+                $httpStatus = (int) ($result['http_status'] ?? 0);
+
+                throw new InvalidArgumentException(
+                    sprintf(
+                        'WhatsGW retornou falha no envio do portal. HTTP %d%s',
+                        $httpStatus,
+                        $rawBody !== '' ? ': ' . $rawBody : ''
+                    )
+                );
+            }
+
+            return [
+                'success' => true,
+                'destination_contact' => $destinationContact,
+                'message_body' => $messageBody,
+                'provider_message_custom_id' => $result['message_custom_id'] ?? $messageCustomId,
+                'provider_message_id' => $result['provider_message_id'] ?? null,
+                'provider_waid' => $result['provider_waid'] ?? null,
+                'simulated' => (bool) ($result['simulated'] ?? false),
+            ];
+        } catch (Throwable $exception) {
+            return [
+                'success' => false,
+                'destination_contact' => $destinationContact,
+                'message_body' => $messageBody,
+                'provider_message_custom_id' => $messageCustomId,
+                'error' => $exception->getMessage(),
+            ];
+        }
     }
 
     /**
@@ -673,6 +742,45 @@ final class PortalService
             'region' => $region,
             'id' => $addressId,
         ]);
+    }
+
+    /**
+     * @param array<string, mixed> $candidate
+     */
+    private function resolveCandidateDestinationContact(array $candidate): ?string
+    {
+        $contacts = is_array($candidate['contacts'] ?? null) ? $candidate['contacts'] : [];
+
+        foreach (['whatsapp', 'phone'] as $preferredType) {
+            foreach ($contacts as $contact) {
+                if (($contact['type'] ?? null) !== $preferredType) {
+                    continue;
+                }
+
+                $digits = preg_replace('/\D+/', '', (string) ($contact['value'] ?? ''));
+
+                if ($digits !== null && $digits !== '') {
+                    return $digits;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function buildPortalLinkMessage(string $fullName, string $portalUrl): string
+    {
+        $firstName = trim((string) strtok(trim($fullName), ' '));
+
+        if ($firstName === '') {
+            $firstName = 'Tecnico';
+        }
+
+        return trim(sprintf(
+            "Ola, %s.\n\nSeu perfil foi pre-aprovado na W13 Tecnologia.\nPara finalizar seu cadastro, acesse o portal abaixo e envie os dados e documentos obrigatorios:\n\n%s\n\nDocumentos esperados:\n- Documento de identidade\n- Comprovante de residencia\n- CNPJ / MEI\n- ASO\n- NR10\n- NR35\n\nAssim que a validacao for concluida, sua liberacao operacional segue para a proxima etapa.\n\nEquipe W13 Tecnologia",
+            $firstName,
+            $portalUrl
+        ));
     }
 
     private function applyCandidateStatus(int $candidateId, string $newStatus, string $operator, ?string $reason): void

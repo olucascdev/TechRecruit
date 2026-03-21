@@ -12,6 +12,8 @@ Aplicação web PHP para importar planilhas de candidatos, consolidar base de re
 
 `v0.6.0` expande o modelo W13: triagem em 3 etapas (captacao, pre-filtro e seguranca), classificacao automatica (Aprovado/Pendente/Reprovado/Banco, N1-N3 e nivel de campo) e portal documental com CNPJ/PIX/ASO/NRs.
 
+`v0.6.1` automatiza o envio do portal: ao gerar ou regenerar o link no backoffice, o sistema tenta enviar o URL por WhatsApp para o contato principal do candidato.
+
 ## Requisitos
 
 - PHP `>= 8.2`
@@ -259,17 +261,18 @@ curl -X POST http://127.0.0.1:8090/triage/inbound \
 ### Teste do portal de cadastro e documentos
 
 1. Vá em `/candidates/{id}`
-2. Clique em `Gerar link do portal`
-3. Abra o link/token gerado
-4. Preencha o formulário com `CNPJ / MEI`, `CPF`, `Pix`, disponibilidade e experiencia
-5. Envie os documentos obrigatórios W13:
+2. Clique em `Gerar e enviar portal`
+3. Confirme no flash se o sistema enviou o link por WhatsApp ou se houve falha operacional de envio
+4. Abra o link/token gerado
+5. Preencha o formulário com `CNPJ / MEI`, `CPF`, `Pix`, disponibilidade e experiencia
+6. Envie os documentos obrigatórios W13:
    - documento de identidade
    - comprovante de residencia
    - cartao CNPJ / comprovante MEI
    - ASO
    - NR10
    - NR35
-6. Volte ao candidato no backoffice e confirme:
+7. Volte ao candidato no backoffice e confirme:
    - status do portal
    - checklist documental
    - dados enviados pelo candidato

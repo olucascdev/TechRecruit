@@ -26,7 +26,7 @@ final class PortalController extends Controller
     ) {
         $this->pdo = $pdo ?? Database::connect();
         $this->portalModel = $portalModel ?? new PortalModel($this->pdo);
-        $this->portalService = $portalService ?? new PortalService(null, $this->portalModel, $this->pdo);
+        $this->portalService = $portalService ?? new PortalService(null, $this->portalModel, null, $this->pdo);
     }
 
     public function show(string $token): void
@@ -79,10 +79,30 @@ final class PortalController extends Controller
 
         try {
             $portal = $this->portalService->generatePortalForCandidate($candidateId, $this->resolveOperator());
-            $this->setFlash(
-                'success',
-                'Link do portal gerado com sucesso: ' . $this->absoluteUrl('/portal/' . $portal['access_token'])
-            );
+            $portalUrl = $this->absoluteUrl('/portal/' . $portal['access_token']);
+            $dispatchResult = $this->portalService->sendPortalLink($candidateId, $portalUrl);
+
+            if (!empty($dispatchResult['success'])) {
+                $suffix = !empty($dispatchResult['simulated']) ? ' (simulado)' : '';
+                $this->setFlash(
+                    'success',
+                    sprintf(
+                        'Link do portal gerado e enviado por WhatsApp%s para %s: %s',
+                        $suffix,
+                        (string) ($dispatchResult['destination_contact'] ?? '-'),
+                        $portalUrl
+                    )
+                );
+            } else {
+                $this->setFlash(
+                    'success',
+                    'Link do portal gerado com sucesso: ' . $portalUrl
+                );
+                $this->setFlash(
+                    'error',
+                    'Falha ao enviar o link por WhatsApp: ' . (string) ($dispatchResult['error'] ?? 'erro desconhecido.')
+                );
+            }
         } catch (InvalidArgumentException $exception) {
             $this->setFlash('error', $exception->getMessage());
         } catch (Throwable $exception) {

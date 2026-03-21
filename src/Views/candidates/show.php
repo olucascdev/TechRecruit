@@ -232,11 +232,11 @@ HTML;
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
             <div>
                 <h2 class="h5 mb-1">Portal de cadastro e documentos</h2>
-                <p class="text-muted mb-0">Link unico, formulario do candidato, checklist e anexos internos.</p>
+                <p class="text-muted mb-0">Link unico, formulario do candidato, checklist e anexos internos. Ao gerar, o sistema tenta enviar o link por WhatsApp automaticamente.</p>
             </div>
             <form method="post" action="/candidates/<?= $escape($candidate['id'] ?? '') ?>/portal/generate">
                 <button type="submit" class="btn btn-outline-primary">
-                    <?= $portal === null ? 'Gerar link do portal' : 'Regenerar link/token' ?>
+                    <?= $portal === null ? 'Gerar e enviar portal' : 'Regenerar e reenviar portal' ?>
                 </button>
             </form>
         </div>
