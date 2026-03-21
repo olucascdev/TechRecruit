@@ -153,6 +153,26 @@ final class ImportController extends Controller
         ], 'Resultado da Importação');
     }
 
+    public function destroy(int $batchId): void
+    {
+        if (strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+            $this->redirect('/import');
+        }
+
+        try {
+            $this->importService->deleteBatch($batchId);
+            $this->setFlash('success', 'Lote de importação excluído com sucesso.');
+        } catch (Throwable $exception) {
+            error_log((string) $exception);
+            $this->setFlash(
+                'error',
+                trim($exception->getMessage()) !== '' ? $exception->getMessage() : 'Falha ao excluir o lote de importação.'
+            );
+        }
+
+        $this->redirect('/import');
+    }
+
     private function buildUploadPath(string $originalName): string
     {
         $directory = dirname(__DIR__, 2) . '/storage/imports';

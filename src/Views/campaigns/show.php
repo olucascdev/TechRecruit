@@ -58,6 +58,13 @@ $activityClass = static function (string $eventType): string {
         default => 'secondary',
     };
 };
+$actionIcon = static function (string $name): string {
+    return match ($name) {
+        'delete' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 7.5h15"/><path d="M9.75 3.75h4.5"/><path d="M6.75 7.5 7.5 19.5a1.5 1.5 0 0 0 1.5 1.5h6a1.5 1.5 0 0 0 1.5-1.5l.75-12"/><path d="M10 11.25v5.25"/><path d="M14 11.25v5.25"/></svg>',
+        'back' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.5 19.5 3 12l7.5-7.5"/><path d="M3.75 12h17.25"/></svg>',
+        default => '',
+    };
+};
 ?>
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
     <div>
@@ -70,7 +77,7 @@ $activityClass = static function (string $eventType): string {
         <p class="text-muted mb-0">Criada em <?= $escape($campaign['created_at'] ?? '-') ?> por <?= $escape($campaign['created_by'] ?? '-') ?></p>
         <p class="text-muted small mb-0">Modo: <?= $escape(($campaign['automation_type'] ?? 'broadcast') === 'triage_w13' ? 'Bot de triagem W13' : 'Disparo manual') ?></p>
     </div>
-    <div class="d-flex flex-wrap gap-2">
+    <div class="flex flex-nowrap items-center gap-2 overflow-x-auto pb-1">
         <form method="post" action="/campaigns/<?= $escape($campaign['id'] ?? 0) ?>/process" class="d-flex flex-wrap align-items-end gap-2">
             <div>
                 <label for="batch_limit" class="form-label small mb-1">Lote</label>
@@ -101,16 +108,23 @@ $activityClass = static function (string $eventType): string {
                 Deixe ligado se quiser esta campanha rodando sozinha no navegador.
             </div>
         </form>
-        <form method="post" action="/campaigns/<?= $escape($campaign['id'] ?? 0) ?>/pause">
+        <form method="post" action="/campaigns/<?= $escape($campaign['id'] ?? 0) ?>/pause" class="m-0">
             <button type="submit" class="btn btn-outline-secondary">Pausar</button>
         </form>
-        <form method="post" action="/campaigns/<?= $escape($campaign['id'] ?? 0) ?>/resume">
+        <form method="post" action="/campaigns/<?= $escape($campaign['id'] ?? 0) ?>/resume" class="m-0">
             <button type="submit" class="btn btn-outline-success">Retomar</button>
         </form>
-        <form method="post" action="/campaigns/<?= $escape($campaign['id'] ?? 0) ?>/cancel">
+        <form method="post" action="/campaigns/<?= $escape($campaign['id'] ?? 0) ?>/cancel" class="m-0">
             <button type="submit" class="btn btn-outline-danger">Cancelar</button>
         </form>
-        <a href="/campaigns" class="btn btn-outline-dark">Voltar</a>
+        <form method="post" action="/campaigns/<?= $escape($campaign['id'] ?? 0) ?>/delete" class="m-0" onsubmit="return confirm('Excluir esta campanha e toda a fila vinculada?');">
+            <button type="submit" class="action-icon action-icon-danger" title="Excluir campanha" aria-label="Excluir campanha">
+                <?= $actionIcon('delete') ?>
+            </button>
+        </form>
+        <a href="/campaigns" class="action-icon action-icon-secondary" title="Voltar" aria-label="Voltar">
+            <?= $actionIcon('back') ?>
+        </a>
     </div>
 </div>
 <p class="text-muted small mt-1 mb-4">O processamento roda em lotes. Falhas de envio entram em retry automático com backoff e jobs travados são recolocados na fila.</p>

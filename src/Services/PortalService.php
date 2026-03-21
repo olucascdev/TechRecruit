@@ -432,6 +432,29 @@ final class PortalService
         }
     }
 
+    public function deleteDocument(int $documentId): int
+    {
+        $document = $this->portalModel->findDocumentById($documentId);
+
+        if ($document === null) {
+            throw new InvalidArgumentException('Documento não encontrado.');
+        }
+
+        $statement = $this->pdo->prepare(
+            'DELETE FROM recruit_candidate_documents
+             WHERE id = :id'
+        );
+        $statement->execute(['id' => $documentId]);
+
+        $path = (string) ($document['stored_path'] ?? '');
+
+        if ($path !== '' && is_file($path)) {
+            @unlink($path);
+        }
+
+        return (int) ($document['candidate_id'] ?? 0);
+    }
+
     public function markPortalAccessed(string $token): void
     {
         $portal = $this->portalModel->findByToken($token);

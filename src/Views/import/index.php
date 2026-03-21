@@ -12,6 +12,13 @@ $statusClass = static function (string $status): string {
         default => 'secondary',
     };
 };
+$actionIcon = static function (string $name): string {
+    return match ($name) {
+        'view' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.25 12s3.75-6.75 9.75-6.75S21.75 12 21.75 12 18 18.75 12 18.75 2.25 12 2.25 12Z"/><circle cx="12" cy="12" r="3.25"/></svg>',
+        'delete' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 7.5h15"/><path d="M9.75 3.75h4.5"/><path d="M6.75 7.5 7.5 19.5a1.5 1.5 0 0 0 1.5 1.5h6a1.5 1.5 0 0 0 1.5-1.5l.75-12"/><path d="M10 11.25v5.25"/><path d="M14 11.25v5.25"/></svg>',
+        default => '',
+    };
+};
 ?>
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
     <div>
@@ -76,7 +83,16 @@ $statusClass = static function (string $status): string {
                             <td><?= $escape($batch['error_rows']) ?></td>
                             <td><?= $escape($batch['created_at']) ?></td>
                             <td class="text-end">
-                                <a href="/import/result/<?= $escape($batch['id']) ?>" class="btn btn-sm btn-outline-secondary">Ver resultado</a>
+                                <div class="inline-flex flex-nowrap items-center justify-end gap-2">
+                                    <a href="/import/result/<?= $escape($batch['id']) ?>" class="action-icon action-icon-sm action-icon-primary" title="Ver resultado" aria-label="Ver resultado">
+                                        <?= $actionIcon('view') ?>
+                                    </a>
+                                    <form method="post" action="/import/<?= $escape($batch['id']) ?>/delete" class="m-0" onsubmit="return confirm('Excluir este lote de importação? Os candidatos importados serão mantidos.');">
+                                        <button type="submit" class="action-icon action-icon-sm action-icon-danger" title="Excluir lote" aria-label="Excluir lote">
+                                            <?= $actionIcon('delete') ?>
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                     <?php endforeach; ?>

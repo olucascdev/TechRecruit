@@ -491,6 +491,21 @@ final class CampaignService
         }
     }
 
+    public function deleteCampaign(int $campaignId): void
+    {
+        $campaign = $this->fetchCampaign($campaignId);
+
+        if ($campaign === null) {
+            throw new InvalidArgumentException('Campanha não encontrada.');
+        }
+
+        $statement = $this->pdo->prepare(
+            'DELETE FROM recruit_campaigns
+             WHERE id = :id'
+        );
+        $statement->execute(['id' => $campaignId]);
+    }
+
     /**
      * @return array<string, mixed>
      */

@@ -21,6 +21,7 @@ try {
     $router->get('/candidates', [CandidateController::class, 'index']);
     $router->get('/candidates/{id}', [CandidateController::class, 'show']);
     $router->post('/candidates/status', [CandidateController::class, 'updateStatus']);
+    $router->post('/candidates/{id}/delete', [CandidateController::class, 'destroy']);
     $router->post('/candidates/{id}/portal/generate', [PortalController::class, 'generate']);
     $router->post('/candidates/{id}/portal/status', [PortalController::class, 'updateStatus']);
     $router->get('/campaigns', [CampaignController::class, 'index']);
@@ -33,6 +34,7 @@ try {
     $router->post('/campaigns/{id}/pause', [CampaignController::class, 'pause']);
     $router->post('/campaigns/{id}/resume', [CampaignController::class, 'resume']);
     $router->post('/campaigns/{id}/cancel', [CampaignController::class, 'cancel']);
+    $router->post('/campaigns/{id}/delete', [CampaignController::class, 'destroy']);
     $router->post('/campaigns/{id}/reply', [CampaignController::class, 'reply']);
     $router->post('/triage/inbound', [TriageController::class, 'inbound']);
     $router->get('/operations', [OperationsController::class, 'index']);
@@ -43,9 +45,11 @@ try {
     $router->get('/portal/{token}', [PortalController::class, 'show']);
     $router->post('/portal/{token}/submit', [PortalController::class, 'submit']);
     $router->get('/portal/documents/{id}', [PortalController::class, 'downloadDocument']);
+    $router->post('/portal/documents/{id}/delete', [PortalController::class, 'deleteDocument']);
     $router->get('/import', [ImportController::class, 'index']);
     $router->post('/import/upload', [ImportController::class, 'upload']);
     $router->get('/import/result/{id}', [ImportController::class, 'result']);
+    $router->post('/import/{id}/delete', [ImportController::class, 'destroy']);
 
     $router->dispatch();
 } catch (Throwable $exception) {

@@ -154,6 +154,32 @@ final class ImportService
         }
     }
 
+    public function deleteBatch(int $batchId): void
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT id, status
+             FROM recruit_import_batches
+             WHERE id = :id
+             LIMIT 1'
+        );
+        $statement->execute(['id' => $batchId]);
+        $batch = $statement->fetch();
+
+        if ($batch === false) {
+            throw new RuntimeException('Lote de importação não encontrado.');
+        }
+
+        if (($batch['status'] ?? null) === 'processing') {
+            throw new RuntimeException('Não é possível excluir um lote que ainda está em processamento.');
+        }
+
+        $deleteStatement = $this->pdo->prepare(
+            'DELETE FROM recruit_import_batches
+             WHERE id = :id'
+        );
+        $deleteStatement->execute(['id' => $batchId]);
+    }
+
     private function loadWorksheet(string $filepath): Worksheet
     {
         $extension = strtolower(pathinfo($filepath, PATHINFO_EXTENSION));

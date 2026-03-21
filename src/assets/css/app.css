@@ -126,6 +126,34 @@
         @apply border border-ink-200 bg-white text-ink-900 hover:border-ink-300 hover:bg-ink-50;
     }
 
+    .action-icon {
+        @apply inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent active:translate-y-0 disabled:pointer-events-none disabled:opacity-60;
+    }
+
+    .action-icon-sm {
+        @apply h-9 w-9 rounded-lg;
+    }
+
+    .action-icon svg {
+        @apply h-4 w-4 shrink-0;
+    }
+
+    .action-icon-primary {
+        @apply border-brand-200 bg-brand-50/70 text-brand-700 hover:border-brand-300 hover:bg-brand-100;
+    }
+
+    .action-icon-secondary {
+        @apply border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50;
+    }
+
+    .action-icon-danger {
+        @apply border-rose-200 bg-rose-50/80 text-rose-700 hover:border-rose-300 hover:bg-rose-100;
+    }
+
+    .action-icon-dark {
+        @apply border-ink-200 bg-ink-50 text-ink-900 hover:border-ink-300 hover:bg-ink-100;
+    }
+
     .card {
         @apply rounded-[28px] border border-slate-200 bg-white shadow-card backdrop-blur-xl;
     }
@@ -399,6 +427,10 @@
 
     .d-flex {
         display: flex;
+    }
+
+    .d-inline-flex {
+        display: inline-flex;
     }
 
     .d-grid {

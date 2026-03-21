@@ -160,4 +160,28 @@ final class PortalController extends Controller
         readfile((string) $document['stored_path']);
         exit;
     }
+
+    public function deleteDocument(int $documentId): void
+    {
+        if (strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+            $this->redirect('/candidates');
+        }
+
+        $candidateId = (int) ($_POST['candidate_id'] ?? 0);
+
+        try {
+            $candidateId = $this->portalService->deleteDocument($documentId);
+            $this->setFlash('success', 'Documento excluído com sucesso.');
+        } catch (InvalidArgumentException $exception) {
+            $this->setFlash('error', $exception->getMessage());
+        } catch (Throwable $exception) {
+            error_log((string) $exception);
+            $this->setFlash(
+                'error',
+                trim($exception->getMessage()) !== '' ? $exception->getMessage() : 'Falha ao excluir o documento.'
+            );
+        }
+
+        $this->redirect($candidateId > 0 ? '/candidates/' . $candidateId : '/candidates');
+    }
 }

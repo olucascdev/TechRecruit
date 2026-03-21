@@ -81,6 +81,14 @@ $classificationBadge = static function (string $status): string {
         default => 'secondary',
     };
 };
+$actionIcon = static function (string $name): string {
+    return match ($name) {
+        'view' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.25 12s3.75-6.75 9.75-6.75S21.75 12 21.75 12 18 18.75 12 18.75 2.25 12 2.25 12Z"/><circle cx="12" cy="12" r="3.25"/></svg>',
+        'delete' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 7.5h15"/><path d="M9.75 3.75h4.5"/><path d="M6.75 7.5 7.5 19.5a1.5 1.5 0 0 0 1.5 1.5h6a1.5 1.5 0 0 0 1.5-1.5l.75-12"/><path d="M10 11.25v5.25"/><path d="M14 11.25v5.25"/></svg>',
+        'back' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.5 19.5 3 12l7.5-7.5"/><path d="M3.75 12h17.25"/></svg>',
+        default => '',
+    };
+};
 
 $pageScripts = <<<HTML
 <script>
@@ -134,7 +142,16 @@ HTML;
             <span class="text-muted">CPF: <?= $escape($candidate['cpf'] ?: '-') ?></span>
         </div>
     </div>
-    <a href="/candidates" class="btn btn-outline-secondary">Voltar</a>
+    <div class="flex flex-nowrap items-center gap-2 overflow-x-auto pb-1">
+        <a href="/candidates" class="action-icon action-icon-secondary" title="Voltar" aria-label="Voltar">
+            <?= $actionIcon('back') ?>
+        </a>
+        <form method="post" action="/candidates/<?= $escape($candidate['id'] ?? '') ?>/delete" class="m-0" onsubmit="return confirm('Excluir este candidato e todos os dados vinculados?');">
+            <button type="submit" class="action-icon action-icon-danger" title="Excluir candidato" aria-label="Excluir candidato">
+                <?= $actionIcon('delete') ?>
+            </button>
+        </form>
+    </div>
 </div>
 
 <div class="card border-0 shadow-sm">
@@ -234,11 +251,13 @@ HTML;
                 <h2 class="h5 mb-1">Portal de cadastro e documentos</h2>
                 <p class="text-muted mb-0">Link único, formulário do candidato, checklist e anexos internos. Ao gerar, o sistema tenta enviar o link por WhatsApp automaticamente.</p>
             </div>
-            <form method="post" action="/candidates/<?= $escape($candidate['id'] ?? '') ?>/portal/generate">
-                <button type="submit" class="btn btn-outline-primary">
-                    <?= $portal === null ? 'Gerar e enviar portal' : 'Regenerar e reenviar portal' ?>
-                </button>
-            </form>
+            <div class="d-flex flex-wrap gap-2">
+                <form method="post" action="/candidates/<?= $escape($candidate['id'] ?? '') ?>/portal/generate">
+                    <button type="submit" class="btn btn-outline-primary">
+                        <?= $portal === null ? 'Gerar e enviar portal' : 'Regenerar e reenviar portal' ?>
+                    </button>
+                </form>
+            </div>
         </div>
 
         <?php if ($portal === null): ?>
@@ -361,7 +380,7 @@ HTML;
                                         <th>Tipo</th>
                                         <th>Arquivo</th>
                                         <th>Data</th>
-                                        <th class="text-end">Abrir</th>
+                                        <th class="text-end">Ações</th>
                                     </tr>
                                     </thead>
                                     <tbody>
@@ -374,7 +393,17 @@ HTML;
                                             </td>
                                             <td><?= $escape($document['uploaded_at']) ?></td>
                                             <td class="text-end">
-                                                <a href="/portal/documents/<?= $escape($document['id']) ?>" target="_blank" class="btn btn-sm btn-outline-primary">Visualizar</a>
+                                                <div class="inline-flex flex-nowrap items-center justify-end gap-2">
+                                                    <a href="/portal/documents/<?= $escape($document['id']) ?>" target="_blank" class="action-icon action-icon-sm action-icon-primary" title="Visualizar anexo" aria-label="Visualizar anexo">
+                                                        <?= $actionIcon('view') ?>
+                                                    </a>
+                                                    <form method="post" action="/portal/documents/<?= $escape($document['id']) ?>/delete" class="m-0" onsubmit="return confirm('Excluir este anexo?');">
+                                                        <input type="hidden" name="candidate_id" value="<?= $escape($candidate['id'] ?? '') ?>">
+                                                        <button type="submit" class="action-icon action-icon-sm action-icon-danger" title="Excluir anexo" aria-label="Excluir anexo">
+                                                            <?= $actionIcon('delete') ?>
+                                                        </button>
+                                                    </form>
+                                                </div>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>

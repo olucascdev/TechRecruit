@@ -295,6 +295,29 @@ final class CampaignController extends Controller
         $this->redirect('/campaigns/' . $id);
     }
 
+    public function destroy(int $id): void
+    {
+        if (strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+            $this->redirect('/campaigns/' . $id);
+        }
+
+        try {
+            $this->campaignService->deleteCampaign($id);
+            $this->setFlash('success', 'Campanha excluída com sucesso.');
+            $this->redirect('/campaigns');
+        } catch (InvalidArgumentException $exception) {
+            $this->setFlash('error', $exception->getMessage());
+        } catch (Throwable $exception) {
+            error_log((string) $exception);
+            $this->setFlash(
+                'error',
+                trim($exception->getMessage()) !== '' ? $exception->getMessage() : 'Falha ao excluir a campanha.'
+            );
+        }
+
+        $this->redirect('/campaigns/' . $id);
+    }
+
     public function reply(int $id): void
     {
         if (strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {

@@ -10,6 +10,8 @@ use TechRecruit\Models\CandidateModel;
 use TechRecruit\Models\OperationsModel;
 use TechRecruit\Models\PortalModel;
 use TechRecruit\Models\TriageModel;
+use TechRecruit\Services\CandidateService;
+use Throwable;
 
 final class CandidateController extends Controller
 {
@@ -23,10 +25,13 @@ final class CandidateController extends Controller
 
     private TriageModel $triageModel;
 
+    private CandidateService $candidateService;
+
     public function __construct(
         ?CandidateModel $candidateModel = null,
         ?PortalModel $portalModel = null,
         ?OperationsModel $operationsModel = null,
+        ?CandidateService $candidateService = null,
         ?PDO $pdo = null
     )
     {
@@ -35,6 +40,7 @@ final class CandidateController extends Controller
         $this->portalModel = $portalModel ?? new PortalModel($this->pdo);
         $this->operationsModel = $operationsModel ?? new OperationsModel($this->pdo);
         $this->triageModel = new TriageModel($this->pdo);
+        $this->candidateService = $candidateService ?? new CandidateService($this->pdo);
     }
 
     public function index(): void
@@ -135,6 +141,25 @@ final class CandidateController extends Controller
                 ? 'Status atualizado com sucesso.'
                 : 'Não foi possível atualizar o status do candidato.',
         ], $success ? 200 : 422);
+    }
+
+    public function destroy(int $id): void
+    {
+        if (strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+            $this->redirect('/candidates/' . $id);
+        }
+
+        try {
+            $this->candidateService->deleteCandidate($id);
+            $this->setFlash('success', 'Candidato excluído com sucesso.');
+            $this->redirect('/candidates');
+        } catch (Throwable $exception) {
+            $this->setFlash(
+                'error',
+                trim($exception->getMessage()) !== '' ? $exception->getMessage() : 'Falha ao excluir o candidato.'
+            );
+            $this->redirect('/candidates/' . $id);
+        }
     }
 
     /**
