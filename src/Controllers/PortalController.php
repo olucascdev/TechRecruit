@@ -73,6 +73,8 @@ final class PortalController extends Controller
 
     public function generate(int $candidateId): void
     {
+        $this->requireAuth();
+
         if (strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
             $this->redirect('/candidates/' . $candidateId);
         }
@@ -118,6 +120,8 @@ final class PortalController extends Controller
 
     public function updateStatus(int $candidateId): void
     {
+        $this->requireAuth();
+
         if (strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
             $this->redirect('/candidates/' . $candidateId);
         }
@@ -142,6 +146,8 @@ final class PortalController extends Controller
 
     public function downloadDocument(int $documentId): never
     {
+        $this->requireAuth();
+
         $document = $this->portalModel->findDocumentById($documentId);
 
         if ($document === null || !is_file((string) $document['stored_path']) || !is_readable((string) $document['stored_path'])) {
@@ -163,6 +169,8 @@ final class PortalController extends Controller
 
     public function deleteDocument(int $documentId): void
     {
+        $this->requireAuth();
+
         if (strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
             $this->redirect('/candidates');
         }

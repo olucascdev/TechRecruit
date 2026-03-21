@@ -105,7 +105,24 @@ mysql -u root -p techrecruit < database/migrations/005_create_operational_review
 mysql -u root -p techrecruit < database/migrations/006_create_triage_bot_tables.sql
 mysql -u root -p techrecruit < database/migrations/007_create_whatsgw_integration_tables.sql
 mysql -u root -p techrecruit < database/migrations/008_expand_w13_flow.sql
+mysql -u root -p techrecruit < database/migrations/009_create_management_users.sql
 ```
+
+## 4.1 Criar o primeiro usuário interno
+
+O login do backoffice agora é restrito a usuários internos da gestão. O cadastro não é público.
+
+Crie o primeiro administrador via CLI:
+
+```bash
+php bin/create_management_user.php --name="Admin TechRecruit" --email="admin@empresa.com" --password="SENHA_SEGURA" --role=admin
+```
+
+Depois disso:
+
+- acesse `http://127.0.0.1:8090/login`
+- entre com o usuário criado
+- use `/management/users` para cadastrar outros usuários internos com role `admin` ou `manager`
 
 ## 5. Rodar localmente
 
@@ -115,6 +132,7 @@ php -S 127.0.0.1:8090 -t public
 
 Abra no navegador:
 
+- `http://127.0.0.1:8090/login`
 - `http://127.0.0.1:8090/`
 - `http://127.0.0.1:8090/import`
 - `http://127.0.0.1:8090/candidates`
@@ -251,6 +269,16 @@ curl -X POST http://127.0.0.1:8090/triage/inbound \
     "message_body": "1"
   }'
 ```
+
+### Teste de autenticação interna
+
+1. Acesse `/login`
+2. Entre com um usuário criado pela CLI ou por `/management/users`
+3. Confirme que sem login o backoffice redireciona para `/login`
+4. Acesse `/management/users` com um admin
+5. Crie um usuário `manager`
+6. Atualize role/status de um usuário e confirme persistência
+7. Faça logout pelo cabeçalho e valide que a sessão é encerrada
 
 ### Teste do WhatsGW real
 

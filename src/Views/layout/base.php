@@ -8,6 +8,8 @@ $flashError = isset($_SESSION['error']) ? (string) $_SESSION['error'] : null;
 unset($_SESSION['success'], $_SESSION['error']);
 $pageStyles = $pageStyles ?? '';
 $pageScripts = $pageScripts ?? '';
+$authUser = is_array($authUser ?? null) ? $authUser : null;
+$roleLabels = \TechRecruit\Models\UserModel::ROLE_LABELS;
 
 $isActive = static function (string $targetPath) use ($currentPath): string {
     if ($targetPath === '/') {
@@ -25,6 +27,14 @@ $navItems = [
     '/operations' => 'Operações',
     '/import' => 'Importações',
 ];
+
+if ($authUser !== null && ($authUser['role'] ?? null) === \TechRecruit\Models\UserModel::ROLE_ADMIN) {
+    $navItems['/management/users'] = 'Usuários';
+}
+
+$roleBadgeClass = static function (?string $role): string {
+    return $role === \TechRecruit\Models\UserModel::ROLE_ADMIN ? 'bg-primary' : 'bg-secondary';
+};
 ?>
 <!doctype html>
 <html lang="pt-BR">
@@ -78,8 +88,27 @@ $navItems = [
                         <?php endforeach; ?>
                     </nav>
 
-                    <div class="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-medium tracking-[0.16em] text-slate-500 uppercase">
-                        <?= $escape($pageTitle) ?>
+                    <div class="flex flex-col gap-3 lg:flex-row lg:items-center">
+                        <div class="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-medium tracking-[0.16em] text-slate-500 uppercase">
+                            <?= $escape($pageTitle) ?>
+                        </div>
+
+                        <?php if ($authUser !== null): ?>
+                            <div class="flex flex-col gap-3 rounded-[24px] border border-slate-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div class="min-w-0">
+                                    <div class="truncate text-sm font-semibold text-ink-950"><?= $escape($authUser['full_name'] ?? '-') ?></div>
+                                    <div class="truncate text-xs text-slate-500"><?= $escape($authUser['email'] ?? '-') ?></div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="badge <?= $roleBadgeClass((string) ($authUser['role'] ?? null)) ?>">
+                                        <?= $escape($roleLabels[$authUser['role']] ?? (string) ($authUser['role'] ?? '-')) ?>
+                                    </span>
+                                    <form action="/logout" method="post">
+                                        <button type="submit" class="btn btn-outline-secondary btn-sm">Sair</button>
+                                    </form>
+                                </div>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>

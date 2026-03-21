@@ -35,6 +35,7 @@ final class CandidateController extends Controller
         ?PDO $pdo = null
     )
     {
+        $this->requireAuth();
         $this->pdo = $pdo ?? Database::connect();
         $this->candidateModel = $candidateModel ?? new CandidateModel($this->pdo);
         $this->portalModel = $portalModel ?? new PortalModel($this->pdo);

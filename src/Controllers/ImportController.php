@@ -18,6 +18,7 @@ final class ImportController extends Controller
 
     public function __construct(?ImportService $importService = null, ?PDO $pdo = null)
     {
+        $this->requireAuth();
         $this->pdo = $pdo ?? Database::connect();
         $this->importService = $importService ?? new ImportService($this->pdo);
     }

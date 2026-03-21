@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 require dirname(__DIR__) . '/bootstrap.php';
 
+use TechRecruit\Controllers\AuthController;
 use TechRecruit\Controllers\CandidateController;
 use TechRecruit\Controllers\CampaignController;
 use TechRecruit\Controllers\ImportController;
 use TechRecruit\Controllers\OperationsController;
 use TechRecruit\Controllers\PortalController;
 use TechRecruit\Controllers\TriageController;
+use TechRecruit\Controllers\UserController;
 use TechRecruit\Router;
 
 session_start();
@@ -17,6 +19,9 @@ session_start();
 try {
     $router = new Router();
 
+    $router->get('/login', [AuthController::class, 'showLogin']);
+    $router->post('/login', [AuthController::class, 'authenticate']);
+    $router->post('/logout', [AuthController::class, 'logout']);
     $router->get('/', [CandidateController::class, 'index']);
     $router->get('/candidates', [CandidateController::class, 'index']);
     $router->get('/candidates/{id}', [CandidateController::class, 'show']);
@@ -50,6 +55,9 @@ try {
     $router->post('/import/upload', [ImportController::class, 'upload']);
     $router->get('/import/result/{id}', [ImportController::class, 'result']);
     $router->post('/import/{id}/delete', [ImportController::class, 'destroy']);
+    $router->get('/management/users', [UserController::class, 'index']);
+    $router->post('/management/users', [UserController::class, 'store']);
+    $router->post('/management/users/{id}/access', [UserController::class, 'updateAccess']);
 
     $router->dispatch();
 } catch (Throwable $exception) {

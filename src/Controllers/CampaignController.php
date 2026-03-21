@@ -29,6 +29,7 @@ final class CampaignController extends Controller
         ?CampaignService $campaignService = null,
         ?PDO $pdo = null
     ) {
+        $this->requireAuth();
         $this->pdo = $pdo ?? Database::connect();
         $this->campaignModel = $campaignModel ?? new CampaignModel($this->pdo);
         $this->candidateModel = $candidateModel ?? new CandidateModel($this->pdo);

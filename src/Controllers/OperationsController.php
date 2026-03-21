@@ -18,6 +18,7 @@ final class OperationsController extends Controller
         ?OperationsModel $operationsModel = null,
         ?OperationsService $operationsService = null
     ) {
+        $this->requireAuth();
         $this->operationsModel = $operationsModel ?? new OperationsModel();
         $this->operationsService = $operationsService ?? new OperationsService();
     }

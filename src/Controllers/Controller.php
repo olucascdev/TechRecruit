@@ -4,8 +4,13 @@ declare(strict_types=1);
 
 namespace TechRecruit\Controllers;
 
+use TechRecruit\Models\UserModel;
+use TechRecruit\Services\AuthService;
+
 abstract class Controller
 {
+    private ?AuthService $authService = null;
+
     /**
      * @param array<string, mixed> $data
      */
@@ -30,6 +35,7 @@ abstract class Controller
         $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
         $pageScripts = '';
         $pageStyles = '';
+        $data['authUser'] = $this->currentUser();
 
         extract($data, EXTR_SKIP);
 
@@ -44,6 +50,60 @@ abstract class Controller
     {
         header('Location: ' . $path);
         exit;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    protected function currentUser(): ?array
+    {
+        return $this->authService()->user();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function requireAuth(): array
+    {
+        $user = $this->currentUser();
+
+        if ($user !== null) {
+            return $user;
+        }
+
+        $requestMethod = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
+        $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+        $query = trim((string) ($_SERVER['QUERY_STRING'] ?? ''));
+
+        if ($requestMethod === 'GET') {
+            $this->authService()->rememberIntendedUrl($path . ($query !== '' ? '?' . $query : ''));
+        }
+
+        $this->setFlash('error', 'Faça login para acessar o backoffice.');
+        $this->redirect('/login');
+    }
+
+    /**
+     * @param list<string> $roles
+     * @return array<string, mixed>
+     */
+    protected function requireRole(array $roles): array
+    {
+        $user = $this->requireAuth();
+
+        if (in_array((string) ($user['role'] ?? ''), $roles, true)) {
+            return $user;
+        }
+
+        $this->denyAccess('Seu usuário não tem permissão para acessar esta área.');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function requireAdmin(): array
+    {
+        return $this->requireRole([UserModel::ROLE_ADMIN]);
     }
 
     protected function setFlash(string $type, string $message): void
@@ -79,6 +139,22 @@ abstract class Controller
 
     protected function resolveOperator(): string
     {
+        $currentUser = $this->currentUser();
+
+        if ($currentUser !== null) {
+            $displayName = trim((string) ($currentUser['full_name'] ?? ''));
+
+            if ($displayName !== '') {
+                return $displayName;
+            }
+
+            $email = trim((string) ($currentUser['email'] ?? ''));
+
+            if ($email !== '') {
+                return $email;
+            }
+        }
+
         if (isset($_SESSION['operator']) && is_string($_SESSION['operator']) && $_SESSION['operator'] !== '') {
             return $_SESSION['operator'];
         }
@@ -88,5 +164,40 @@ abstract class Controller
         }
 
         return 'system';
+    }
+
+    protected function authService(): AuthService
+    {
+        if ($this->authService instanceof AuthService) {
+            return $this->authService;
+        }
+
+        $this->authService = new AuthService();
+
+        return $this->authService;
+    }
+
+    protected function denyAccess(string $message): never
+    {
+        if ($this->expectsJson()) {
+            $this->json([
+                'success' => false,
+                'message' => $message,
+            ], 403);
+        }
+
+        $this->setFlash('error', $message);
+        $this->redirect('/candidates');
+    }
+
+    protected function expectsJson(): bool
+    {
+        $accept = strtolower((string) ($_SERVER['HTTP_ACCEPT'] ?? ''));
+        $requestedWith = strtolower((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? ''));
+        $requestUri = (string) ($_SERVER['REQUEST_URI'] ?? '');
+
+        return str_contains($accept, 'application/json')
+            || $requestedWith === 'xmlhttprequest'
+            || str_contains($requestUri, '/run');
     }
 }
