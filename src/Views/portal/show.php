@@ -64,7 +64,7 @@ $statusClass = static function (string $status): string {
             <div class="col-lg-8">
                 <?php if ($isReadOnly): ?>
                     <div class="alert alert-info">
-                        Este portal esta bloqueado para novas alteracoes.
+                        Este portal está bloqueado para novas alterações.
                     </div>
                 <?php endif; ?>
 
@@ -109,19 +109,19 @@ $statusClass = static function (string $status): string {
                                 <input type="text" class="form-control" id="city" name="city" value="<?= $escape($value('city', $profile, $portal)) ?>" <?= $isReadOnly ? 'disabled' : '' ?> required>
                             </div>
                             <div class="col-md-6">
-                                <label for="region" class="form-label">Regiao</label>
+                                <label for="region" class="form-label">Região</label>
                                 <input type="text" class="form-control" id="region" name="region" value="<?= $escape($value('region', $profile, $portal)) ?>" <?= $isReadOnly ? 'disabled' : '' ?>>
                             </div>
                             <div class="col-12">
                                 <label for="availability" class="form-label">Disponibilidade</label>
-                                <input type="text" class="form-control" id="availability" name="availability" value="<?= $escape((string) ($profile['availability'] ?? '')) ?>" placeholder="Ex.: Inicio imediato, escala 12x36, viagens nacionais" <?= $isReadOnly ? 'disabled' : '' ?> required>
+                                <input type="text" class="form-control" id="availability" name="availability" value="<?= $escape((string) ($profile['availability'] ?? '')) ?>" placeholder="Ex.: Início imediato, escala 12x36, viagens nacionais" <?= $isReadOnly ? 'disabled' : '' ?> required>
                             </div>
                             <div class="col-12">
-                                <label for="experience_summary" class="form-label">Resumo da experiencia</label>
+                                <label for="experience_summary" class="form-label">Resumo da experiência</label>
                                 <textarea class="form-control" id="experience_summary" name="experience_summary" rows="5" <?= $isReadOnly ? 'disabled' : '' ?> required><?= $escape((string) ($profile['experience_summary'] ?? '')) ?></textarea>
                             </div>
                             <div class="col-12">
-                                <label for="notes" class="form-label">Observacoes adicionais</label>
+                                <label for="notes" class="form-label">Observações adicionais</label>
                                 <textarea class="form-control" id="notes" name="notes" rows="3" <?= $isReadOnly ? 'disabled' : '' ?>><?= $escape((string) ($profile['notes'] ?? '')) ?></textarea>
                             </div>
 
@@ -134,7 +134,7 @@ $statusClass = static function (string $status): string {
                                     <input type="file" class="form-control" id="<?= $escape($key) ?>" name="<?= $escape($key) ?>" accept=".pdf,.jpg,.jpeg,.png" <?= $isReadOnly ? 'disabled' : '' ?>>
                                     <?php if (($documentGroups[$key] ?? []) !== []): ?>
                                         <div class="small text-muted mt-1">
-                                            Ja enviado(s):
+                                            Já enviado(s):
                                             <?php foreach ($documentGroups[$key] as $document): ?>
                                                 <span class="d-block"><?= $escape($document['original_name']) ?> · <?= $escape($document['uploaded_at']) ?></span>
                                             <?php endforeach; ?>
@@ -147,7 +147,7 @@ $statusClass = static function (string $status): string {
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" value="1" id="terms_accepted" name="terms_accepted" <?= $portal['terms_accepted'] ? 'checked' : '' ?> <?= $isReadOnly ? 'disabled' : '' ?> required>
                                     <label class="form-check-label" for="terms_accepted">
-                                        Confirmo que as informacoes e documentos enviados sao verdadeiros e autorizo o uso para fins de recrutamento e habilitacao operacional na W13.
+                                        Confirmo que as informações e os documentos enviados são verdadeiros e autorizo o uso para fins de recrutamento e habilitação operacional na W13.
                                     </label>
                                 </div>
                             </div>
@@ -171,7 +171,7 @@ $statusClass = static function (string $status): string {
                                 <li class="list-group-item px-0 d-flex justify-content-between gap-3">
                                     <div>
                                         <div class="fw-semibold"><?= $escape($item['label']) ?></div>
-                                        <div class="small text-muted"><?= $item['required'] ? 'Obrigatorio' : 'Opcional' ?></div>
+                                        <div class="small text-muted"><?= $item['required'] ? 'Obrigatório' : 'Opcional' ?></div>
                                     </div>
                                     <span class="badge text-bg-<?= $item['received'] ? 'success' : 'light' ?>">
                                         <?= $escape($item['received'] ? 'Recebido' : 'Pendente') ?>
@@ -188,11 +188,11 @@ $statusClass = static function (string $status): string {
                         <dl class="row mb-0">
                             <dt class="col-sm-6">Status</dt>
                             <dd class="col-sm-6"><?= $escape(ucwords(str_replace('_', ' ', $portalStatus))) ?></dd>
-                            <dt class="col-sm-6">Ultimo acesso</dt>
+                            <dt class="col-sm-6">Último acesso</dt>
                             <dd class="col-sm-6"><?= $escape($portal['last_accessed_at'] ?? '-') ?></dd>
                             <dt class="col-sm-6">Enviado em</dt>
                             <dd class="col-sm-6"><?= $escape($portal['submitted_at'] ?? '-') ?></dd>
-                            <dt class="col-sm-6">Versao dos termos</dt>
+                            <dt class="col-sm-6">Versão dos termos</dt>
                             <dd class="col-sm-6"><?= $escape($portal['terms_version'] ?? '-') ?></dd>
                         </dl>
                     </div>

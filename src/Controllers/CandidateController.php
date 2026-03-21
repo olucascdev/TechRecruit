@@ -74,7 +74,7 @@ final class CandidateController extends Controller
 
         if ($candidate === null) {
             http_response_code(404);
-            echo 'Candidate not found.';
+            echo 'Candidato não encontrado.';
 
             return;
         }
@@ -99,7 +99,7 @@ final class CandidateController extends Controller
         if (strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
             $this->json([
                 'success' => false,
-                'message' => 'Method not allowed.',
+                'message' => 'Método não permitido.',
             ], 405);
         }
 
@@ -109,21 +109,21 @@ final class CandidateController extends Controller
         if ($candidateId < 1) {
             $this->json([
                 'success' => false,
-                'message' => 'Candidate ID is required.',
+                'message' => 'O ID do candidato é obrigatório.',
             ], 422);
         }
 
         if (!in_array($newStatus, CandidateModel::VALID_STATUSES, true)) {
             $this->json([
                 'success' => false,
-                'message' => 'Invalid candidate status.',
+                'message' => 'Status do candidato inválido.',
             ], 422);
         }
 
         if ($this->candidateModel->findById($candidateId) === null) {
             $this->json([
                 'success' => false,
-                'message' => 'Candidate not found.',
+                'message' => 'Candidato não encontrado.',
             ], 404);
         }
 
@@ -132,8 +132,8 @@ final class CandidateController extends Controller
         $this->json([
             'success' => $success,
             'message' => $success
-                ? 'Status updated successfully.'
-                : 'Could not update candidate status.',
+                ? 'Status atualizado com sucesso.'
+                : 'Não foi possível atualizar o status do candidato.',
         ], $success ? 200 : 422);
     }
 

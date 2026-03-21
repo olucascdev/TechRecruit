@@ -6,6 +6,8 @@ $escape = static fn (mixed $value): string => htmlspecialchars((string) $value, 
 $flashSuccess = isset($_SESSION['success']) ? (string) $_SESSION['success'] : null;
 $flashError = isset($_SESSION['error']) ? (string) $_SESSION['error'] : null;
 unset($_SESSION['success'], $_SESSION['error']);
+$pageStyles = $pageStyles ?? '';
+$pageScripts = $pageScripts ?? '';
 
 $isActive = static function (string $targetPath) use ($currentPath): string {
     if ($targetPath === '/') {
@@ -14,6 +16,15 @@ $isActive = static function (string $targetPath) use ($currentPath): string {
 
     return str_starts_with($currentPath, $targetPath) ? 'active' : '';
 };
+
+require __DIR__ . '/_ui.php';
+
+$navItems = [
+    '/candidates' => 'Candidatos',
+    '/campaigns' => 'Campanhas',
+    '/operations' => 'Operações',
+    '/import' => 'Importações',
+];
 ?>
 <!doctype html>
 <html lang="pt-BR">
@@ -21,101 +32,82 @@ $isActive = static function (string $targetPath) use ($currentPath): string {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= $escape($pageTitle) ?> | TechRecruit</title>
-    <link
-        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-        rel="stylesheet"
-        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
-        crossorigin="anonymous"
-    >
-    <style>
-        body { min-height: 100vh; background: #f8f9fa; }
-        .app-shell { min-height: 100vh; display: flex; flex-direction: column; }
-        main { flex: 1; }
-        .navbar-brand { font-weight: 700; letter-spacing: 0.03em; }
-        .timeline { position: relative; padding-left: 1.5rem; }
-        .timeline::before {
-            content: "";
-            position: absolute;
-            left: 0.45rem;
-            top: 0;
-            bottom: 0;
-            width: 2px;
-            background: #dee2e6;
-        }
-        .timeline-item { position: relative; padding-bottom: 1.5rem; }
-        .timeline-item::before {
-            content: "";
-            position: absolute;
-            left: -1.08rem;
-            top: 0.25rem;
-            width: 0.75rem;
-            height: 0.75rem;
-            border-radius: 50%;
-            background: #0d6efd;
-        }
-    </style>
+    <?php $renderTailwindHead(); ?>
     <?= $pageStyles ?>
 </head>
-<body>
+<body class="app-theme">
 <div class="app-shell">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
-        <div class="container">
-            <a class="navbar-brand" href="/candidates">TechRecruit</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Alternar navegacao">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="mainNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link <?= $isActive('/candidates') ?: ($currentPath === '/' ? 'active' : '') ?>" href="/candidates">Candidatos</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link <?= $isActive('/campaigns') ?>" href="/campaigns">Campanhas</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link <?= $isActive('/operations') ?>" href="/operations">Operacoes</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link <?= $isActive('/import') ?>" href="/import">Importacoes</a>
-                    </li>
-                </ul>
+    <header class="border-b border-slate-200 bg-white/90 backdrop-blur-xl">
+        <div class="container py-4">
+            <div class="shell-panel px-4 py-4 sm:px-6">
+                <div class="flex items-center justify-between gap-4">
+                    <a href="/candidates" class="flex items-center gap-3 text-ink-950 no-underline">
+                        <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-400 font-display text-sm font-bold uppercase tracking-[0.24em] text-white shadow-glow">TR</span>
+                        <span>
+                            <span class="block font-display text-lg font-semibold tracking-[0.18em] uppercase text-ink-950">TechRecruit</span>
+                            <span class="block text-xs text-slate-500">Backoffice de recrutamento, campanha e operação</span>
+                        </span>
+                    </a>
+
+                    <button
+                        type="button"
+                        class="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 lg:hidden"
+                        data-nav-toggle="mainNav"
+                        aria-controls="mainNav"
+                        aria-expanded="false"
+                        aria-label="Alternar navegação"
+                    >
+                        <span class="flex flex-col gap-1.5">
+                            <span class="h-0.5 w-5 rounded-full bg-current"></span>
+                            <span class="h-0.5 w-5 rounded-full bg-current"></span>
+                            <span class="h-0.5 w-5 rounded-full bg-current"></span>
+                        </span>
+                    </button>
+                </div>
+
+                <div id="mainNav" class="mt-4 hidden flex-col gap-2 border-t border-slate-200 pt-4 lg:mt-6 lg:flex lg:flex-row lg:items-center lg:justify-between lg:border-t-0 lg:pt-0">
+                    <nav class="flex flex-col gap-2 lg:flex-row lg:flex-wrap">
+                        <?php foreach ($navItems as $path => $label): ?>
+                            <?php $active = $path === '/candidates' && $currentPath === '/' ? 'active' : $isActive($path); ?>
+                            <a
+                                href="<?= $escape($path) ?>"
+                                class="inline-flex min-h-[44px] items-center rounded-full px-4 py-2 text-sm font-semibold transition <?= $active ? 'bg-brand-500 text-white shadow-glow' : 'text-slate-600 hover:bg-slate-100 hover:text-ink-950' ?>"
+                            >
+                                <?= $escape($label) ?>
+                            </a>
+                        <?php endforeach; ?>
+                    </nav>
+
+                    <div class="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-medium tracking-[0.16em] text-slate-500 uppercase">
+                        <?= $escape($pageTitle) ?>
+                    </div>
+                </div>
             </div>
         </div>
-    </nav>
+    </header>
 
-    <main class="py-4">
+    <main class="flex-1 py-8 sm:py-10">
         <div class="container">
-            <?php if ($flashSuccess !== null): ?>
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    <?= $escape($flashSuccess) ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
-                </div>
-            <?php endif; ?>
-
-            <?php if ($flashError !== null): ?>
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <?= $escape($flashError) ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
-                </div>
-            <?php endif; ?>
+            <?php $renderFlash($flashSuccess, 'success'); ?>
+            <?php $renderFlash($flashError, 'error'); ?>
 
             <?= $content ?>
         </div>
     </main>
 
-    <footer class="border-top bg-white py-3">
-        <div class="container text-muted small d-flex justify-content-between">
-            <span>TechRecruit Backoffice</span>
-            <span>Bootstrap 5 + PHP 8</span>
+    <footer class="border-t border-slate-200 py-6">
+        <div class="container">
+            <div class="shell-panel px-5 py-4 text-sm text-slate-600 sm:px-6">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <span class="font-medium text-ink-950">TechRecruit Backoffice</span>
+                    <span class="text-slate-500">Tailwind UI + PHP 8</span>
+                </div>
+            </div>
         </div>
     </footer>
 </div>
 
-<script
-    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-    integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
-    crossorigin="anonymous"
-></script>
+<?php $renderUiScripts(); ?>
 <?= $pageScripts ?>
 </body>
 </html>

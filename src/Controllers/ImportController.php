@@ -33,7 +33,7 @@ final class ImportController extends Controller
 
         $this->render('import/index', [
             'batches' => $statement->fetchAll(),
-        ], 'Importacoes');
+        ], 'Importações');
     }
 
     public function upload(): void
@@ -126,7 +126,7 @@ final class ImportController extends Controller
 
         if ($batch === false) {
             http_response_code(404);
-            echo 'Batch not found.';
+            echo 'Lote não encontrado.';
 
             return;
         }
@@ -150,7 +150,7 @@ final class ImportController extends Controller
         $this->render('import/result', [
             'batch' => $batch,
             'rows' => $rows,
-        ], 'Resultado da Importacao');
+        ], 'Resultado da Importação');
     }
 
     private function buildUploadPath(string $originalName): string

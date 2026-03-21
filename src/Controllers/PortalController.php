@@ -35,7 +35,7 @@ final class PortalController extends Controller
 
         if ($portal === null) {
             http_response_code(404);
-            echo 'Portal link not found.';
+            echo 'Link do portal não encontrado.';
 
             return;
         }
@@ -146,7 +146,7 @@ final class PortalController extends Controller
 
         if ($document === null || !is_file((string) $document['stored_path']) || !is_readable((string) $document['stored_path'])) {
             http_response_code(404);
-            echo 'Document not found.';
+            echo 'Documento não encontrado.';
             exit;
         }
 

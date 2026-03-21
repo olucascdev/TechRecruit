@@ -21,7 +21,7 @@ abstract class Controller
 
         if (!is_file($viewPath) || !is_file($layoutPath)) {
             http_response_code(500);
-            echo 'View not found.';
+            echo 'View não encontrada.';
 
             return;
         }
@@ -64,7 +64,7 @@ abstract class Controller
         header('Content-Type: application/json; charset=utf-8');
 
         $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        echo $json === false ? '{"success":false,"message":"JSON encoding error."}' : $json;
+        echo $json === false ? '{"success":false,"message":"Erro ao codificar JSON."}' : $json;
         exit;
     }
 

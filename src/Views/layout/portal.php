@@ -6,6 +6,10 @@ $escape = static fn (mixed $value): string => htmlspecialchars((string) $value, 
 $flashSuccess = isset($_SESSION['success']) ? (string) $_SESSION['success'] : null;
 $flashError = isset($_SESSION['error']) ? (string) $_SESSION['error'] : null;
 unset($_SESSION['success'], $_SESSION['error']);
+$pageStyles = $pageStyles ?? '';
+$pageScripts = $pageScripts ?? '';
+
+require __DIR__ . '/_ui.php';
 ?>
 <!doctype html>
 <html lang="pt-BR">
@@ -13,60 +17,50 @@ unset($_SESSION['success'], $_SESSION['error']);
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= $escape($pageTitle) ?> | TechRecruit</title>
-    <link
-        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-        rel="stylesheet"
-        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
-        crossorigin="anonymous"
-    >
-    <style>
-        body {
-            min-height: 100vh;
-            background:
-                radial-gradient(circle at top right, rgba(25, 135, 84, 0.15), transparent 25%),
-                linear-gradient(180deg, #f7fbf8 0%, #eef5f0 100%);
-        }
-        .portal-shell { min-height: 100vh; display: flex; flex-direction: column; }
-        main { flex: 1; }
-        .portal-brand { font-weight: 700; letter-spacing: 0.04em; }
-    </style>
+    <?php $renderTailwindHead(); ?>
     <?= $pageStyles ?>
 </head>
-<body>
+<body class="portal-theme">
 <div class="portal-shell">
-    <header class="border-bottom bg-white py-3 shadow-sm">
-        <div class="container d-flex justify-content-between align-items-center">
-            <div class="portal-brand">TechRecruit Portal</div>
-            <div class="text-muted small">Cadastro e documentos do candidato</div>
+    <header class="py-6">
+        <div class="container">
+            <div class="shell-panel-light px-5 py-5 sm:px-6">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div class="flex items-center gap-4">
+                        <span class="inline-flex h-14 w-14 items-center justify-center rounded-3xl bg-gradient-to-br from-brand-500 to-brand-400 font-display text-sm font-bold uppercase tracking-[0.24em] text-white shadow-glow">TR</span>
+                        <div>
+                            <div class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-600">Portal do Candidato</div>
+                            <div class="mt-1 font-display text-2xl font-semibold tracking-tight text-ink-950">Cadastro e documentos W13</div>
+                            <p class="mt-2 max-w-2xl text-sm text-slate-600">Preencha seus dados, envie os arquivos solicitados e acompanhe o status do processo de validação em uma única tela.</p>
+                        </div>
+                    </div>
+                    <div class="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                        Ambiente seguro para envio de informações e anexos.
+                    </div>
+                </div>
+            </div>
         </div>
     </header>
 
-    <main class="py-4">
+    <main class="flex-1 py-6 sm:py-8">
         <div class="container">
-            <?php if ($flashSuccess !== null): ?>
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    <?= $escape($flashSuccess) ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
-                </div>
-            <?php endif; ?>
-
-            <?php if ($flashError !== null): ?>
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <?= $escape($flashError) ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
-                </div>
-            <?php endif; ?>
+            <?php $renderFlash($flashSuccess, 'success'); ?>
+            <?php $renderFlash($flashError, 'error'); ?>
 
             <?= $content ?>
         </div>
     </main>
+
+    <footer class="pb-8">
+        <div class="container">
+            <div class="text-center text-sm text-slate-500">
+                TechRecruit Portal · Tailwind UI + PHP 8
+            </div>
+        </div>
+    </footer>
 </div>
 
-<script
-    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-    integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
-    crossorigin="anonymous"
-></script>
+<?php $renderUiScripts(); ?>
 <?= $pageScripts ?>
 </body>
 </html>

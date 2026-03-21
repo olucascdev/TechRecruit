@@ -43,7 +43,7 @@ final class PortalService
         $candidate = $this->candidateModel->findById($candidateId);
 
         if ($candidate === null) {
-            throw new InvalidArgumentException('Candidato nao encontrado.');
+            throw new InvalidArgumentException('Candidato não encontrado.');
         }
 
         $token = bin2hex(random_bytes(32));
@@ -131,7 +131,7 @@ final class PortalService
         $portal = $this->portalModel->findByCandidateId($candidateId);
 
         if ($portal === null) {
-            throw new InvalidArgumentException('Nao foi possivel carregar o portal do candidato.');
+            throw new InvalidArgumentException('Não foi possível carregar o portal do candidato.');
         }
 
         return $portal;
@@ -147,7 +147,7 @@ final class PortalService
         if ($candidate === null) {
             return [
                 'success' => false,
-                'error' => 'Candidato nao encontrado para envio do portal.',
+                'error' => 'Candidato não encontrado para envio do portal.',
             ];
         }
 
@@ -211,18 +211,18 @@ final class PortalService
         $portal = $this->portalModel->findByToken($token);
 
         if ($portal === null) {
-            throw new InvalidArgumentException('Link do portal invalido.');
+            throw new InvalidArgumentException('Link do portal inválido.');
         }
 
         if (in_array((string) $portal['status'], ['approved', 'expired'], true)) {
-            throw new InvalidArgumentException('Este portal nao aceita mais alteracoes.');
+            throw new InvalidArgumentException('Este portal não aceita mais alterações.');
         }
 
         $profileData = $this->validateProfileData($formData, $portal);
         $termsAccepted = isset($formData['terms_accepted']) && (string) $formData['terms_accepted'] === '1';
 
         if (!$termsAccepted) {
-            throw new InvalidArgumentException('Voce precisa aceitar os termos para concluir o cadastro.');
+            throw new InvalidArgumentException('Você precisa aceitar os termos para concluir o cadastro.');
         }
 
         $uploadedDocuments = [];
@@ -241,7 +241,7 @@ final class PortalService
 
                 if (!$hasExisting && !$hasNew) {
                     throw new InvalidArgumentException(
-                        sprintf('Envie o documento obrigatorio: %s.', $item['label'] ?? $item['key'])
+                        sprintf('Envie o documento obrigatório: %s.', $item['label'] ?? $item['key'])
                     );
                 }
             }
@@ -392,13 +392,13 @@ final class PortalService
     public function updatePortalStatusForCandidate(int $candidateId, string $newStatus, string $operator): void
     {
         if (!in_array($newStatus, PortalModel::VALID_STATUSES, true)) {
-            throw new InvalidArgumentException('Status do portal invalido.');
+            throw new InvalidArgumentException('Status do portal inválido.');
         }
 
         $portal = $this->portalModel->findByCandidateId($candidateId);
 
         if ($portal === null) {
-            throw new InvalidArgumentException('Portal do candidato nao encontrado.');
+            throw new InvalidArgumentException('Portal do candidato não encontrado.');
         }
 
         $statement = $this->pdo->prepare(
@@ -507,7 +507,7 @@ final class PortalService
         }
 
         if ($experienceSummary === '') {
-            throw new InvalidArgumentException('Descreva sua experiencia resumida.');
+            throw new InvalidArgumentException('Descreva sua experiência resumida.');
         }
 
         return [
@@ -588,7 +588,7 @@ final class PortalService
 
             if (!$canMove) {
                 throw new InvalidArgumentException(
-                    sprintf('Arquivo temporario invalido para "%s".', $item['label'])
+                    sprintf('Arquivo temporário inválido para "%s".', $item['label'])
                 );
             }
 
@@ -607,7 +607,7 @@ final class PortalService
 
             if (!$moved) {
                 throw new InvalidArgumentException(
-                    sprintf('Nao foi possivel salvar o documento "%s".', $item['label'])
+                    sprintf('Não foi possível salvar o documento "%s".', $item['label'])
                 );
             }
 
@@ -773,11 +773,11 @@ final class PortalService
         $firstName = trim((string) strtok(trim($fullName), ' '));
 
         if ($firstName === '') {
-            $firstName = 'Tecnico';
+            $firstName = 'Técnico';
         }
 
         return trim(sprintf(
-            "Ola, %s.\n\nSeu perfil foi pre-aprovado na W13 Tecnologia.\nPara finalizar seu cadastro, acesse o portal abaixo e envie os dados e documentos obrigatorios:\n\n%s\n\nDocumentos esperados:\n- Documento de identidade\n- Comprovante de residencia\n- CNPJ / MEI\n- ASO\n- NR10\n- NR35\n\nAssim que a validacao for concluida, sua liberacao operacional segue para a proxima etapa.\n\nEquipe W13 Tecnologia",
+            "Olá, %s.\n\nSeu perfil foi pré-aprovado na W13 Tecnologia.\nPara finalizar seu cadastro, acesse o portal abaixo e envie os dados e documentos obrigatórios:\n\n%s\n\nDocumentos esperados:\n- Documento de identidade\n- Comprovante de residência\n- CNPJ / MEI\n- ASO\n- NR10\n- NR35\n\nAssim que a validação for concluída, sua liberação operacional segue para a próxima etapa.\n\nEquipe W13 Tecnologia",
             $firstName,
             $portalUrl
         ));

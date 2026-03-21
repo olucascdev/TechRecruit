@@ -26,7 +26,7 @@ final class OperationsController extends Controller
     {
         $this->render('operations/index', [
             'queue' => $this->operationsModel->findQueue(),
-        ], 'Validacao Operacional');
+        ], 'Validação Operacional');
     }
 
     public function addNote(int $candidateId): void
@@ -39,9 +39,9 @@ final class OperationsController extends Controller
 
         try {
             $this->operationsService->addInternalNote($candidateId, $message, $this->resolveOperator());
-            $this->setFlash('success', 'Observacao interna registrada.');
+            $this->setFlash('success', 'Observação interna registrada.');
         } catch (Throwable $exception) {
-            $this->setFlash('error', trim($exception->getMessage()) !== '' ? $exception->getMessage() : 'Falha ao registrar observacao.');
+            $this->setFlash('error', trim($exception->getMessage()) !== '' ? $exception->getMessage() : 'Falha ao registrar observação.');
         }
 
         $this->redirect('/candidates/' . $candidateId);
@@ -58,9 +58,9 @@ final class OperationsController extends Controller
 
         try {
             $this->operationsService->applyCandidateDecision($candidateId, $decision, $message, $this->resolveOperator());
-            $this->setFlash('success', 'Decisao operacional registrada.');
+            $this->setFlash('success', 'Decisão operacional registrada.');
         } catch (Throwable $exception) {
-            $this->setFlash('error', trim($exception->getMessage()) !== '' ? $exception->getMessage() : 'Falha ao registrar decisao.');
+            $this->setFlash('error', trim($exception->getMessage()) !== '' ? $exception->getMessage() : 'Falha ao registrar decisão.');
         }
 
         $this->redirect('/candidates/' . $candidateId);
@@ -78,9 +78,9 @@ final class OperationsController extends Controller
 
         try {
             $this->operationsService->applyDocumentDecision($documentId, $decision, $message, $this->resolveOperator());
-            $this->setFlash('success', 'Analise documental registrada.');
+            $this->setFlash('success', 'Análise documental registrada.');
         } catch (Throwable $exception) {
-            $this->setFlash('error', trim($exception->getMessage()) !== '' ? $exception->getMessage() : 'Falha ao registrar analise documental.');
+            $this->setFlash('error', trim($exception->getMessage()) !== '' ? $exception->getMessage() : 'Falha ao registrar análise documental.');
         }
 
         $this->redirect($candidateId > 0 ? '/candidates/' . $candidateId : '/operations');
@@ -97,9 +97,9 @@ final class OperationsController extends Controller
 
         try {
             $this->operationsService->resolvePendency($pendencyId, $this->resolveOperator(), $message);
-            $this->setFlash('success', 'Pendencia resolvida.');
+            $this->setFlash('success', 'Pendência resolvida.');
         } catch (Throwable $exception) {
-            $this->setFlash('error', trim($exception->getMessage()) !== '' ? $exception->getMessage() : 'Falha ao resolver pendencia.');
+            $this->setFlash('error', trim($exception->getMessage()) !== '' ? $exception->getMessage() : 'Falha ao resolver pendência.');
         }
 
         $this->redirect($candidateId > 0 ? '/candidates/' . $candidateId : '/operations');

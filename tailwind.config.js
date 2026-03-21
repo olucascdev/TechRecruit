@@ -1,0 +1,77 @@
+module.exports = {
+    content: [
+        './src/**/*.php',
+        './public/**/*.php',
+    ],
+    safelist: [
+        'bg-primary',
+        'bg-success',
+        'bg-danger',
+        'bg-warning',
+        'bg-info',
+        'bg-dark',
+        'bg-secondary',
+        'text-bg-light',
+        'text-bg-success',
+        'text-bg-danger',
+    ],
+    theme: {
+        extend: {
+            fontFamily: {
+                sans: ['Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+                display: ['Space Grotesk', 'Manrope', 'ui-sans-serif', 'sans-serif'],
+            },
+            colors: {
+                ink: {
+                    50: '#f7f9fc',
+                    100: '#edf2f7',
+                    200: '#d8e1eb',
+                    300: '#b6c4d3',
+                    400: '#8aa0b6',
+                    500: '#627c96',
+                    600: '#49617a',
+                    700: '#354a60',
+                    800: '#223549',
+                    900: '#122235',
+                    950: '#09131f',
+                },
+                brand: {
+                    50: '#eff8ff',
+                    100: '#dbefff',
+                    200: '#bee2ff',
+                    300: '#90cdff',
+                    400: '#5db3ff',
+                    500: '#2f95fb',
+                    600: '#1676d9',
+                    700: '#145eab',
+                    800: '#154f8c',
+                    900: '#184373',
+                },
+                accent: {
+                    50: '#ecfdf8',
+                    100: '#d2f9ec',
+                    200: '#aaf1d9',
+                    300: '#76e3c0',
+                    400: '#3ecea2',
+                    500: '#18b287',
+                    600: '#0f8f6d',
+                    700: '#0f7259',
+                    800: '#105b48',
+                    900: '#104b3d',
+                },
+            },
+            boxShadow: {
+                soft: '0 20px 48px -28px rgba(9, 19, 31, 0.35)',
+                card: '0 18px 45px -24px rgba(15, 23, 42, 0.28)',
+                glow: '0 14px 35px -22px rgba(47, 149, 251, 0.65)',
+            },
+            borderRadius: {
+                '4xl': '2rem',
+            },
+        },
+    },
+    plugins: [
+        require('@tailwindcss/forms'),
+        require('@tailwindcss/typography'),
+    ],
+};

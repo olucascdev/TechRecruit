@@ -30,7 +30,7 @@ final class TriageBotService
             'options' => ['2'],
         ],
         'microinformatica' => [
-            'label' => 'Microinformatica',
+            'label' => 'Microinformática',
             'level' => 'N1',
             'keywords' => ['microinformatica', 'microinformatica', 'desktop', 'notebook', 'micro'],
             'options' => ['3'],
@@ -215,7 +215,7 @@ final class TriageBotService
             'waiting_validation' => $this->handoffToOperator(
                 $session,
                 $messageBody,
-                'Candidato respondeu novamente enquanto aguardava validacao manual.'
+                'Candidato respondeu novamente enquanto aguardava validação manual.'
             ),
             'completed' => $this->buildStaticResult($session, [
                 'parsed_intent' => $parsedIntent,
@@ -266,7 +266,7 @@ final class TriageBotService
     public function buildInitialOfferMessage(string $cityLabel): string
     {
         return trim(sprintf(
-            "W13 Tecnologia - Cadastro de Tecnicos de Campo\n\nOla, tudo bem?\nEstamos expandindo nossa operacao nacional e buscamos tecnicos parceiros na sua regiao para atendimentos em campo.\n\nRegiao alvo: %s\n\nVoce tem interesse em prestar servicos para a W13?\n\nResponda:\n1 - SIM\n2 - NAO\n3 - MAIS INFORMACOES",
+            "W13 Tecnologia - Cadastro de Técnicos de Campo\n\nOlá, tudo bem?\nEstamos expandindo nossa operação nacional e buscamos técnicos parceiros na sua região para atendimentos em campo.\n\nRegião alvo: %s\n\nVocê tem interesse em prestar serviços para a W13?\n\nResponda:\n1 - SIM\n2 - NÃO\n3 - MAIS INFORMAÇÕES",
             $cityLabel
         ));
     }
@@ -356,7 +356,7 @@ final class TriageBotService
             $messageBody,
             'initial_offer',
             $this->buildInitialOfferRetryMessage(),
-            'Resposta invalida no menu inicial.'
+            'Resposta inválida no menu inicial.'
         );
     }
 
@@ -415,7 +415,7 @@ final class TriageBotService
             $messageBody,
             'details_followup',
             $this->buildDetailsRetryMessage(),
-            'Resposta invalida apos envio de mais informacoes.'
+            'Resposta inválida após envio de mais informações.'
         );
     }
 
@@ -532,7 +532,7 @@ final class TriageBotService
             $messageBody,
             'field_readiness',
             $this->buildFieldReadinessRetryMessage(),
-            'Qualificacao tecnica e de seguranca enviada em formato insuficiente.'
+            'Qualificação técnica e de segurança enviada em formato insuficiente.'
         );
     }
 
@@ -575,7 +575,7 @@ final class TriageBotService
             $messageBody,
             'approval_confirmation',
             "Confirma disponibilidade para a programacao?\n\nResponda:\n1 - CONFIRMO\n2 - NAO POSSO",
-            'Resposta invalida na confirmacao da atividade.'
+            'Resposta inválida na confirmação da atividade.'
         );
     }
 
@@ -1151,7 +1151,7 @@ final class TriageBotService
             'status' => $status,
             'status_label' => $statusLabel,
             'technical_level' => $technicalLevel,
-            'technical_level_label' => $technicalLevel ?? 'Nao classificado',
+            'technical_level_label' => $technicalLevel ?? 'Não classificado',
             'field_level' => $fieldLevel,
             'field_level_label' => $fieldLevelLabel,
             'service_keys' => $serviceKeys,
@@ -1468,22 +1468,22 @@ final class TriageBotService
 
     private function buildPreFilterPromptMessage(): string
     {
-        return "Perfeito! Vamos fazer seu pre-cadastro na W13.\n\nPor favor, envie:\n- Cidade / UF\n- Possui MEI ativo? (obrigatorio)\n- Possui notebook?\n- Possui cabo console?\n- Quais servicos voce atende?\n1 - VSAT\n2 - Redes / Firewall\n3 - Microinformatica\n4 - Impressoras\n5 - Cabeamento\n6 - Servidores\n- Tem disponibilidade imediata?\n\nResponda idealmente assim:\nCidade/UF: Sao Mateus/ES\nMEI ativo: sim\nNotebook: sim\nCabo console: nao\nServicos: 2, 3, 5\nDisponibilidade imediata: sim";
+        return "Perfeito! Vamos fazer seu pré-cadastro na W13.\n\nPor favor, envie:\n- Cidade / UF\n- Possui MEI ativo? (obrigatório)\n- Possui notebook?\n- Possui cabo console?\n- Quais serviços você atende?\n1 - VSAT\n2 - Redes / Firewall\n3 - Microinformática\n4 - Impressoras\n5 - Cabeamento\n6 - Servidores\n- Tem disponibilidade imediata?\n\nResponda idealmente assim:\nCidade/UF: São Mateus/ES\nMEI ativo: sim\nNotebook: sim\nCabo console: não\nServiços: 2, 3, 5\nDisponibilidade imediata: sim";
     }
 
     private function buildFieldReadinessPromptMessage(): string
     {
-        return "Otimo. Agora preciso validar sua aptidao para atividades em campo.\n\nVoce possui:\n- ASO valido?\n- NR10?\n- NR35?\n\nPossui ferramental completo para atendimento?\nExemplos: multimetro, kit de ferramentas, alicate de crimpagem, testador de rede, escada.\n\nEnvie idealmente assim:\nASO: sim\nNR10: sim\nNR35: nao\nFerramental completo: sim\nFerramentas: multimetro, kit de ferramentas, alicate de crimpagem";
+        return "Ótimo. Agora preciso validar sua aptidão para atividades em campo.\n\nVocê possui:\n- ASO válido?\n- NR10?\n- NR35?\n\nPossui ferramental completo para atendimento?\nExemplos: multímetro, kit de ferramentas, alicate de crimpagem, testador de rede, escada.\n\nEnvie idealmente assim:\nASO: sim\nNR10: sim\nNR35: não\nFerramental completo: sim\nFerramentas: multímetro, kit de ferramentas, alicate de crimpagem";
     }
 
     private function buildNotInterestedMessage(): string
     {
-        return "Sem problemas. Obrigado pelo retorno.\n\nVamos manter seu contato em nossa base para futuras oportunidades na sua regiao.\n\nEquipe W13 Tecnologia";
+        return "Sem problemas. Obrigado pelo retorno.\n\nVamos manter seu contato em nossa base para futuras oportunidades na sua região.\n\nEquipe W13 Tecnologia";
     }
 
     private function buildDetailsMessage(): string
     {
-        return "Claro. Seguem mais informacoes sobre a base tecnica W13:\n\n- Atendimentos em campo em operacao nacional\n- Acionamentos por WhatsApp\n- Necessidade de padrao tecnico e documental\n- Prioridade para tecnicos com MEI, disponibilidade e seguranca regularizada\n\nSe quiser seguir com o pre-cadastro, responda:\nSIM";
+        return "Claro. Seguem mais informações sobre a base técnica W13:\n\n- Atendimentos em campo em operação nacional\n- Acionamentos por WhatsApp\n- Necessidade de padrão técnico e documental\n- Prioridade para técnicos com MEI, disponibilidade e segurança regularizada\n\nSe quiser seguir com o pré-cadastro, responda:\nSIM";
     }
 
     /**
@@ -1492,34 +1492,34 @@ final class TriageBotService
     private function buildFieldReadinessAckMessage(array $classification): string
     {
         $statusLabel = (string) ($classification['status_label'] ?? 'Pendente');
-        $technicalLevel = (string) ($classification['technical_level_label'] ?? 'Nao classificado');
+        $technicalLevel = (string) ($classification['technical_level_label'] ?? 'Não classificado');
         $fieldLevel = (string) ($classification['field_level_label'] ?? 'Restrito');
         $serviceLabels = $classification['service_labels'] ?? [];
         $servicesLine = is_array($serviceLabels) && $serviceLabels !== []
             ? implode(', ', array_map(static fn (mixed $value): string => (string) $value, $serviceLabels))
-            : 'Nao informado';
+            : 'Não informado';
 
-        return "Recebido.\n\nSua classificacao preliminar na W13 ficou assim:\n- Status: {$statusLabel}\n- Nivel tecnico: {$technicalLevel}\n- Nivel de campo: {$fieldLevel}\n- Especialidades: {$servicesLine}\n\nNossa equipe vai validar seu perfil e seguir com a etapa documental para liberar operacao.\n\nEquipe W13 Tecnologia";
+        return "Recebido.\n\nSua classificação preliminar na W13 ficou assim:\n- Status: {$statusLabel}\n- Nível técnico: {$technicalLevel}\n- Nível de campo: {$fieldLevel}\n- Especialidades: {$servicesLine}\n\nNossa equipe vai validar seu perfil e seguir com a etapa documental para liberar operação.\n\nEquipe W13 Tecnologia";
     }
 
     private function buildInitialOfferRetryMessage(): string
     {
-        return "Nao consegui identificar sua opcao.\n\nResponda com:\n1 - SIM\n2 - NAO\n3 - MAIS INFORMACOES";
+        return "Não consegui identificar sua opção.\n\nResponda com:\n1 - SIM\n2 - NÃO\n3 - MAIS INFORMAÇÕES";
     }
 
     private function buildDetailsRetryMessage(): string
     {
-        return "Se quiser seguir para o pre-cadastro, responda somente com:\nSIM\n\nSe nao tiver interesse, responda com:\n2";
+        return "Se quiser seguir para o pré-cadastro, responda somente com:\nSIM\n\nSe não tiver interesse, responda com:\n2";
     }
 
     private function buildPreFilterRetryMessage(): string
     {
-        return "Para seguir com o pre-cadastro W13, preciso receber estes dados na mesma resposta:\n\n- Cidade / UF\n- MEI ativo\n- Possui notebook\n- Possui cabo console\n- Quais servicos atende\n- Disponibilidade imediata";
+        return "Para seguir com o pré-cadastro W13, preciso receber estes dados na mesma resposta:\n\n- Cidade / UF\n- MEI ativo\n- Possui notebook\n- Possui cabo console\n- Quais serviços atende\n- Disponibilidade imediata";
     }
 
     private function buildFieldReadinessRetryMessage(): string
     {
-        return "Para validar sua aptidao de campo, preciso destes dados na mesma resposta:\n\n- ASO valido\n- NR10\n- NR35\n- Ferramental completo\n- Lista resumida das ferramentas";
+        return "Para validar sua aptidão de campo, preciso destes dados na mesma resposta:\n\n- ASO válido\n- NR10\n- NR35\n- Ferramental completo\n- Lista resumida das ferramentas";
     }
 
     private function buildOperatorFallbackMessage(): string
@@ -1529,11 +1529,11 @@ final class TriageBotService
 
     private function buildApprovalAcceptedMessage(): string
     {
-        return "Perfeito.\n\nVoce foi confirmado na programacao da W13.\nEm breve nossa equipe enviara os dados da atividade, orientacoes e procedimento de campo.\n\nEquipe W13 Tecnologia";
+        return "Perfeito.\n\nVocê foi confirmado na programação da W13.\nEm breve nossa equipe enviará os dados da atividade, orientações e procedimento de campo.\n\nEquipe W13 Tecnologia";
     }
 
     private function buildApprovalDeclinedMessage(): string
     {
-        return "Tudo certo. Obrigado pelo retorno.\n\nVamos manter seu contato na base da W13 para proximas oportunidades.\n\nEquipe W13 Tecnologia";
+        return "Tudo certo. Obrigado pelo retorno.\n\nVamos manter seu contato na base da W13 para próximas oportunidades.\n\nEquipe W13 Tecnologia";
     }
 }

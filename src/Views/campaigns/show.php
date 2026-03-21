@@ -68,7 +68,7 @@ $activityClass = static function (string $eventType): string {
             </span>
         </div>
         <p class="text-muted mb-0">Criada em <?= $escape($campaign['created_at'] ?? '-') ?> por <?= $escape($campaign['created_by'] ?? '-') ?></p>
-        <p class="text-muted small mb-0">Modo: <?= $escape(($campaign['automation_type'] ?? 'broadcast') === 'triage_w13' ? 'Bot de triagem W13' : 'Broadcast manual') ?></p>
+        <p class="text-muted small mb-0">Modo: <?= $escape(($campaign['automation_type'] ?? 'broadcast') === 'triage_w13' ? 'Bot de triagem W13' : 'Disparo manual') ?></p>
     </div>
     <div class="d-flex flex-wrap gap-2">
         <form method="post" action="/campaigns/<?= $escape($campaign['id'] ?? 0) ?>/process" class="d-flex flex-wrap align-items-end gap-2">
@@ -84,7 +84,7 @@ $activityClass = static function (string $eventType): string {
                     value="<?= $escape($defaultBatchLimit) ?>"
                 >
             </div>
-            <div class="form-check mb-2">
+            <label for="auto_process_campaign" class="inline-flex min-h-[46px] w-full items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 sm:mb-0 sm:w-auto sm:min-w-[190px] sm:shrink-0 sm:self-end">
                 <input
                     class="form-check-input"
                     type="checkbox"
@@ -92,12 +92,12 @@ $activityClass = static function (string $eventType): string {
                     id="auto_process_campaign"
                     data-auto-process-toggle="campaign"
                 >
-                <label class="form-check-label small" for="auto_process_campaign">
+                <span class="small whitespace-nowrap text-slate-700">
                     Auto a cada <?= $escape($autoProcessIntervalSeconds) ?>s
-                </label>
-            </div>
+                </span>
+            </label>
             <button type="submit" class="btn btn-primary">Processar fila</button>
-            <div class="small text-muted w-100" data-auto-process-status="campaign">
+            <div class="small text-muted w-100 min-h-[20px] leading-5" data-auto-process-status="campaign">
                 Deixe ligado se quiser esta campanha rodando sozinha no navegador.
             </div>
         </form>
@@ -113,13 +113,13 @@ $activityClass = static function (string $eventType): string {
         <a href="/campaigns" class="btn btn-outline-dark">Voltar</a>
     </div>
 </div>
-<p class="text-muted small mt-1 mb-4">O processamento roda em lotes. Falhas de envio entram em retry automatico com backoff e jobs travados sao recolocados na fila.</p>
+<p class="text-muted small mt-1 mb-4">O processamento roda em lotes. Falhas de envio entram em retry automático com backoff e jobs travados são recolocados na fila.</p>
 
 <div class="row g-4 mb-4">
     <div class="col-md-2">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body">
-                <div class="text-muted small">Publico capturado</div>
+                <div class="text-muted small">Público capturado</div>
                 <div class="fs-3 fw-semibold"><?= $escape($campaign['audience_count'] ?? 0) ?></div>
             </div>
         </div>
@@ -243,7 +243,7 @@ $pageScripts = <<<HTML
             }
 
             setStatus(
-                `Ultimo lote: \${result.processed} item(ns), \${result.sent} enviado(s), \${result.failed} falha(s), \${result.opt_out} opt-out. Status: \${result.status || '-'}.`,
+                `Último lote: \${result.processed} item(ns), \${result.sent} enviado(s), \${result.failed} falha(s), \${result.opt_out} opt-out. Status: \${result.status || '-'}.`,
                 'text-success'
             );
 
@@ -297,7 +297,7 @@ HTML;
         <div class="col-md-2">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
-                    <div class="text-muted small">Nao interessados</div>
+                    <div class="text-muted small">Não interessados</div>
                     <div class="fs-3 fw-semibold"><?= $escape($triageStats['not_interested_count'] ?? 0) ?></div>
                 </div>
             </div>
@@ -313,7 +313,7 @@ HTML;
         <div class="col-md-3">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
-                    <div class="text-muted small">Aguardando validacao</div>
+                    <div class="text-muted small">Aguardando validação</div>
                     <div class="fs-3 fw-semibold"><?= $escape($triageStats['awaiting_validation_count'] ?? 0) ?></div>
                 </div>
             </div>
@@ -333,9 +333,9 @@ HTML;
     <div class="col-lg-4">
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body">
-                <h2 class="h5 mb-3">Segmentacao aplicada</h2>
+                <h2 class="h5 mb-3">Segmentação aplicada</h2>
                 <?php if ($filters === []): ?>
-                    <p class="text-muted mb-0">Sem filtros especificos. A campanha usou toda a base elegivel com contato valido.</p>
+                    <p class="text-muted mb-0">Sem filtros específicos. A campanha usou toda a base elegível com contato válido.</p>
                 <?php else: ?>
                     <ul class="list-group list-group-flush">
                         <?php foreach ($filters as $label => $value): ?>
@@ -361,7 +361,7 @@ HTML;
                 <h2 class="h5 mb-3">Simular retorno inbound</h2>
                 <form method="post" action="/campaigns/<?= $escape($campaign['id'] ?? 0) ?>/reply" class="row g-3">
                     <div class="col-12">
-                        <label for="campaign_recipient_id" class="form-label">Destinatario</label>
+                        <label for="campaign_recipient_id" class="form-label">Destinatário</label>
                         <select id="campaign_recipient_id" name="campaign_recipient_id" class="form-select" required>
                             <option value="">Selecione</option>
                             <?php foreach ($recipients as $recipient): ?>
@@ -376,9 +376,9 @@ HTML;
                         <textarea id="message_body" name="message_body" class="form-control" rows="4" required></textarea>
                         <div class="form-text">
                             <?php if ($isTriageCampaign): ?>
-                                Exemplos: `1`, `2`, `3`, `SIM` ou a qualificacao completa do tecnico.
+                                Exemplos: `1`, `2`, `3`, `SIM` ou a qualificação completa do técnico.
                             <?php else: ?>
-                                Exemplos: `sim tenho interesse`, `nao tenho interesse`, `sair da lista`.
+                                Exemplos: `sim tenho interesse`, `não tenho interesse`, `sair da lista`.
                             <?php endif; ?>
                         </div>
                     </div>
@@ -400,7 +400,7 @@ HTML;
         <div class="card border-0 shadow-sm">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
-                    <h2 class="h5 mb-0">Destinatarios da campanha</h2>
+                    <h2 class="h5 mb-0">Destinatários da campanha</h2>
                     <span class="text-muted small"><?= $escape(count($recipients)) ?> registro(s)</span>
                 </div>
                 <div class="table-responsive">
@@ -420,7 +420,7 @@ HTML;
                         <tbody>
                         <?php if ($recipients === []): ?>
                             <tr>
-                                <td colspan="<?= $isTriageCampaign ? '6' : '5' ?>" class="text-center text-muted py-4">Nenhum destinatario capturado nesta campanha.</td>
+                                <td colspan="<?= $isTriageCampaign ? '6' : '5' ?>" class="text-center text-muted py-4">Nenhum destinatário capturado nesta campanha.</td>
                             </tr>
                         <?php else: ?>
                             <?php foreach ($recipients as $recipient): ?>
@@ -445,7 +445,7 @@ HTML;
                                                         <?= $escape(ucwords(str_replace('_', ' ', (string) ($recipient['triage_status'] ?? 'sent')))) ?>
                                                     </span>
                                                 </div>
-                                                <div class="small text-muted">Step: <?= $escape($recipient['triage_step'] ?? '-') ?></div>
+                                                <div class="small text-muted">Etapa: <?= $escape($recipient['triage_step'] ?? '-') ?></div>
                                                 <div class="small text-muted">Fluxo: <?= $escape($recipient['triage_automation_status'] ?? '-') ?></div>
                                                 <?php $prefilter = is_array($recipient['collected_data']['prefilter'] ?? null) ? $recipient['collected_data']['prefilter'] : []; ?>
                                                 <?php $classification = is_array($recipient['collected_data']['classification'] ?? null) ? $recipient['collected_data']['classification'] : []; ?>
@@ -461,7 +461,7 @@ HTML;
                                                     <div class="small text-danger mt-1">Operador: <?= $escape($recipient['fallback_reason'] ?? 'pendente') ?></div>
                                                 <?php endif; ?>
                                             <?php else: ?>
-                                                <span class="text-muted small">Sem sessao ainda</span>
+                                                <span class="text-muted small">Sem sessão ainda</span>
                                             <?php endif; ?>
                                         </td>
                                     <?php endif; ?>
@@ -486,7 +486,7 @@ HTML;
                         <tr>
                             <th>Candidato</th>
                             <th>Mensagem</th>
-                            <th>Intencao</th>
+                            <th>Intenção</th>
                             <th>Recebido em</th>
                         </tr>
                         </thead>

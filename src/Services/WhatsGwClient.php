@@ -59,14 +59,14 @@ final class WhatsGwClient
     public function sendTextMessage(string $contactPhoneNumber, string $messageBody, array $options = []): array
     {
         if (!$this->isConfigured()) {
-            throw new InvalidArgumentException('WhatsGW nao configurado. Defina WHATSGW_API_KEY e WHATSGW_PHONE_NUMBER ou WHATSGW_INSTANCE_ID.');
+            throw new InvalidArgumentException('WhatsGW não configurado. Defina WHATSGW_API_KEY e WHATSGW_PHONE_NUMBER ou WHATSGW_INSTANCE_ID.');
         }
 
         $contactPhoneNumber = $this->normalizePhone($contactPhoneNumber);
         $messageBody = trim($messageBody);
 
         if ($contactPhoneNumber === null || $contactPhoneNumber === '') {
-            throw new InvalidArgumentException('Contato de destino invalido para envio no WhatsGW.');
+            throw new InvalidArgumentException('Contato de destino inválido para envio no WhatsGW.');
         }
 
         if ($messageBody === '') {
@@ -105,7 +105,7 @@ final class WhatsGwClient
     private function postJson(string $path, array $payload): array
     {
         if (!function_exists('curl_init')) {
-            throw new InvalidArgumentException('Extensao curl nao disponivel para integrar com o WhatsGW.');
+            throw new InvalidArgumentException('Extensão cURL não disponível para integrar com o WhatsGW.');
         }
 
         $encodedPayload = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

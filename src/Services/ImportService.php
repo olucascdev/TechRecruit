@@ -51,7 +51,7 @@ final class ImportService
     public function run(string $filepath, string $operator): array
     {
         if (!is_file($filepath) || !is_readable($filepath)) {
-            throw new RuntimeException('Import file not found or is not readable.');
+            throw new RuntimeException('Arquivo de importação não encontrado ou sem permissão de leitura.');
         }
 
         $batchId = $this->createBatch(basename($filepath), $operator);
@@ -65,7 +65,7 @@ final class ImportService
             [$headerRowNumber, $headers, $fieldMap, $highestColumn] = $this->resolveHeaderMap($worksheet);
 
             if ($headerRowNumber === 0 || $fieldMap === []) {
-                throw new RuntimeException('Could not identify a valid header row in the spreadsheet.');
+                throw new RuntimeException('Não foi possível identificar uma linha de cabeçalho válida na planilha.');
             }
 
             $highestRow = $worksheet->getHighestDataRow();
@@ -91,7 +91,7 @@ final class ImportService
                     ]);
 
                     if ($normalizedRow['full_name'] === '') {
-                        throw new RuntimeException('Missing required full_name value.');
+                        throw new RuntimeException('O campo obrigatório full_name não foi informado.');
                     }
 
                     $duplicateId = $this->findDuplicateCandidateId($normalizedRow);
@@ -102,7 +102,7 @@ final class ImportService
                             $rowNumber,
                             $rawPayload,
                             'duplicate',
-                            'Duplicate candidate found by CPF, primary phone or email.',
+                            'Candidato duplicado encontrado por CPF, telefone principal ou e-mail.',
                             $duplicateId
                         );
                         $duplicates++;
@@ -150,7 +150,7 @@ final class ImportService
         } catch (Throwable $exception) {
             $this->updateBatch($batchId, $total, $imported, $errors, 'failed');
 
-            throw new ImportProcessException('Import failed.', $batchId, $exception);
+            throw new ImportProcessException('A importação falhou.', $batchId, $exception);
         }
     }
 
@@ -159,7 +159,7 @@ final class ImportService
         $extension = strtolower(pathinfo($filepath, PATHINFO_EXTENSION));
 
         if (!in_array($extension, ['xls', 'xlsx'], true)) {
-            throw new RuntimeException('Unsupported file extension for import.');
+            throw new RuntimeException('Extensão de arquivo não suportada para importação.');
         }
 
         $reader = IOFactory::createReaderForFile($filepath);
@@ -371,15 +371,15 @@ final class ImportService
         $emailRaw = trim((string) ($mappedRow['email'] ?? ''));
 
         if ($phoneRaw !== '' && $normalizedRow['phone'] === null) {
-            throw new RuntimeException('Invalid phone value.');
+            throw new RuntimeException('Valor de telefone inválido.');
         }
 
         if ($whatsappRaw !== '' && $normalizedRow['whatsapp'] === null) {
-            throw new RuntimeException('Invalid whatsapp value.');
+            throw new RuntimeException('Valor de WhatsApp inválido.');
         }
 
         if ($emailRaw !== '' && $normalizedRow['email'] === null) {
-            throw new RuntimeException('Invalid email value.');
+            throw new RuntimeException('Valor de e-mail inválido.');
         }
     }
 
@@ -683,7 +683,7 @@ final class ImportService
             'from_status' => 'imported',
             'to_status' => 'imported',
             'changed_by' => $operator,
-            'reason' => 'Initial status assigned by import.',
+            'reason' => 'Status inicial atribuído pela importação.',
         ]);
     }
 

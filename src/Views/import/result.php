@@ -21,7 +21,7 @@ foreach ($rows as $row) {
 ?>
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
     <div>
-        <h1 class="h3 mb-1">Resultado da importacao</h1>
+        <h1 class="h3 mb-1">Resultado da importação</h1>
         <p class="text-muted mb-0"><?= $escape($batch['filename'] ?? '') ?></p>
     </div>
     <div class="d-flex gap-2">

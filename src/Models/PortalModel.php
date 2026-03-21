@@ -31,7 +31,7 @@ final class PortalModel
             'required' => true,
         ],
         'comprovante_residencia' => [
-            'label' => 'Comprovante de residencia',
+            'label' => 'Comprovante de residência',
             'required' => true,
         ],
         'cartao_mei' => [
@@ -39,7 +39,7 @@ final class PortalModel
             'required' => true,
         ],
         'aso' => [
-            'label' => 'ASO valido',
+            'label' => 'ASO válido',
             'required' => true,
         ],
         'nr10' => [
@@ -51,11 +51,11 @@ final class PortalModel
             'required' => true,
         ],
         'curriculo' => [
-            'label' => 'Curriculo',
+            'label' => 'Currículo',
             'required' => false,
         ],
         'certificado_tecnico' => [
-            'label' => 'Certificado tecnico adicional',
+            'label' => 'Certificado técnico adicional',
             'required' => false,
         ],
         'outro' => [

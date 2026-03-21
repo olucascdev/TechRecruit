@@ -42,7 +42,7 @@ $campaignStatusClass = static function (string $status): string {
                 value="<?= $escape($defaultBatchLimit) ?>"
             >
         </div>
-        <div class="form-check mb-2">
+        <label for="auto_process_global" class="inline-flex min-h-[46px] w-full items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 sm:mb-0 sm:w-auto sm:min-w-[190px] sm:shrink-0 sm:self-end">
             <input
                 class="form-check-input"
                 type="checkbox"
@@ -50,13 +50,13 @@ $campaignStatusClass = static function (string $status): string {
                 id="auto_process_global"
                 data-auto-process-toggle="global"
             >
-            <label class="form-check-label small" for="auto_process_global">
+            <span class="small whitespace-nowrap text-slate-700">
                 Auto a cada <?= $escape($autoProcessIntervalSeconds) ?>s
-            </label>
-        </div>
+            </span>
+        </label>
         <button type="submit" class="btn btn-outline-primary">Processar fila pendente</button>
-        <div class="small text-muted w-100" data-auto-process-status="global">
-            Use esta opcao se quiser deixar a tela rodando como agendador interno no navegador.
+        <div class="small text-muted w-100 min-h-[20px] leading-5" data-auto-process-status="global">
+            Use esta opção se quiser deixar a tela rodando como agendador interno no navegador.
         </div>
     </form>
 </div>
@@ -68,7 +68,7 @@ $campaignStatusClass = static function (string $status): string {
                 <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
                     <div>
                         <h2 class="h5 mb-1">Nova campanha</h2>
-                        <p class="text-muted mb-0 small">Cria a campanha, snapshot dos destinatarios, fila de mensagens e, se aplicavel, sessao do bot de triagem.</p>
+                        <p class="text-muted mb-0 small">Cria a campanha, snapshot dos destinatários, fila de mensagens e, se aplicável, sessão do bot de triagem.</p>
                     </div>
                     <?php if ($audienceEstimate !== null): ?>
                         <span class="badge text-bg-light border">
@@ -95,7 +95,7 @@ $campaignStatusClass = static function (string $status): string {
                         >
                     </div>
                     <div class="col-12">
-                        <label for="automation_type" class="form-label">Modo da automacao</label>
+                        <label for="automation_type" class="form-label">Modo da automação</label>
                         <select id="automation_type" name="automation_type" class="form-select">
                             <?php foreach ($automationTypes as $value => $label): ?>
                                 <option value="<?= $escape($value) ?>" <?= ($formData['automation_type'] ?? '') === $value ? 'selected' : '' ?>>
@@ -138,7 +138,7 @@ $campaignStatusClass = static function (string $status): string {
                         </select>
                     </div>
                     <div class="col-md-6">
-                        <label for="recipient_limit" class="form-label">Limite de destinatarios</label>
+                        <label for="recipient_limit" class="form-label">Limite de destinatários</label>
                         <input
                             type="number"
                             min="1"
@@ -170,7 +170,7 @@ $campaignStatusClass = static function (string $status): string {
                             rows="7"
                             required
                         ><?= $escape($formData['message_template'] ?? '') ?></textarea>
-                        <div class="form-text">Placeholders disponiveis: <code>{first_name}</code> e <code>{full_name}</code>.</div>
+                        <div class="form-text">Placeholders disponíveis: <code>{first_name}</code> e <code>{full_name}</code>.</div>
                     </div>
                     <div class="col-12 d-grid">
                         <button type="submit" class="btn btn-primary">Criar campanha e montar fila</button>
@@ -194,10 +194,10 @@ $campaignStatusClass = static function (string $status): string {
                             <th>Campanha</th>
                             <th>Modo</th>
                             <th>Status</th>
-                            <th>Publico</th>
+                            <th>Público</th>
                             <th>Fila</th>
                             <th>Resposta</th>
-                            <th class="text-end">Acao</th>
+                            <th class="text-end">Ação</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -319,7 +319,7 @@ $pageScripts = <<<HTML
             }
 
             setStatus(
-                `Ultimo lote: \${result.processed} item(ns), \${result.sent} enviado(s), \${result.failed} falha(s), \${result.opt_out} opt-out em \${result.campaigns} campanha(s).`,
+                `Último lote: \${result.processed} item(ns), \${result.sent} enviado(s), \${result.failed} falha(s), \${result.opt_out} opt-out em \${result.campaigns} campanha(s).`,
                 'text-success'
             );
 

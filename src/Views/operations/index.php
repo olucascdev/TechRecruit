@@ -8,7 +8,7 @@ $statusLabel = static fn (string $status): string => ucwords(str_replace('_', ' 
 ?>
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
     <div>
-        <h1 class="h3 mb-1">Fila de Analise Operacional</h1>
+        <h1 class="h3 mb-1">Fila de Análise Operacional</h1>
         <p class="text-muted mb-0">Candidatos com portal enviado e trabalho pendente para o operador.</p>
     </div>
     <span class="badge text-bg-light border"><?= $escape(count($queue)) ?> item(ns) na fila</span>
@@ -24,15 +24,15 @@ $statusLabel = static fn (string $status): string => ucwords(str_replace('_', ' 
                     <th>Status candidato</th>
                     <th>Status portal</th>
                     <th>Docs pendentes</th>
-                    <th>Pendencias abertas</th>
-                    <th>Ultima revisao</th>
-                    <th class="text-end">Acao</th>
+                    <th>Pendências abertas</th>
+                    <th>Última revisão</th>
+                    <th class="text-end">Ação</th>
                 </tr>
                 </thead>
                 <tbody>
                 <?php if ($queue === []): ?>
                     <tr>
-                        <td colspan="7" class="text-center text-muted py-4">Nenhum candidato aguardando analise operacional.</td>
+                        <td colspan="7" class="text-center text-muted py-4">Nenhum candidato aguardando análise operacional.</td>
                     </tr>
                 <?php else: ?>
                     <?php foreach ($queue as $item): ?>

@@ -31,15 +31,15 @@ function parseOptions(): array
 function printHelp(): void
 {
     echo <<<TEXT
-TechRecruit queue processor
+Processador de fila do TechRecruit
 
 Uso:
   php bin/process_campaign_queue.php [--limit=25] [--campaign-id=123] [--operator=cron] [--json]
 
 Opcoes:
   --limit         Quantidade maxima de itens a processar no ciclo.
-  --campaign-id   Processa apenas uma campanha especifica.
-  --operator      Identificador salvo no historico. Padrao: cron.
+  --campaign-id   Processa apenas uma campanha específica.
+  --operator      Identificador salvo no histórico. Padrão: cron.
   --json          Imprime o resultado em JSON.
   --help          Exibe esta ajuda.
 

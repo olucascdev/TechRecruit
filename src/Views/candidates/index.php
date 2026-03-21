@@ -43,7 +43,7 @@ $buildPageUrl = static function (int $targetPage) use ($filters): string {
         <h1 class="h3 mb-1">Candidatos</h1>
         <p class="text-muted mb-0"><?= $escape($total) ?> resultado(s) encontrado(s).</p>
     </div>
-    <a href="/import" class="btn btn-outline-primary">Nova importacao</a>
+    <a href="/import" class="btn btn-outline-primary">Nova importação</a>
 </div>
 
 <div class="card border-0 shadow-sm mb-4">
@@ -112,7 +112,7 @@ $buildPageUrl = static function (int $targetPage) use ($filters): string {
                     <th>WhatsApp</th>
                     <th>Estado</th>
                     <th>Status</th>
-                    <th class="text-end">Acoes</th>
+                    <th class="text-end">Ações</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -148,7 +148,7 @@ $buildPageUrl = static function (int $targetPage) use ($filters): string {
 
     <?php if ($totalPages > 1): ?>
         <div class="card-footer bg-white">
-            <nav aria-label="Paginacao de candidatos">
+            <nav aria-label="Paginação de candidatos">
                 <ul class="pagination justify-content-center mb-0">
                     <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
                         <a class="page-link" href="<?= $page <= 1 ? '#' : $escape($buildPageUrl($page - 1)) ?>">Anterior</a>
@@ -159,7 +159,7 @@ $buildPageUrl = static function (int $targetPage) use ($filters): string {
                         </li>
                     <?php endfor; ?>
                     <li class="page-item <?= $page >= $totalPages ? 'disabled' : '' ?>">
-                        <a class="page-link" href="<?= $page >= $totalPages ? '#' : $escape($buildPageUrl($page + 1)) ?>">Proxima</a>
+                        <a class="page-link" href="<?= $page >= $totalPages ? '#' : $escape($buildPageUrl($page + 1)) ?>">Próxima</a>
                     </li>
                 </ul>
             </nav>

@@ -74,7 +74,7 @@ final class CampaignController extends Controller
             $message = trim($exception->getMessage());
             $this->renderIndex(
                 $formData,
-                $message !== '' ? $message : 'Nao foi possivel criar a campanha neste momento.'
+                $message !== '' ? $message : 'Não foi possível criar a campanha neste momento.'
             );
         }
     }
@@ -85,7 +85,7 @@ final class CampaignController extends Controller
 
         if ($campaign === null) {
             http_response_code(404);
-            echo 'Campaign not found.';
+            echo 'Campanha não encontrada.';
 
             return;
         }
@@ -166,7 +166,7 @@ final class CampaignController extends Controller
         if (strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
             $this->json([
                 'success' => false,
-                'message' => 'Metodo nao permitido.',
+                'message' => 'Método não permitido.',
             ], 405);
         }
 
@@ -205,7 +205,7 @@ final class CampaignController extends Controller
         if (strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
             $this->json([
                 'success' => false,
-                'message' => 'Metodo nao permitido.',
+                'message' => 'Método não permitido.',
             ], 405);
         }
 
@@ -314,11 +314,11 @@ final class CampaignController extends Controller
             $message = sprintf('Retorno registrado com sucesso. Intencao identificada: %s.', $result['intent'] ?? 'unknown');
 
             if (!empty($result['auto_reply'])) {
-                $message .= ' Resposta automatica gerada pelo bot.';
+                $message .= ' Resposta automática gerada pelo bot.';
             }
 
             if (isset($result['auto_reply_dispatch']['success']) && $result['auto_reply_dispatch']['success'] === false) {
-                $message .= ' O envio automatico pelo WhatsGW falhou e precisa de conferência manual.';
+                $message .= ' O envio automático pelo WhatsGW falhou e precisa de conferência manual.';
             }
 
             if (!empty($result['needs_operator'])) {
@@ -361,7 +361,7 @@ final class CampaignController extends Controller
         $this->render('campaigns/index', [
             'campaigns' => $this->campaignModel->findAll(),
             'automationTypes' => [
-                'broadcast' => 'Broadcast manual',
+                'broadcast' => 'Disparo manual',
                 TriageBotService::AUTOMATION_TYPE => 'Bot de triagem W13',
             ],
             'skills' => $this->fetchDistinctValues('SELECT DISTINCT skill FROM recruit_candidate_skills ORDER BY skill ASC'),

@@ -117,7 +117,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         } catch (error) {
             feedback.className = 'alert alert-danger';
-            feedback.textContent = 'Nao foi possivel atualizar o status.';
+            feedback.textContent = 'Não foi possível atualizar o status.';
         }
     });
 });
@@ -141,8 +141,8 @@ HTML;
     <div class="card-body">
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
             <div>
-                <h2 class="h5 mb-1">Classificacao W13</h2>
-                <p class="text-muted mb-0">Leitura consolidada da triagem automatica antes do portal e da operacao.</p>
+                <h2 class="h5 mb-1">Classificação W13</h2>
+                <p class="text-muted mb-0">Leitura consolidada da triagem automática antes do portal e da operação.</p>
             </div>
             <?php if ($triageSession !== []): ?>
                 <span class="badge bg-<?= $triageStatusBadge((string) ($triageSession['triage_status'] ?? 'sent')) ?>">
@@ -152,7 +152,7 @@ HTML;
         </div>
 
         <?php if ($triageSession === []): ?>
-            <div class="alert alert-light border mb-0">Nenhuma sessao de triagem encontrada para este candidato ainda.</div>
+            <div class="alert alert-light border mb-0">Nenhuma sessão de triagem encontrada para este candidato ainda.</div>
         <?php else: ?>
             <div class="row g-4">
                 <div class="col-lg-4">
@@ -173,12 +173,12 @@ HTML;
                                     -
                                 <?php endif; ?>
                             </dd>
-                            <dt class="col-sm-5">Nivel tecnico</dt>
+                            <dt class="col-sm-5">Nível técnico</dt>
                             <dd class="col-sm-7"><?= $escape($triageClassification['technical_level_label'] ?? '-') ?></dd>
-                            <dt class="col-sm-5">Nivel campo</dt>
+                            <dt class="col-sm-5">Nível campo</dt>
                             <dd class="col-sm-7"><?= $escape($triageClassification['field_level_label'] ?? '-') ?></dd>
                             <dt class="col-sm-5">Premium</dt>
-                            <dd class="col-sm-7"><?= !empty($triageClassification['premium_candidate']) ? 'Sim' : 'Nao' ?></dd>
+                            <dd class="col-sm-7"><?= !empty($triageClassification['premium_candidate']) ? 'Sim' : 'Não' ?></dd>
                         </dl>
                     </div>
                 </div>
@@ -190,13 +190,13 @@ HTML;
                             <dt class="col-sm-5">Cidade</dt>
                             <dd class="col-sm-7"><?= $escape(($triagePreFilter['city'] ?? '-') . ' / ' . ($triagePreFilter['state'] ?? '-')) ?></dd>
                             <dt class="col-sm-5">MEI ativo</dt>
-                            <dd class="col-sm-7"><?= isset($triagePreFilter['mei_active']) ? (($triagePreFilter['mei_active'] ?? false) ? 'Sim' : 'Nao') : '-' ?></dd>
+                            <dd class="col-sm-7"><?= isset($triagePreFilter['mei_active']) ? (($triagePreFilter['mei_active'] ?? false) ? 'Sim' : 'Não') : '-' ?></dd>
                             <dt class="col-sm-5">Notebook</dt>
-                            <dd class="col-sm-7"><?= isset($triagePreFilter['has_notebook']) ? (($triagePreFilter['has_notebook'] ?? false) ? 'Sim' : 'Nao') : '-' ?></dd>
+                            <dd class="col-sm-7"><?= isset($triagePreFilter['has_notebook']) ? (($triagePreFilter['has_notebook'] ?? false) ? 'Sim' : 'Não') : '-' ?></dd>
                             <dt class="col-sm-5">Console</dt>
-                            <dd class="col-sm-7"><?= isset($triagePreFilter['has_console_cable']) ? (($triagePreFilter['has_console_cable'] ?? false) ? 'Sim' : 'Nao') : '-' ?></dd>
+                            <dd class="col-sm-7"><?= isset($triagePreFilter['has_console_cable']) ? (($triagePreFilter['has_console_cable'] ?? false) ? 'Sim' : 'Não') : '-' ?></dd>
                             <dt class="col-sm-5">Disponibilidade</dt>
-                            <dd class="col-sm-7"><?= isset($triagePreFilter['immediate_availability']) ? (($triagePreFilter['immediate_availability'] ?? false) ? 'Imediata' : 'Nao imediata') : '-' ?></dd>
+                            <dd class="col-sm-7"><?= isset($triagePreFilter['immediate_availability']) ? (($triagePreFilter['immediate_availability'] ?? false) ? 'Imediata' : 'Não imediata') : '-' ?></dd>
                         </dl>
                         <div class="small text-muted mt-3">Especialidades</div>
                         <div class="fw-semibold"><?= $escape(($triageClassification['service_labels'] ?? []) !== [] ? implode(', ', $triageClassification['service_labels']) : '-') ?></div>
@@ -205,19 +205,19 @@ HTML;
 
                 <div class="col-lg-4">
                     <div class="border rounded p-3 h-100">
-                        <h3 class="h6 mb-3">Seguranca e ferramental</h3>
+                        <h3 class="h6 mb-3">Segurança e ferramental</h3>
                         <dl class="row mb-0">
                             <dt class="col-sm-5">ASO</dt>
-                            <dd class="col-sm-7"><?= isset($triageFieldReadiness['has_aso']) ? (($triageFieldReadiness['has_aso'] ?? false) ? 'Sim' : 'Nao') : '-' ?></dd>
+                            <dd class="col-sm-7"><?= isset($triageFieldReadiness['has_aso']) ? (($triageFieldReadiness['has_aso'] ?? false) ? 'Sim' : 'Não') : '-' ?></dd>
                             <dt class="col-sm-5">NR10</dt>
-                            <dd class="col-sm-7"><?= isset($triageFieldReadiness['has_nr10']) ? (($triageFieldReadiness['has_nr10'] ?? false) ? 'Sim' : 'Nao') : '-' ?></dd>
+                            <dd class="col-sm-7"><?= isset($triageFieldReadiness['has_nr10']) ? (($triageFieldReadiness['has_nr10'] ?? false) ? 'Sim' : 'Não') : '-' ?></dd>
                             <dt class="col-sm-5">NR35</dt>
-                            <dd class="col-sm-7"><?= isset($triageFieldReadiness['has_nr35']) ? (($triageFieldReadiness['has_nr35'] ?? false) ? 'Sim' : 'Nao') : '-' ?></dd>
+                            <dd class="col-sm-7"><?= isset($triageFieldReadiness['has_nr35']) ? (($triageFieldReadiness['has_nr35'] ?? false) ? 'Sim' : 'Não') : '-' ?></dd>
                             <dt class="col-sm-5">Ferramental</dt>
                             <dd class="col-sm-7"><?= isset($triageFieldReadiness['has_complete_toolkit']) ? (($triageFieldReadiness['has_complete_toolkit'] ?? false) ? 'Completo' : 'Incompleto') : '-' ?></dd>
                         </dl>
                         <?php if (($triageClassification['missing_requirements'] ?? []) !== []): ?>
-                            <div class="small text-muted mt-3">Pendencias mapeadas</div>
+                            <div class="small text-muted mt-3">Pendências mapeadas</div>
                             <div class="small"><?= $escape(implode(', ', $triageClassification['missing_requirements'])) ?></div>
                         <?php endif; ?>
                     </div>
@@ -232,7 +232,7 @@ HTML;
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
             <div>
                 <h2 class="h5 mb-1">Portal de cadastro e documentos</h2>
-                <p class="text-muted mb-0">Link unico, formulario do candidato, checklist e anexos internos. Ao gerar, o sistema tenta enviar o link por WhatsApp automaticamente.</p>
+                <p class="text-muted mb-0">Link único, formulário do candidato, checklist e anexos internos. Ao gerar, o sistema tenta enviar o link por WhatsApp automaticamente.</p>
             </div>
             <form method="post" action="/candidates/<?= $escape($candidate['id'] ?? '') ?>/portal/generate">
                 <button type="submit" class="btn btn-outline-primary">
@@ -258,7 +258,7 @@ HTML;
                         <div class="small text-muted mb-2">Link para envio ao candidato</div>
                         <div class="small bg-light border rounded p-2 text-break mb-3"><?= $escape($portalUrl ?? '-') ?></div>
                         <dl class="row mb-3">
-                            <dt class="col-sm-6">Ultimo acesso</dt>
+                            <dt class="col-sm-6">Último acesso</dt>
                             <dd class="col-sm-6"><?= $escape($portal['last_accessed_at'] ?? '-') ?></dd>
                             <dt class="col-sm-6">Enviado em</dt>
                             <dd class="col-sm-6"><?= $escape($portal['submitted_at'] ?? '-') ?></dd>
@@ -288,14 +288,14 @@ HTML;
                     <div class="border rounded p-3 h-100">
                         <h3 class="h6 mb-3">Checklist documental</h3>
                         <?php if ($portalChecklist === []): ?>
-                            <p class="text-muted mb-0">Checklist indisponivel.</p>
+                            <p class="text-muted mb-0">Checklist indisponível.</p>
                         <?php else: ?>
                             <ul class="list-group list-group-flush">
                                 <?php foreach ($portalChecklist as $item): ?>
                                     <li class="list-group-item px-0 d-flex justify-content-between gap-3">
                                         <div>
                                             <div class="fw-semibold"><?= $escape($item['label']) ?></div>
-                                            <div class="small text-muted"><?= $item['required'] ? 'Obrigatorio' : 'Opcional' ?></div>
+                                            <div class="small text-muted"><?= $item['required'] ? 'Obrigatório' : 'Opcional' ?></div>
                                         </div>
                                         <span class="badge text-bg-<?= $item['received'] ? 'success' : 'light' ?>">
                                             <?= $escape($item['received'] ? 'Recebido' : 'Pendente') ?>
@@ -311,7 +311,7 @@ HTML;
                     <div class="border rounded p-3 h-100">
                         <h3 class="h6 mb-3">Cadastro preenchido</h3>
                         <?php if ($portalProfile === []): ?>
-                            <p class="text-muted mb-0">O candidato ainda nao enviou o formulario.</p>
+                            <p class="text-muted mb-0">O candidato ainda não enviou o formulário.</p>
                         <?php else: ?>
                             <dl class="row mb-0">
                                 <dt class="col-sm-5">Nome</dt>
@@ -339,7 +339,7 @@ HTML;
                     <div class="border rounded p-3 h-100">
                         <h3 class="h6 mb-3">Resumo profissional</h3>
                         <?php if ($portalProfile === []): ?>
-                            <p class="text-muted mb-0">Sem experiencia registrada no portal.</p>
+                            <p class="text-muted mb-0">Sem experiência registrada no portal.</p>
                         <?php else: ?>
                             <p class="mb-2"><?= nl2br($escape($portalProfile['experience_summary'] ?? '-')) ?></p>
                             <?php if (!empty($portalProfile['notes'])): ?>
@@ -394,8 +394,8 @@ HTML;
         <div class="card-body">
             <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
                 <div>
-                    <h2 class="h5 mb-1">Validacao operacional</h2>
-                    <p class="text-muted mb-0">Fila, decisoes, pendencias e historico da analise humana.</p>
+                    <h2 class="h5 mb-1">Validação operacional</h2>
+                    <p class="text-muted mb-0">Fila, decisões, pendências e histórico da análise humana.</p>
                 </div>
                 <a href="/operations" class="btn btn-outline-dark">Ver fila operacional</a>
             </div>
@@ -415,13 +415,13 @@ HTML;
                 </div>
                 <div class="col-md-3">
                     <div class="border rounded p-3 h-100">
-                        <div class="text-muted small">Pendencias abertas</div>
+                        <div class="text-muted small">Pendências abertas</div>
                         <div class="fs-4 fw-semibold"><?= $escape($operationSummary['open_pendencies'] ?? 0) ?></div>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="border rounded p-3 h-100">
-                        <div class="text-muted small">Docs com correcao</div>
+                        <div class="text-muted small">Docs com correção</div>
                         <div class="fs-4 fw-semibold"><?= $escape($operationSummary['correction_documents'] ?? 0) ?></div>
                     </div>
                 </div>
@@ -430,35 +430,35 @@ HTML;
             <div class="row g-4">
                 <div class="col-lg-4">
                     <div class="border rounded p-3 mb-4">
-                        <h3 class="h6 mb-3">Observacao interna</h3>
+                        <h3 class="h6 mb-3">Observação interna</h3>
                         <form method="post" action="/operations/candidates/<?= $escape($candidate['id'] ?? '') ?>/note" class="row g-2">
                             <div class="col-12">
-                                <textarea name="message" class="form-control" rows="4" placeholder="Ex.: Documento legivel, validar comprovante de residencia." required></textarea>
+                                <textarea name="message" class="form-control" rows="4" placeholder="Ex.: Documento legível, validar comprovante de residência." required></textarea>
                             </div>
                             <div class="col-12 d-grid">
-                                <button type="submit" class="btn btn-outline-secondary">Salvar observacao</button>
+                                <button type="submit" class="btn btn-outline-secondary">Salvar observação</button>
                             </div>
                         </form>
                     </div>
 
                     <div class="border rounded p-3">
-                        <h3 class="h6 mb-3">Decisao do candidato</h3>
+                        <h3 class="h6 mb-3">Decisão do candidato</h3>
                         <form method="post" action="/operations/candidates/<?= $escape($candidate['id'] ?? '') ?>/decision" class="row g-2">
                             <div class="col-12">
-                                <label for="decision" class="form-label">Acao</label>
+                                <label for="decision" class="form-label">Ação</label>
                                 <select id="decision" name="decision" class="form-select" required>
                                     <option value="">Selecione</option>
                                     <option value="approve">Aprovar</option>
-                                    <option value="request_correction">Pedir correcao</option>
+                                    <option value="request_correction">Pedir correção</option>
                                     <option value="reject">Reprovar</option>
                                 </select>
                             </div>
                             <div class="col-12">
-                                <label for="decision_message" class="form-label">Observacao / motivo</label>
-                                <textarea id="decision_message" name="message" class="form-control" rows="4" placeholder="Obrigatorio para correcao ou reprovacao."></textarea>
+                                <label for="decision_message" class="form-label">Observação / motivo</label>
+                                <textarea id="decision_message" name="message" class="form-control" rows="4" placeholder="Obrigatório para correção ou reprovação."></textarea>
                             </div>
                             <div class="col-12 d-grid">
-                                <button type="submit" class="btn btn-primary">Registrar decisao</button>
+                                <button type="submit" class="btn btn-primary">Registrar decisão</button>
                             </div>
                         </form>
                     </div>
@@ -466,7 +466,7 @@ HTML;
 
                 <div class="col-lg-8">
                     <div class="border rounded p-3 mb-4">
-                        <h3 class="h6 mb-3">Analise documental</h3>
+                        <h3 class="h6 mb-3">Análise documental</h3>
                         <?php if ($portalDocuments === []): ?>
                             <p class="text-muted mb-0">Nenhum documento para analisar.</p>
                         <?php else: ?>
@@ -476,7 +476,7 @@ HTML;
                                     <tr>
                                         <th>Documento</th>
                                         <th>Status</th>
-                                        <th>Acao</th>
+                                        <th>Ação</th>
                                     </tr>
                                     </thead>
                                     <tbody>
@@ -493,17 +493,17 @@ HTML;
                                                     <input type="hidden" name="candidate_id" value="<?= $escape($candidate['id'] ?? '') ?>">
                                                     <div class="col-md-5">
                                                         <select name="decision" class="form-select form-select-sm" required>
-                                                            <option value="">Acao</option>
+                                                            <option value="">Ação</option>
                                                             <option value="approve">Aprovar</option>
-                                                            <option value="request_correction">Pedir correcao</option>
+                                                            <option value="request_correction">Pedir correção</option>
                                                             <option value="reject">Reprovar</option>
                                                         </select>
                                                     </div>
                                                     <div class="col-md-7">
-                                                        <input type="text" name="message" class="form-control form-control-sm" placeholder="Motivo / observacao">
+                                                        <input type="text" name="message" class="form-control form-control-sm" placeholder="Motivo / observação">
                                                     </div>
                                                     <div class="col-12 d-grid">
-                                                        <button type="submit" class="btn btn-sm btn-outline-primary">Salvar analise</button>
+                                                        <button type="submit" class="btn btn-sm btn-outline-primary">Salvar análise</button>
                                                     </div>
                                                 </form>
                                             </td>
@@ -516,7 +516,7 @@ HTML;
                     </div>
 
                     <div class="border rounded p-3 mb-4">
-                        <h3 class="h6 mb-3">Pendencias</h3>
+                        <h3 class="h6 mb-3">Pendências</h3>
                         <?php if ($operationPendencies === []): ?>
                             <p class="text-muted mb-0">Nenhuma pendencia registrada.</p>
                         <?php else: ?>
@@ -524,9 +524,9 @@ HTML;
                                 <table class="table table-sm align-middle">
                                     <thead>
                                     <tr>
-                                        <th>Titulo</th>
+                                        <th>Título</th>
                                         <th>Status</th>
-                                        <th>Acao</th>
+                                        <th>Ação</th>
                                     </tr>
                                     </thead>
                                     <tbody>
@@ -542,7 +542,7 @@ HTML;
                                                     <form method="post" action="/operations/pendencies/<?= $escape($pendency['id']) ?>/resolve" class="row g-2">
                                                         <input type="hidden" name="candidate_id" value="<?= $escape($candidate['id'] ?? '') ?>">
                                                         <div class="col-12">
-                                                            <input type="text" name="message" class="form-control form-control-sm" placeholder="Observacao de resolucao">
+                                                            <input type="text" name="message" class="form-control form-control-sm" placeholder="Observação de resolução">
                                                         </div>
                                                         <div class="col-12 d-grid">
                                                             <button type="submit" class="btn btn-sm btn-outline-success">Resolver</button>
@@ -563,9 +563,9 @@ HTML;
                     </div>
 
                     <div class="border rounded p-3">
-                        <h3 class="h6 mb-3">Historico de decisao</h3>
+                        <h3 class="h6 mb-3">Histórico de decisão</h3>
                         <?php if ($operationHistory === []): ?>
-                            <p class="text-muted mb-0">Nenhuma decisao registrada ainda.</p>
+                            <p class="text-muted mb-0">Nenhuma decisão registrada ainda.</p>
                         <?php else: ?>
                             <div class="timeline">
                                 <?php foreach ($operationHistory as $item): ?>
@@ -663,7 +663,7 @@ HTML;
             <div class="col-md-6">
                 <div class="card border-0 shadow-sm h-100">
                     <div class="card-body">
-                        <h2 class="h5 mb-3">Endereco</h2>
+                        <h2 class="h5 mb-3">Endereço</h2>
                         <?php if ($addresses === []): ?>
                             <p class="text-muted mb-0">Nenhum endereco cadastrado.</p>
                         <?php else: ?>
@@ -671,7 +671,7 @@ HTML;
                                 <?php foreach ($addresses as $address): ?>
                                     <li class="list-group-item px-0">
                                         <div class="fw-semibold"><?= $escape($address['city']) ?> / <?= $escape($address['state']) ?></div>
-                                        <div class="text-muted small"><?= $escape($address['region'] ?: 'Regiao nao informada') ?></div>
+                                        <div class="text-muted small"><?= $escape($address['region'] ?: 'Região não informada') ?></div>
                                     </li>
                                 <?php endforeach; ?>
                             </ul>
@@ -705,9 +705,9 @@ HTML;
 
         <div class="card border-0 shadow-sm">
             <div class="card-body">
-                <h2 class="h5 mb-3">Historico de status</h2>
+                <h2 class="h5 mb-3">Histórico de status</h2>
                 <?php if ($history === []): ?>
-                    <p class="text-muted mb-0">Nenhuma alteracao registrada.</p>
+                    <p class="text-muted mb-0">Nenhuma alteração registrada.</p>
                 <?php else: ?>
                     <div class="timeline">
                         <?php foreach ($history as $item): ?>

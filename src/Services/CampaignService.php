@@ -67,7 +67,7 @@ final class CampaignService
         $eligibleCandidates = $this->candidateModel->findEligibleForCampaign($filters, $recipientLimit);
 
         if ($eligibleCandidates === []) {
-            throw new InvalidArgumentException('Nenhum candidato elegivel com contato valido foi encontrado para essa segmentacao.');
+            throw new InvalidArgumentException('Nenhum candidato elegível com contato válido foi encontrado para essa segmentação.');
         }
 
         $recipients = [];
@@ -138,7 +138,7 @@ final class CampaignService
         }
 
         if (!in_array($automationType, ['broadcast', TriageBotService::AUTOMATION_TYPE], true)) {
-            throw new InvalidArgumentException('Tipo de automacao invalido.');
+            throw new InvalidArgumentException('Tipo de automação inválido.');
         }
 
         return $automationType;
@@ -153,7 +153,7 @@ final class CampaignService
         $limit = (int) $value;
 
         if ($limit < 1) {
-            throw new InvalidArgumentException('O limite de destinatarios deve ser maior que zero.');
+            throw new InvalidArgumentException('O limite de destinatários deve ser maior que zero.');
         }
 
         return min($limit, 5000);
@@ -179,19 +179,19 @@ final class CampaignService
         $maxAttempts = $this->resolveMaxAttempts();
 
         if ($campaign === null) {
-            throw new InvalidArgumentException('Campanha nao encontrada.');
+            throw new InvalidArgumentException('Campanha não encontrada.');
         }
 
         if ($campaign['status'] === 'paused') {
-            throw new InvalidArgumentException('A campanha esta pausada. Retome antes de processar a fila.');
+            throw new InvalidArgumentException('A campanha está pausada. Retome antes de processar a fila.');
         }
 
         if ($campaign['status'] === 'cancelled') {
-            throw new InvalidArgumentException('A campanha foi cancelada e nao pode mais ser processada.');
+            throw new InvalidArgumentException('A campanha foi cancelada e não pode mais ser processada.');
         }
 
         if ($campaign['status'] === 'completed') {
-            throw new InvalidArgumentException('A campanha ja foi concluida.');
+            throw new InvalidArgumentException('A campanha já foi concluída.');
         }
 
         $this->releaseStaleProcessingJobs($campaignId);
@@ -284,7 +284,7 @@ final class CampaignService
                         $campaignRecipientId,
                         $candidateId,
                         $destinationContact,
-                        'Opt-out ja registrado antes do envio.'
+                        'Opt-out já registrado antes do envio.'
                     );
 
                     $this->pdo->commit();
@@ -386,11 +386,11 @@ final class CampaignService
         $campaign = $this->fetchCampaign($campaignId);
 
         if ($campaign === null) {
-            throw new InvalidArgumentException('Campanha nao encontrada.');
+            throw new InvalidArgumentException('Campanha não encontrada.');
         }
 
         if (in_array($campaign['status'], ['cancelled', 'completed'], true)) {
-            throw new InvalidArgumentException('Essa campanha nao pode mais ser pausada.');
+            throw new InvalidArgumentException('Essa campanha não pode mais ser pausada.');
         }
 
         if ($campaign['status'] === 'paused') {
@@ -406,15 +406,15 @@ final class CampaignService
         $campaign = $this->fetchCampaign($campaignId);
 
         if ($campaign === null) {
-            throw new InvalidArgumentException('Campanha nao encontrada.');
+            throw new InvalidArgumentException('Campanha não encontrada.');
         }
 
         if ($campaign['status'] === 'cancelled') {
-            throw new InvalidArgumentException('Campanha cancelada nao pode ser retomada.');
+            throw new InvalidArgumentException('Campanha cancelada não pode ser retomada.');
         }
 
         if ($campaign['status'] === 'completed') {
-            throw new InvalidArgumentException('Campanha concluida nao pode ser retomada.');
+            throw new InvalidArgumentException('Campanha concluída não pode ser retomada.');
         }
 
         if ($campaign['status'] !== 'paused') {
@@ -439,7 +439,7 @@ final class CampaignService
         $campaign = $this->fetchCampaign($campaignId);
 
         if ($campaign === null) {
-            throw new InvalidArgumentException('Campanha nao encontrada.');
+            throw new InvalidArgumentException('Campanha não encontrada.');
         }
 
         if ($campaign['status'] === 'cancelled') {
@@ -447,7 +447,7 @@ final class CampaignService
         }
 
         if ($campaign['status'] === 'completed') {
-            throw new InvalidArgumentException('Campanha concluida nao pode ser cancelada.');
+            throw new InvalidArgumentException('Campanha concluída não pode ser cancelada.');
         }
 
         $this->pdo->beginTransaction();
@@ -527,11 +527,11 @@ final class CampaignService
         $recipient = $recipientStatement->fetch();
 
         if ($recipient === false) {
-            throw new InvalidArgumentException('Destinatario da campanha nao encontrado.');
+            throw new InvalidArgumentException('Destinatário da campanha não encontrado.');
         }
 
         if ($recipient['campaign_status'] === 'cancelled') {
-            throw new InvalidArgumentException('Nao e possivel registrar retorno em campanha cancelada.');
+            throw new InvalidArgumentException('Não é possível registrar retorno em campanha cancelada.');
         }
 
         $this->pdo->beginTransaction();
@@ -743,7 +743,7 @@ final class CampaignService
         $session = $this->triageBotService->findSessionByContact($contact, $campaignId);
 
         if ($session === null) {
-            throw new InvalidArgumentException('Nenhuma sessao ativa de triagem foi encontrada para esse contato.');
+            throw new InvalidArgumentException('Nenhuma sessão ativa de triagem foi encontrada para esse contato.');
         }
 
         return $this->registerInboundReply(
@@ -778,7 +778,7 @@ final class CampaignService
             return [
                 'event' => 'status',
                 'status' => 'ignored',
-                'message' => 'Status recebido sem correlacao automatica com a fila.',
+                'message' => 'Status recebido sem correlação automática com a fila.',
             ];
         }
 
@@ -1640,7 +1640,7 @@ final class CampaignService
         $campaign = $this->fetchCampaign($campaignId);
 
         if ($campaign === null) {
-            throw new InvalidArgumentException('Campanha nao encontrada.');
+            throw new InvalidArgumentException('Campanha não encontrada.');
         }
 
         if ($campaign['status'] === 'paused' || $campaign['status'] === 'cancelled') {

@@ -28,7 +28,7 @@ final class OperationsService
         $message = trim($message);
 
         if ($message === '') {
-            throw new InvalidArgumentException('Informe a observacao interna.');
+            throw new InvalidArgumentException('Informe a observação interna.');
         }
 
         $portal = $this->requirePortal($candidateId);
@@ -59,29 +59,29 @@ final class OperationsService
             if ($decision === 'approve') {
                 $this->assertReadyForApproval((int) $portal['id']);
                 $this->setPortalStatus((int) $portal['id'], 'approved');
-                $this->applyCandidateStatus($candidateId, 'approved', $operator, 'Cadastro aprovado na validacao operacional.');
+                $this->applyCandidateStatus($candidateId, 'approved', $operator, 'Cadastro aprovado na validação operacional.');
                 $this->resolveAllOpenPendencies((int) $portal['id'], $operator);
                 $this->logHistory($candidateId, (int) $portal['id'], null, 'approve', $message, $operator);
             } elseif ($decision === 'reject') {
                 if ($message === '') {
-                    throw new InvalidArgumentException('Informe o motivo da reprovacao.');
+                    throw new InvalidArgumentException('Informe o motivo da reprovação.');
                 }
 
                 $this->setPortalStatus((int) $portal['id'], 'rejected');
-                $this->applyCandidateStatus($candidateId, 'rejected', $operator, 'Cadastro reprovado na validacao operacional.');
+                $this->applyCandidateStatus($candidateId, 'rejected', $operator, 'Cadastro reprovado na validação operacional.');
                 $this->resolveAllOpenPendencies((int) $portal['id'], $operator);
                 $this->logHistory($candidateId, (int) $portal['id'], null, 'reject', $message, $operator);
             } elseif ($decision === 'request_correction') {
                 if ($message === '') {
-                    throw new InvalidArgumentException('Descreva a correcao solicitada.');
+                    throw new InvalidArgumentException('Descreva a correção solicitada.');
                 }
 
                 $this->setPortalStatus((int) $portal['id'], 'correction_requested');
-                $this->applyCandidateStatus($candidateId, 'awaiting_docs', $operator, 'Correcao solicitada na validacao operacional.');
-                $this->createPendency($candidateId, (int) $portal['id'], null, 'Correcao solicitada', $message, $operator);
+                $this->applyCandidateStatus($candidateId, 'awaiting_docs', $operator, 'Correção solicitada na validação operacional.');
+                $this->createPendency($candidateId, (int) $portal['id'], null, 'Correção solicitada', $message, $operator);
                 $this->logHistory($candidateId, (int) $portal['id'], null, 'request_correction', $message, $operator);
             } else {
-                throw new InvalidArgumentException('Decisao invalida.');
+                throw new InvalidArgumentException('Decisão inválida.');
             }
 
             $this->pdo->commit();
@@ -122,12 +122,12 @@ final class OperationsService
                 );
             } elseif ($decision === 'reject' || $decision === 'request_correction') {
                 if ($message === '') {
-                    throw new InvalidArgumentException('Descreva a pendencia do documento.');
+                    throw new InvalidArgumentException('Descreva a pendência do documento.');
                 }
 
                 $status = $decision === 'reject' ? 'rejected' : 'correction_requested';
                 $action = $decision === 'reject' ? 'document_reject' : 'document_request_correction';
-                $titlePrefix = $decision === 'reject' ? 'Documento reprovado' : 'Correcao documental';
+                $titlePrefix = $decision === 'reject' ? 'Documento reprovado' : 'Correção documental';
 
                 $this->updateDocumentReviewStatus($documentId, $status);
                 $this->setPortalStatus((int) $document['portal_id'], 'correction_requested');
@@ -135,7 +135,7 @@ final class OperationsService
                     (int) $document['candidate_id'],
                     'awaiting_docs',
                     $operator,
-                    'Correcao documental solicitada na validacao operacional.'
+                    'Correção documental solicitada na validação operacional.'
                 );
                 $this->createPendency(
                     (int) $document['candidate_id'],
@@ -154,7 +154,7 @@ final class OperationsService
                     $operator
                 );
             } else {
-                throw new InvalidArgumentException('Decisao de documento invalida.');
+                throw new InvalidArgumentException('Decisão de documento inválida.');
             }
 
             $this->pdo->commit();
@@ -179,7 +179,7 @@ final class OperationsService
         $pendency = $statement->fetch();
 
         if ($pendency === false) {
-            throw new InvalidArgumentException('Pendencia nao encontrada.');
+            throw new InvalidArgumentException('Pendência não encontrada.');
         }
 
         if ($pendency['status'] === 'resolved') {
@@ -207,7 +207,7 @@ final class OperationsService
                 (int) $pendency['portal_id'],
                 $pendency['document_id'] !== null ? (int) $pendency['document_id'] : null,
                 'pendency_resolved',
-                trim((string) $message) !== '' ? trim((string) $message) : 'Pendencia resolvida.',
+                trim((string) $message) !== '' ? trim((string) $message) : 'Pendência resolvida.',
                 $operator
             );
 
@@ -219,7 +219,7 @@ final class OperationsService
                     (int) $pendency['candidate_id'],
                     'under_review',
                     $operator,
-                    'Todas as pendencias operacionais foram resolvidas.'
+                    'Todas as pendências operacionais foram resolvidas.'
                 );
             }
 
@@ -241,7 +241,7 @@ final class OperationsService
         $portal = $this->portalModel->findByCandidateId($candidateId);
 
         if ($portal === null) {
-            throw new InvalidArgumentException('Portal do candidato nao encontrado.');
+            throw new InvalidArgumentException('Portal do candidato não encontrado.');
         }
 
         return $portal;
@@ -269,7 +269,7 @@ final class OperationsService
         $document = $statement->fetch();
 
         if ($document === false) {
-            throw new InvalidArgumentException('Documento nao encontrado.');
+            throw new InvalidArgumentException('Documento não encontrado.');
         }
 
         return $document;
@@ -290,7 +290,7 @@ final class OperationsService
                     $candidateId,
                     'under_review',
                     $operator,
-                    'Analise operacional iniciada.'
+                    'Análise operacional iniciada.'
                 );
             }
 
@@ -301,7 +301,7 @@ final class OperationsService
     private function assertReadyForApproval(int $portalId): void
     {
         if ($this->countOpenPendencies($portalId) > 0) {
-            throw new InvalidArgumentException('Existem pendencias abertas. Resolva antes de aprovar.');
+            throw new InvalidArgumentException('Existem pendências abertas. Resolva antes de aprovar.');
         }
 
         $statement = $this->pdo->prepare(
@@ -329,7 +329,7 @@ final class OperationsService
 
             if (!isset($approvedByType[$type])) {
                 throw new InvalidArgumentException(
-                    sprintf('Aprovacao bloqueada: o documento obrigatorio "%s" ainda nao foi aprovado.', $item['label'])
+                    sprintf('Aprovação bloqueada: o documento obrigatório "%s" ainda não foi aprovado.', $item['label'])
                 );
             }
         }

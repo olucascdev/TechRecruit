@@ -36,15 +36,15 @@ final class WhatsGwWebhookService
         $event = strtolower(trim((string) ($payload['event'] ?? '')));
 
         if ($event === '') {
-            throw new InvalidArgumentException('Evento do WhatsGW nao informado.');
+            throw new InvalidArgumentException('Evento do WhatsGW não informado.');
         }
 
         $incomingApiKey = isset($payload['apikey']) ? trim((string) $payload['apikey']) : null;
 
         if ($this->whatsGwClient->isConfigured() && !$this->whatsGwClient->matchesApiKey($incomingApiKey)) {
-            $this->persistWebhookEvent($event, $payload, 'failed', 'API key invalida.');
+            $this->persistWebhookEvent($event, $payload, 'failed', 'API key inválida.');
 
-            throw new InvalidArgumentException('API key do webhook invalida.');
+            throw new InvalidArgumentException('API key do webhook inválida.');
         }
 
         try {
@@ -55,7 +55,7 @@ final class WhatsGwWebhookService
                 default => [
                     'event' => $event,
                     'status' => 'ignored',
-                    'message' => 'Evento nao tratado.',
+                    'message' => 'Evento não tratado.',
                 ],
             };
 
@@ -106,7 +106,7 @@ final class WhatsGwWebhookService
             return [
                 'event' => 'message',
                 'status' => 'ignored',
-                'message' => sprintf('Chat type ignorado: %s.', $chatType),
+                'message' => sprintf('Tipo de chat ignorado: %s.', $chatType),
             ];
         }
 

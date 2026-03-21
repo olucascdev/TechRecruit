@@ -29,7 +29,7 @@ final class TriageController extends Controller
         if (strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
             $this->json([
                 'success' => false,
-                'message' => 'Metodo nao suportado.',
+                'message' => 'Método não suportado.',
             ], 405);
         }
 
