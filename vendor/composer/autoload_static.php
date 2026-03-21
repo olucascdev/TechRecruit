@@ -887,6 +887,7 @@ class ComposerStaticInitb3f49d05240183d477766db9d6b1aebd
         'TechRecruit\\Services\\UserService' => __DIR__ . '/../..' . '/src/Services/UserService.php',
         'TechRecruit\\Services\\WhatsGwClient' => __DIR__ . '/../..' . '/src/Services/WhatsGwClient.php',
         'TechRecruit\\Services\\WhatsGwWebhookService' => __DIR__ . '/../..' . '/src/Services/WhatsGwWebhookService.php',
+        'TechRecruit\\Support\\AppUrl' => __DIR__ . '/../..' . '/src/Support/AppUrl.php',
         'ZipStream\\CentralDirectoryFileHeader' => __DIR__ . '/..' . '/maennchen/zipstream-php/src/CentralDirectoryFileHeader.php',
         'ZipStream\\CompressionMethod' => __DIR__ . '/..' . '/maennchen/zipstream-php/src/CompressionMethod.php',
         'ZipStream\\DataDescriptor' => __DIR__ . '/..' . '/maennchen/zipstream-php/src/DataDescriptor.php',

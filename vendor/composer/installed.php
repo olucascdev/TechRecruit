@@ -3,7 +3,7 @@
         'name' => 'techrecruit/flow',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '359b7ebaf09b4aa01582d0f831a5670f82cf2647',
+        'reference' => 'b19fe686cb256bf07522f8b86901e9fa01ec1945',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -76,7 +76,7 @@
         'techrecruit/flow' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '359b7ebaf09b4aa01582d0f831a5670f82cf2647',
+            'reference' => 'b19fe686cb256bf07522f8b86901e9fa01ec1945',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

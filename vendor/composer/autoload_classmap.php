@@ -816,6 +816,7 @@ return array(
     'TechRecruit\\Services\\UserService' => $baseDir . '/src/Services/UserService.php',
     'TechRecruit\\Services\\WhatsGwClient' => $baseDir . '/src/Services/WhatsGwClient.php',
     'TechRecruit\\Services\\WhatsGwWebhookService' => $baseDir . '/src/Services/WhatsGwWebhookService.php',
+    'TechRecruit\\Support\\AppUrl' => $baseDir . '/src/Support/AppUrl.php',
     'ZipStream\\CentralDirectoryFileHeader' => $vendorDir . '/maennchen/zipstream-php/src/CentralDirectoryFileHeader.php',
     'ZipStream\\CompressionMethod' => $vendorDir . '/maennchen/zipstream-php/src/CompressionMethod.php',
     'ZipStream\\DataDescriptor' => $vendorDir . '/maennchen/zipstream-php/src/DataDescriptor.php',
