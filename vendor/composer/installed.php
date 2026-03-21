@@ -1,13 +1,13 @@
 <?php return array(
     'root' => array(
         'name' => 'techrecruit/flow',
-        'pretty_version' => '1.0.0+no-version-set',
-        'version' => '1.0.0.0',
-        'reference' => null,
+        'pretty_version' => 'dev-main',
+        'version' => 'dev-main',
+        'reference' => '359b7ebaf09b4aa01582d0f831a5670f82cf2647',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
-        'dev' => true,
+        'dev' => false,
     ),
     'versions' => array(
         'composer/pcre' => array(
@@ -74,9 +74,9 @@
             'dev_requirement' => false,
         ),
         'techrecruit/flow' => array(
-            'pretty_version' => '1.0.0+no-version-set',
-            'version' => '1.0.0.0',
-            'reference' => null,
+            'pretty_version' => 'dev-main',
+            'version' => 'dev-main',
+            'reference' => '359b7ebaf09b4aa01582d0f831a5670f82cf2647',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
