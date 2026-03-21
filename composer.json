@@ -4,6 +4,13 @@
     "type": "project",
     "license": "proprietary",
     "require": {
+        "php": "^8.2",
+        "ext-curl": "*",
+        "ext-gd": "*",
+        "ext-mbstring": "*",
+        "ext-pdo_mysql": "*",
+        "ext-xml": "*",
+        "ext-zip": "*",
         "phpoffice/phpspreadsheet": "^1.29"
     },
     "autoload": {

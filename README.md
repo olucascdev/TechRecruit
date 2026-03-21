@@ -22,6 +22,7 @@ Aplicação web PHP para importar planilhas de candidatos, consolidar base de re
 - npm
 - MySQL `8+` (ou MariaDB compatível)
 - Extensões PHP:
+  - `curl`
   - `pdo_mysql`
   - `mbstring`
   - `xml`
@@ -68,12 +69,14 @@ cp .env.example .env
 Edite o `.env` com os dados do seu banco:
 
 ```env
+APP_URL=https://recrutamento.suaempresa.com
 DB_HOST=127.0.0.1
 DB_NAME=techrecruit
 DB_USER=root
 DB_PASS=password
 WHATSGW_BASE_URL=https://app.whatsgw.com.br/api/WhatsGw
 WHATSGW_API_KEY=seu-token
+WHATSGW_WEBHOOK_API_KEY=seu-token-ou-outro-segredo
 WHATSGW_DEFAULT_COUNTRY_CODE=55
 WHATSGW_PHONE_NUMBER=5511999999999
 WHATSGW_INSTANCE_ID=
@@ -85,6 +88,11 @@ CAMPAIGN_QUEUE_MAX_ATTEMPTS=5
 CAMPAIGN_QUEUE_STALE_MINUTES=10
 CAMPAIGN_QUEUE_AUTO_INTERVAL_SECONDS=15
 ```
+
+Notas:
+
+- `APP_URL` deve apontar para a URL publica real do sistema. Os links do portal usam esse valor em ambientes com proxy reverso ou SSL externo.
+- `WHATSGW_WEBHOOK_API_KEY` protege o `POST /triage/inbound`. Se ficar vazio, o endpoint rejeita eventos do provedor. Se preferir, ele pode reutilizar o valor de `WHATSGW_API_KEY`.
 
 ## 4. Criar banco e tabelas
 
@@ -279,10 +287,14 @@ Ferramentas: multímetro, kit de ferramentas, alicate de crimpagem
 curl -X POST http://127.0.0.1:8090/triage/inbound \
   -H "Content-Type: application/json" \
   -d '{
-    "contact": "5511999990000",
+    "event": "message",
+    "apikey": "seu-token-ou-outro-segredo",
+    "contact_phone_number": "5511999990000",
     "message_body": "1"
   }'
 ```
+
+Sem `event`, o inbound manual agora exige sessão autenticada do backoffice e CSRF válido. Para simular manualmente pela interface, use a tela da campanha em `/campaigns/{id}`.
 
 ### Teste de autenticação interna
 
@@ -298,13 +310,14 @@ curl -X POST http://127.0.0.1:8090/triage/inbound \
 ### Teste do WhatsGW real
 
 1. Configure `WHATSGW_API_KEY` e `WHATSGW_PHONE_NUMBER` no `.env`
-2. Aponte o webhook do WhatsGW para `POST /triage/inbound`
-3. Garanta que o WhatsGW envie os eventos:
+2. Configure `WHATSGW_WEBHOOK_API_KEY` no `.env` e use esse mesmo valor no webhook do provedor
+3. Aponte o webhook do WhatsGW para `POST /triage/inbound`
+4. Garanta que o WhatsGW envie os eventos:
    - `message`
    - `status`
    - `phonestate`
-4. Processe a fila de uma campanha
-5. Confirme:
+5. Processe a fila de uma campanha
+6. Confirme:
    - `recruit_message_queue` com `provider_message_custom_id` preenchido
    - webhooks salvos em `recruit_whatsgw_webhook_events`
    - `event=message` entrando no bot de triagem

@@ -7,6 +7,7 @@ namespace TechRecruit\Controllers;
 use InvalidArgumentException;
 use PDO;
 use TechRecruit\Database;
+use TechRecruit\Security\Csrf;
 use TechRecruit\Services\CampaignService;
 use TechRecruit\Services\WhatsGwWebhookService;
 use Throwable;
@@ -56,6 +57,8 @@ final class TriageController extends Controller
                     'data' => $result,
                 ]);
             }
+
+            $this->ensureManualInboundAccess();
 
             if ($messageBody === '') {
                 throw new InvalidArgumentException('Informe a mensagem recebida.');
@@ -116,5 +119,22 @@ final class TriageController extends Controller
         }
 
         return $_POST;
+    }
+
+    private function ensureManualInboundAccess(): void
+    {
+        if ($this->currentUser() === null) {
+            $this->json([
+                'success' => false,
+                'message' => 'Autenticação obrigatória para registrar inbound manual sem evento.',
+            ], 403);
+        }
+
+        if (!Csrf::isValid(Csrf::requestToken())) {
+            $this->json([
+                'success' => false,
+                'message' => 'Sessão expirada ou token inválido. Atualize a página e tente novamente.',
+            ], 419);
+        }
     }
 }

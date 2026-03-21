@@ -14,6 +14,8 @@ final class WhatsGwClient
 
     private ?string $apiKey;
 
+    private ?string $webhookApiKey;
+
     private ?string $phoneNumber;
 
     private ?int $instanceId;
@@ -30,6 +32,7 @@ final class WhatsGwClient
     {
         $this->baseUrl = rtrim($this->env('WHATSGW_BASE_URL', 'https://app.whatsgw.com.br/api/WhatsGw'), '/');
         $this->apiKey = $this->normalizeNullableString($this->env('WHATSGW_API_KEY'));
+        $this->webhookApiKey = $this->normalizeNullableString($this->env('WHATSGW_WEBHOOK_API_KEY', $this->apiKey));
         $this->defaultCountryCode = $this->normalizeCountryCode($this->env('WHATSGW_DEFAULT_COUNTRY_CODE', self::DEFAULT_COUNTRY_CODE));
         $this->phoneNumber = $this->normalizePhone($this->env('WHATSGW_PHONE_NUMBER'));
         $this->instanceId = $this->normalizeNullableInt($this->env('WHATSGW_INSTANCE_ID'));
@@ -43,13 +46,18 @@ final class WhatsGwClient
         return $this->apiKey !== null && ($this->phoneNumber !== null || $this->instanceId !== null);
     }
 
+    public function hasWebhookApiKey(): bool
+    {
+        return $this->webhookApiKey !== null;
+    }
+
     public function matchesApiKey(?string $incomingApiKey): bool
     {
-        if ($this->apiKey === null || $incomingApiKey === null) {
+        if ($this->webhookApiKey === null || $incomingApiKey === null) {
             return false;
         }
 
-        return hash_equals($this->apiKey, trim($incomingApiKey));
+        return hash_equals($this->webhookApiKey, trim($incomingApiKey));
     }
 
     /**

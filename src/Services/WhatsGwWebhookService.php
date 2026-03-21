@@ -41,7 +41,13 @@ final class WhatsGwWebhookService
 
         $incomingApiKey = isset($payload['apikey']) ? trim((string) $payload['apikey']) : null;
 
-        if ($this->whatsGwClient->isConfigured() && !$this->whatsGwClient->matchesApiKey($incomingApiKey)) {
+        if (!$this->whatsGwClient->hasWebhookApiKey()) {
+            $this->persistWebhookEvent($event, $payload, 'failed', 'Webhook do WhatsGW sem API key configurada.');
+
+            throw new InvalidArgumentException('Webhook do WhatsGW não configurado. Defina WHATSGW_WEBHOOK_API_KEY ou WHATSGW_API_KEY.');
+        }
+
+        if (!$this->whatsGwClient->matchesApiKey($incomingApiKey)) {
             $this->persistWebhookEvent($event, $payload, 'failed', 'API key inválida.');
 
             throw new InvalidArgumentException('API key do webhook inválida.');

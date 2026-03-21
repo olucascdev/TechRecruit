@@ -164,11 +164,18 @@ abstract class Controller
 
     protected function absoluteUrl(string $path): string
     {
-        $isHttps = isset($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off';
-        $scheme = $isHttps ? 'https' : 'http';
-        $host = (string) ($_SERVER['HTTP_HOST'] ?? '127.0.0.1:8090');
+        $path = '/' . ltrim($path, '/');
+        $configuredAppUrl = $this->env('APP_URL');
 
-        return $scheme . '://' . $host . $path;
+        if ($configuredAppUrl !== null) {
+            $normalizedAppUrl = $this->normalizeBaseUrl($configuredAppUrl);
+
+            if ($normalizedAppUrl !== null) {
+                return $normalizedAppUrl . $path;
+            }
+        }
+
+        return $this->requestScheme() . '://' . $this->requestHost() . $path;
     }
 
     protected function resolveOperator(): string
@@ -238,5 +245,147 @@ abstract class Controller
     protected function csrfToken(): string
     {
         return Csrf::token();
+    }
+
+    protected function env(string $key, ?string $default = null): ?string
+    {
+        $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
+
+        if ($value === false || $value === null) {
+            return $default;
+        }
+
+        $value = trim((string) $value);
+
+        return $value !== '' ? $value : $default;
+    }
+
+    private function requestScheme(): string
+    {
+        $forwardedProto = $this->forwardedHeaderValue('proto');
+
+        if ($forwardedProto !== null) {
+            return strtolower($forwardedProto) === 'https' ? 'https' : 'http';
+        }
+
+        $xForwardedProto = trim((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''));
+
+        if ($xForwardedProto !== '') {
+            $proto = strtolower(trim(explode(',', $xForwardedProto)[0]));
+
+            return $proto === 'https' ? 'https' : 'http';
+        }
+
+        return isset($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off'
+            ? 'https'
+            : 'http';
+    }
+
+    private function requestHost(): string
+    {
+        $candidates = [
+            $this->forwardedHeaderValue('host'),
+            $this->firstForwardedHostValue((string) ($_SERVER['HTTP_X_FORWARDED_HOST'] ?? '')),
+            (string) ($_SERVER['HTTP_HOST'] ?? ''),
+            (string) ($_SERVER['SERVER_NAME'] ?? ''),
+        ];
+
+        foreach ($candidates as $candidate) {
+            $host = $this->sanitizeHost($candidate);
+
+            if ($host !== null) {
+                return $host;
+            }
+        }
+
+        return '127.0.0.1:8090';
+    }
+
+    private function normalizeBaseUrl(string $url): ?string
+    {
+        $url = rtrim(trim($url), '/');
+
+        if ($url === '') {
+            return null;
+        }
+
+        $parts = parse_url($url);
+
+        if (!is_array($parts)) {
+            return null;
+        }
+
+        $scheme = strtolower((string) ($parts['scheme'] ?? ''));
+        $host = isset($parts['host']) ? $this->sanitizeHost((string) $parts['host']) : null;
+
+        if (!in_array($scheme, ['http', 'https'], true) || $host === null) {
+            return null;
+        }
+
+        $port = isset($parts['port']) ? ':' . (int) $parts['port'] : '';
+        $path = isset($parts['path']) ? rtrim((string) $parts['path'], '/') : '';
+
+        return $scheme . '://' . $host . $port . $path;
+    }
+
+    private function forwardedHeaderValue(string $key): ?string
+    {
+        $forwarded = trim((string) ($_SERVER['HTTP_FORWARDED'] ?? ''));
+
+        if ($forwarded === '') {
+            return null;
+        }
+
+        $firstEntry = trim(explode(',', $forwarded)[0]);
+
+        foreach (explode(';', $firstEntry) as $segment) {
+            [$segmentKey, $segmentValue] = array_pad(explode('=', trim($segment), 2), 2, null);
+
+            if (!is_string($segmentKey) || !is_string($segmentValue)) {
+                continue;
+            }
+
+            if (strtolower(trim($segmentKey)) !== $key) {
+                continue;
+            }
+
+            $segmentValue = trim($segmentValue, " \t\n\r\0\x0B\"");
+
+            return $segmentValue !== '' ? $segmentValue : null;
+        }
+
+        return null;
+    }
+
+    private function firstForwardedHostValue(string $value): ?string
+    {
+        if (trim($value) === '') {
+            return null;
+        }
+
+        return trim(explode(',', $value)[0]);
+    }
+
+    private function sanitizeHost(?string $host): ?string
+    {
+        if (!is_string($host)) {
+            return null;
+        }
+
+        $host = trim($host);
+
+        if ($host === '' || str_contains($host, '/') || preg_match('/\s/', $host) === 1) {
+            return null;
+        }
+
+        if (preg_match('/^\[[A-Fa-f0-9:]+\](?::\d{1,5})?$/', $host) === 1) {
+            return $host;
+        }
+
+        if (preg_match('/^[A-Za-z0-9.-]+(?::\d{1,5})?$/', $host) !== 1) {
+            return null;
+        }
+
+        return $host;
     }
 }
