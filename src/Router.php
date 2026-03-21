@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace TechRecruit;
 
 use Closure;
+use TechRecruit\Support\AppUrl;
 
 final class Router
 {
@@ -33,11 +34,7 @@ final class Router
     public function dispatch(): void
     {
         $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
-        $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
-
-        if ($path !== '/') {
-            $path = rtrim($path, '/') ?: '/';
-        }
+        $path = AppUrl::routePath();
 
         foreach ($this->routes[$method] ?? [] as $route) {
             $regex = $this->patternToRegex($route['pattern']);

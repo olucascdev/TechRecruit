@@ -15,6 +15,8 @@ $isTriageCampaign = ($campaign['automation_type'] ?? 'broadcast') === 'triage_w1
 $defaultBatchLimit = max(1, (int) ($defaultBatchLimit ?? 25));
 $autoProcessIntervalSeconds = max(5, (int) ($autoProcessIntervalSeconds ?? 15));
 $campaignId = (int) ($campaign['id'] ?? 0);
+$processAction = $url('/campaigns/' . $campaignId . '/process');
+$processEndpoint = $url('/campaigns/' . $campaignId . '/process/run');
 
 $campaignStatusClass = static function (string $status): string {
     return match ($status) {
@@ -78,7 +80,7 @@ $actionIcon = static function (string $name): string {
         <p class="text-muted small mb-0">Modo: <?= $escape(($campaign['automation_type'] ?? 'broadcast') === 'triage_w13' ? 'Bot de triagem W13' : 'Disparo manual') ?></p>
     </div>
     <div class="flex flex-nowrap items-center gap-2 overflow-x-auto pb-1">
-        <form method="post" action="/campaigns/<?= $escape($campaign['id'] ?? 0) ?>/process" class="d-flex flex-wrap align-items-end gap-2">
+        <form method="post" action="<?= $escape($processAction) ?>" class="d-flex flex-wrap align-items-end gap-2">
             <?= $csrfField ?>
             <div>
                 <label for="batch_limit" class="form-label small mb-1">Lote</label>
@@ -109,25 +111,25 @@ $actionIcon = static function (string $name): string {
                 Deixe ligado se quiser esta campanha rodando sozinha no navegador.
             </div>
         </form>
-        <form method="post" action="/campaigns/<?= $escape($campaign['id'] ?? 0) ?>/pause" class="m-0">
+        <form method="post" action="<?= $escape($url('/campaigns/' . ($campaign['id'] ?? 0) . '/pause')) ?>" class="m-0">
             <?= $csrfField ?>
             <button type="submit" class="btn btn-outline-secondary">Pausar</button>
         </form>
-        <form method="post" action="/campaigns/<?= $escape($campaign['id'] ?? 0) ?>/resume" class="m-0">
+        <form method="post" action="<?= $escape($url('/campaigns/' . ($campaign['id'] ?? 0) . '/resume')) ?>" class="m-0">
             <?= $csrfField ?>
             <button type="submit" class="btn btn-outline-success">Retomar</button>
         </form>
-        <form method="post" action="/campaigns/<?= $escape($campaign['id'] ?? 0) ?>/cancel" class="m-0">
+        <form method="post" action="<?= $escape($url('/campaigns/' . ($campaign['id'] ?? 0) . '/cancel')) ?>" class="m-0">
             <?= $csrfField ?>
             <button type="submit" class="btn btn-outline-danger">Cancelar</button>
         </form>
-        <form method="post" action="/campaigns/<?= $escape($campaign['id'] ?? 0) ?>/delete" class="m-0" onsubmit="return confirm('Excluir esta campanha e toda a fila vinculada?');">
+        <form method="post" action="<?= $escape($url('/campaigns/' . ($campaign['id'] ?? 0) . '/delete')) ?>" class="m-0" onsubmit="return confirm('Excluir esta campanha e toda a fila vinculada?');">
             <?= $csrfField ?>
             <button type="submit" class="action-icon action-icon-danger" title="Excluir campanha" aria-label="Excluir campanha">
                 <?= $actionIcon('delete') ?>
             </button>
         </form>
-        <a href="/campaigns" class="action-icon action-icon-secondary" title="Voltar" aria-label="Voltar">
+        <a href="<?= $escape($url('/campaigns')) ?>" class="action-icon action-icon-secondary" title="Voltar" aria-label="Voltar">
             <?= $actionIcon('back') ?>
         </a>
     </div>
@@ -188,7 +190,7 @@ $actionIcon = static function (string $name): string {
 $pageScripts = <<<HTML
 <script>
 (() => {
-    const form = document.querySelector('form[action="/campaigns/{$campaignId}/process"]');
+    const form = document.querySelector('form[action="{$processAction}"]');
     const toggle = document.querySelector('[data-auto-process-toggle="campaign"]');
     const statusNode = document.querySelector('[data-auto-process-status="campaign"]');
 
@@ -197,7 +199,7 @@ $pageScripts = <<<HTML
     }
 
     const batchInput = form.querySelector('input[name="batch_limit"]');
-    const endpoint = '/campaigns/{$campaignId}/process/run';
+    const endpoint = '{$processEndpoint}';
     const intervalMs = {$autoProcessIntervalSeconds} * 1000;
     const storageKey = 'techrecruit:auto-process:campaign:{$campaignId}';
     let timerId = null;
@@ -383,7 +385,7 @@ HTML;
         <div class="card border-0 shadow-sm mt-4">
             <div class="card-body">
                 <h2 class="h5 mb-3">Simular retorno inbound</h2>
-                <form method="post" action="/campaigns/<?= $escape($campaign['id'] ?? 0) ?>/reply" class="row g-3">
+                <form method="post" action="<?= $escape($url('/campaigns/' . ($campaign['id'] ?? 0) . '/reply')) ?>" class="row g-3">
                     <?= $csrfField ?>
                     <div class="col-12">
                         <label for="campaign_recipient_id" class="form-label">Destinatário</label>

@@ -7,6 +7,7 @@ namespace TechRecruit\Controllers;
 use TechRecruit\Models\UserModel;
 use TechRecruit\Security\Csrf;
 use TechRecruit\Services\AuthService;
+use TechRecruit\Support\AppUrl;
 
 abstract class Controller
 {
@@ -33,11 +34,13 @@ abstract class Controller
         }
 
         $pageTitle = $title;
-        $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+        $currentPath = AppUrl::routePath();
         $pageScripts = '';
         $pageStyles = '';
         $data['authUser'] = $this->currentUser();
         $data['csrfToken'] = $this->csrfToken();
+        $data['basePath'] = AppUrl::basePath();
+        $data['url'] = static fn (string $path = '/'): string => AppUrl::relative($path);
         $data['csrfField'] = sprintf(
             '<input type="hidden" name="_token" value="%s">',
             htmlspecialchars($this->csrfToken(), ENT_QUOTES, 'UTF-8')
@@ -54,7 +57,7 @@ abstract class Controller
 
     protected function redirect(string $path): never
     {
-        header('Location: ' . $path);
+        header('Location: ' . AppUrl::relative($path));
         exit;
     }
 
@@ -63,7 +66,7 @@ abstract class Controller
         $referer = trim((string) ($_SERVER['HTTP_REFERER'] ?? ''));
 
         if ($referer !== '') {
-            $path = parse_url($referer, PHP_URL_PATH);
+            $path = AppUrl::routePath($referer);
             $query = parse_url($referer, PHP_URL_QUERY);
 
             if (is_string($path) && $path !== '' && str_starts_with($path, '/') && !str_starts_with($path, '//')) {
@@ -106,7 +109,7 @@ abstract class Controller
         }
 
         $requestMethod = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
-        $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+        $path = AppUrl::routePath();
         $query = trim((string) ($_SERVER['QUERY_STRING'] ?? ''));
 
         if ($requestMethod === 'GET') {
@@ -164,14 +167,19 @@ abstract class Controller
 
     protected function absoluteUrl(string $path): string
     {
-        $path = '/' . ltrim($path, '/');
+        $path = AppUrl::relative($path);
         $configuredAppUrl = $this->env('APP_URL');
 
         if ($configuredAppUrl !== null) {
             $normalizedAppUrl = $this->normalizeBaseUrl($configuredAppUrl);
 
             if ($normalizedAppUrl !== null) {
-                return $normalizedAppUrl . $path;
+                $basePath = AppUrl::basePath();
+                $routePath = $basePath !== '' && str_starts_with($path, $basePath)
+                    ? substr($path, strlen($basePath)) ?: '/'
+                    : $path;
+
+                return $normalizedAppUrl . $routePath;
             }
         }
 

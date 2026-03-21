@@ -33,16 +33,16 @@ foreach ($rows as $row) {
         <p class="text-muted mb-0"><?= $escape($batch['filename'] ?? '') ?></p>
 </div>
 <div class="flex flex-nowrap items-center gap-2 overflow-x-auto pb-1">
-        <a href="/candidates" class="action-icon action-icon-primary" title="Ver candidatos importados" aria-label="Ver candidatos importados">
+        <a href="<?= $escape($url('/candidates')) ?>" class="action-icon action-icon-primary" title="Ver candidatos importados" aria-label="Ver candidatos importados">
             <?= $actionIcon('candidates') ?>
         </a>
-        <form method="post" action="/import/<?= $escape($batch['id'] ?? '') ?>/delete" class="m-0" onsubmit="return confirm('Excluir este lote de importação? Os candidatos importados serão mantidos.');">
+        <form method="post" action="<?= $escape($url('/import/' . ($batch['id'] ?? '') . '/delete')) ?>" class="m-0" onsubmit="return confirm('Excluir este lote de importação? Os candidatos importados serão mantidos.');">
             <?= $csrfField ?>
             <button type="submit" class="action-icon action-icon-danger" title="Excluir lote" aria-label="Excluir lote">
                 <?= $actionIcon('delete') ?>
             </button>
         </form>
-        <a href="/import" class="action-icon action-icon-secondary" title="Voltar" aria-label="Voltar">
+        <a href="<?= $escape($url('/import')) ?>" class="action-icon action-icon-secondary" title="Voltar" aria-label="Voltar">
             <?= $actionIcon('back') ?>
         </a>
     </div>

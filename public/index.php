@@ -16,12 +16,16 @@ use TechRecruit\Controllers\TriageController;
 use TechRecruit\Controllers\UserController;
 use TechRecruit\Router;
 use TechRecruit\Security\Csrf;
+use TechRecruit\Support\AppUrl;
 
 function techRecruitRequestPath(): string
 {
-    $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+    return AppUrl::routePath();
+}
 
-    return $path !== '/' ? (rtrim($path, '/') ?: '/') : '/';
+function techRecruitUrl(string $path): string
+{
+    return AppUrl::relative($path);
 }
 
 function techRecruitExpectsJson(string $path): bool
@@ -39,7 +43,7 @@ function techRecruitFallbackRedirect(string $requestPath): string
     $referer = trim((string) ($_SERVER['HTTP_REFERER'] ?? ''));
 
     if ($referer !== '') {
-        $path = parse_url($referer, PHP_URL_PATH);
+        $path = AppUrl::routePath($referer);
         $query = parse_url($referer, PHP_URL_QUERY);
 
         if (is_string($path) && $path !== '' && str_starts_with($path, '/') && !str_starts_with($path, '//')) {
@@ -106,7 +110,7 @@ function techRecruitHandleCsrfFailure(string $requestPath): never
     }
 
     $_SESSION['error'] = $message;
-    header('Location: ' . techRecruitFallbackRedirect($requestPath));
+    header('Location: ' . techRecruitUrl(techRecruitFallbackRedirect($requestPath)));
     exit;
 }
 

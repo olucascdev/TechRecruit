@@ -5,11 +5,12 @@ declare(strict_types=1);
 $renderTailwindHead = static function (): void {
     $assetPath = dirname(__DIR__, 3) . '/public/assets/app.css';
     $assetVersion = is_file($assetPath) ? (string) filemtime($assetPath) : 'dev';
+    $assetUrl = isset($url) && is_callable($url) ? $url('/assets/app.css') : '/assets/app.css';
     ?>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/assets/app.css?v=<?= htmlspecialchars($assetVersion, ENT_QUOTES, 'UTF-8') ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars($assetUrl, ENT_QUOTES, 'UTF-8') ?>?v=<?= htmlspecialchars($assetVersion, ENT_QUOTES, 'UTF-8') ?>">
     <?php
 };
 

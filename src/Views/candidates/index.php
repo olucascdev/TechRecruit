@@ -134,12 +134,12 @@ $buildPageUrl = static function (int $targetPage) use ($filters): string {
         <h1 class="h3 mb-1">Candidatos</h1>
         <p class="text-muted mb-0"><?= $escape($total) ?> resultado(s) encontrado(s).</p>
     </div>
-    <a href="/import" class="btn btn-outline-primary">Nova importação</a>
+    <a href="<?= $escape($url('/import')) ?>" class="btn btn-outline-primary">Nova importação</a>
 </div>
 
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-body">
-        <form method="get" action="/candidates" class="row g-3">
+        <form method="get" action="<?= $escape($url('/candidates')) ?>" class="row g-3">
             <div class="col-md-3">
                 <label for="skill" class="form-label">Skill</label>
                 <select id="skill" name="skill" class="form-select">
@@ -185,7 +185,7 @@ $buildPageUrl = static function (int $targetPage) use ($filters): string {
                 >
             </div>
             <div class="col-md-12 d-flex gap-2 justify-content-end">
-                <a href="/candidates" class="btn btn-outline-secondary">Limpar</a>
+                <a href="<?= $escape($url('/candidates')) ?>" class="btn btn-outline-secondary">Limpar</a>
                 <button type="submit" class="btn btn-primary">Filtrar</button>
             </div>
         </form>
@@ -194,7 +194,7 @@ $buildPageUrl = static function (int $targetPage) use ($filters): string {
 
 <div class="card border-0 shadow-sm">
     <div class="card-body">
-        <form id="candidate-bulk-delete-form" method="post" action="/candidates/bulk-delete" class="mb-4">
+        <form id="candidate-bulk-delete-form" method="post" action="<?= $escape($url('/candidates/bulk-delete')) ?>" class="mb-4">
             <?= $csrfField ?>
             <div class="flex flex-col gap-3 rounded-[28px] border border-slate-200 bg-slate-50/80 p-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
@@ -263,10 +263,10 @@ $buildPageUrl = static function (int $targetPage) use ($filters): string {
                             </td>
                             <td class="text-end">
                                 <div class="inline-flex flex-nowrap items-center justify-end gap-2">
-                                    <a href="/candidates/<?= $escape($candidate['id']) ?>" class="action-icon action-icon-sm action-icon-primary" title="Ver detalhes" aria-label="Ver detalhes">
+                                    <a href="<?= $escape($url('/candidates/' . $candidate['id'])) ?>" class="action-icon action-icon-sm action-icon-primary" title="Ver detalhes" aria-label="Ver detalhes">
                                         <?= $actionIcon('view') ?>
                                     </a>
-                                    <form method="post" action="/candidates/<?= $escape($candidate['id']) ?>/delete" class="m-0" onsubmit="return confirm('Excluir este candidato e todos os dados vinculados?');">
+                                    <form method="post" action="<?= $escape($url('/candidates/' . $candidate['id'] . '/delete')) ?>" class="m-0" onsubmit="return confirm('Excluir este candidato e todos os dados vinculados?');">
                                         <?= $csrfField ?>
                                         <button type="submit" class="action-icon action-icon-sm action-icon-danger" title="Excluir candidato" aria-label="Excluir candidato">
                                             <?= $actionIcon('delete') ?>

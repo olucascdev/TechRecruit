@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 $escape = static fn (mixed $value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+$candidateStatusUrl = $url('/candidates/status');
 $candidate = $candidate ?? [];
 $statuses = $statuses ?? [];
 
@@ -111,7 +112,7 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             formData.set('_token', window.TechRecruit?.csrfToken || '');
 
-            const response = await fetch('/candidates/status', {
+            const response = await fetch('<?= $escape($candidateStatusUrl) ?>', {
                 method: 'POST',
                 headers: window.TechRecruit?.csrfHeaders ? window.TechRecruit.csrfHeaders({
                     'Accept': 'application/json',
@@ -152,10 +153,10 @@ HTML;
         </div>
     </div>
     <div class="flex flex-nowrap items-center gap-2 overflow-x-auto pb-1">
-        <a href="/candidates" class="action-icon action-icon-secondary" title="Voltar" aria-label="Voltar">
+        <a href="<?= $escape($url('/candidates')) ?>" class="action-icon action-icon-secondary" title="Voltar" aria-label="Voltar">
             <?= $actionIcon('back') ?>
         </a>
-        <form method="post" action="/candidates/<?= $escape($candidate['id'] ?? '') ?>/delete" class="m-0" onsubmit="return confirm('Excluir este candidato e todos os dados vinculados?');">
+        <form method="post" action="<?= $escape($url('/candidates/' . ($candidate['id'] ?? '') . '/delete')) ?>" class="m-0" onsubmit="return confirm('Excluir este candidato e todos os dados vinculados?');">
             <?= $csrfField ?>
             <button type="submit" class="action-icon action-icon-danger" title="Excluir candidato" aria-label="Excluir candidato">
                 <?= $actionIcon('delete') ?>
@@ -262,7 +263,7 @@ HTML;
                 <p class="text-muted mb-0">Link único, formulário do candidato, checklist e anexos internos. Ao gerar, o sistema tenta enviar o link por WhatsApp automaticamente.</p>
             </div>
             <div class="d-flex flex-wrap gap-2">
-                <form method="post" action="/candidates/<?= $escape($candidate['id'] ?? '') ?>/portal/generate">
+                <form method="post" action="<?= $escape($url('/candidates/' . ($candidate['id'] ?? '') . '/portal/generate')) ?>">
                     <?= $csrfField ?>
                     <button type="submit" class="btn btn-outline-primary">
                         <?= $portal === null ? 'Gerar e enviar portal' : 'Regenerar e reenviar portal' ?>
@@ -296,7 +297,7 @@ HTML;
                             <dd class="col-sm-6"><?= !empty($portal['terms_accepted']) ? 'Aceito' : 'Pendente' ?></dd>
                         </dl>
 
-                        <form method="post" action="/candidates/<?= $escape($candidate['id'] ?? '') ?>/portal/status" class="row g-2">
+                        <form method="post" action="<?= $escape($url('/candidates/' . ($candidate['id'] ?? '') . '/portal/status')) ?>" class="row g-2">
                             <?= $csrfField ?>
                             <div class="col-12">
                                 <label for="portal_status" class="form-label">Status do portal</label>
@@ -406,10 +407,10 @@ HTML;
                                             <td><?= $escape($document['uploaded_at']) ?></td>
                                             <td class="text-end">
                                                 <div class="inline-flex flex-nowrap items-center justify-end gap-2">
-                                                    <a href="/portal/documents/<?= $escape($document['id']) ?>" target="_blank" class="action-icon action-icon-sm action-icon-primary" title="Visualizar anexo" aria-label="Visualizar anexo">
+                                                    <a href="<?= $escape($url('/portal/documents/' . $document['id'])) ?>" target="_blank" class="action-icon action-icon-sm action-icon-primary" title="Visualizar anexo" aria-label="Visualizar anexo">
                                                         <?= $actionIcon('view') ?>
                                                     </a>
-                                                    <form method="post" action="/portal/documents/<?= $escape($document['id']) ?>/delete" class="m-0" onsubmit="return confirm('Excluir este anexo?');">
+                                                    <form method="post" action="<?= $escape($url('/portal/documents/' . $document['id'] . '/delete')) ?>" class="m-0" onsubmit="return confirm('Excluir este anexo?');">
                                                         <?= $csrfField ?>
                                                         <input type="hidden" name="candidate_id" value="<?= $escape($candidate['id'] ?? '') ?>">
                                                         <button type="submit" class="action-icon action-icon-sm action-icon-danger" title="Excluir anexo" aria-label="Excluir anexo">
@@ -439,7 +440,7 @@ HTML;
                     <h2 class="h5 mb-1">Validação operacional</h2>
                     <p class="text-muted mb-0">Fila, decisões, pendências e histórico da análise humana.</p>
                 </div>
-                <a href="/operations" class="btn btn-outline-dark">Ver fila operacional</a>
+                <a href="<?= $escape($url('/operations')) ?>" class="btn btn-outline-dark">Ver fila operacional</a>
             </div>
 
             <div class="row g-4 mb-4">
@@ -473,7 +474,7 @@ HTML;
                 <div class="col-lg-4">
                     <div class="border rounded p-3 mb-4">
                         <h3 class="h6 mb-3">Observação interna</h3>
-                        <form method="post" action="/operations/candidates/<?= $escape($candidate['id'] ?? '') ?>/note" class="row g-2">
+                        <form method="post" action="<?= $escape($url('/operations/candidates/' . ($candidate['id'] ?? '') . '/note')) ?>" class="row g-2">
                             <?= $csrfField ?>
                             <div class="col-12">
                                 <textarea name="message" class="form-control" rows="4" placeholder="Ex.: Documento legível, validar comprovante de residência." required></textarea>
@@ -486,7 +487,7 @@ HTML;
 
                     <div class="border rounded p-3">
                         <h3 class="h6 mb-3">Decisão do candidato</h3>
-                        <form method="post" action="/operations/candidates/<?= $escape($candidate['id'] ?? '') ?>/decision" class="row g-2">
+                        <form method="post" action="<?= $escape($url('/operations/candidates/' . ($candidate['id'] ?? '') . '/decision')) ?>" class="row g-2">
                             <?= $csrfField ?>
                             <div class="col-12">
                                 <label for="decision" class="form-label">Ação</label>
@@ -529,11 +530,11 @@ HTML;
                                             <td>
                                                 <div class="fw-semibold"><?= $escape($statusLabel((string) $document['document_type'])) ?></div>
                                                 <div class="small text-muted"><?= $escape($document['original_name']) ?></div>
-                                                <a href="/portal/documents/<?= $escape($document['id']) ?>" target="_blank" class="small">Abrir anexo</a>
+                                                <a href="<?= $escape($url('/portal/documents/' . $document['id'])) ?>" target="_blank" class="small">Abrir anexo</a>
                                             </td>
                                             <td><?= $escape($statusLabel((string) $document['review_status'])) ?></td>
                                             <td style="min-width: 320px;">
-                                                <form method="post" action="/operations/documents/<?= $escape($document['id']) ?>/decision" class="row g-2">
+                                                <form method="post" action="<?= $escape($url('/operations/documents/' . $document['id'] . '/decision')) ?>" class="row g-2">
                                                     <?= $csrfField ?>
                                                     <input type="hidden" name="candidate_id" value="<?= $escape($candidate['id'] ?? '') ?>">
                                                     <div class="col-md-5">
@@ -584,7 +585,7 @@ HTML;
                                             <td><?= $escape($statusLabel((string) $pendency['status'])) ?></td>
                                             <td style="min-width: 240px;">
                                                 <?php if (($pendency['status'] ?? '') === 'open'): ?>
-                                                    <form method="post" action="/operations/pendencies/<?= $escape($pendency['id']) ?>/resolve" class="row g-2">
+                                                    <form method="post" action="<?= $escape($url('/operations/pendencies/' . $pendency['id'] . '/resolve')) ?>" class="row g-2">
                                                         <?= $csrfField ?>
                                                         <input type="hidden" name="candidate_id" value="<?= $escape($candidate['id'] ?? '') ?>">
                                                         <div class="col-12">

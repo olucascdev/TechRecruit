@@ -51,7 +51,7 @@ $badgeClassForStatus = static function (string $status): string {
                     <p class="text-muted mb-0">Depois do setup inicial, todo cadastro segue por aqui. Cada acesso nasce com role e status ativo.</p>
                 </div>
 
-                <form action="/management/users" method="post" class="row g-3">
+                <form action="<?= $escape($url('/management/users')) ?>" method="post" class="row g-3">
                     <?= $csrfField ?>
                     <div class="col-12">
                         <label for="full_name" class="form-label">Nome completo</label>
@@ -198,7 +198,7 @@ $badgeClassForStatus = static function (string $status): string {
                                 <div class="small text-muted">por <?= $escape($user['created_by'] ?: 'sistema') ?></div>
                             </td>
                             <td class="text-end">
-                                <form action="/management/users/<?= $escape($user['id']) ?>/access" method="post" class="flex flex-col items-stretch gap-2 md:min-w-[18rem] md:flex-row md:items-center md:justify-end">
+                                <form action="<?= $escape($url('/management/users/' . $user['id'] . '/access')) ?>" method="post" class="flex flex-col items-stretch gap-2 md:min-w-[18rem] md:flex-row md:items-center md:justify-end">
                                     <?= $csrfField ?>
                                     <select name="role" class="form-select form-select-sm">
                                         <?php foreach ($roles as $role => $label): ?>

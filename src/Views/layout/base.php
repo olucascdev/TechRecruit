@@ -141,7 +141,7 @@ $renderNavIcon = static function (string $icon): void {
 
         <aside class="absolute inset-y-0 left-0 flex w-[19.5rem] max-w-[88vw] flex-col border-r border-slate-200/80 bg-white/95 px-5 py-5 shadow-2xl backdrop-blur-xl lg:fixed lg:inset-y-0 lg:left-0 lg:w-80 lg:max-w-none lg:shadow-none">
             <div class="flex items-start justify-between gap-3">
-                <a href="/candidates" class="flex items-center gap-3 text-ink-950 no-underline">
+                <a href="<?= $escape($url('/candidates')) ?>" class="flex items-center gap-3 text-ink-950 no-underline">
                     <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 via-brand-400 to-accent-500 font-display text-sm font-bold uppercase tracking-[0.24em] text-white shadow-glow">TR</span>
                     <span>
                         <span class="block font-display text-lg font-semibold tracking-[0.16em] uppercase text-ink-950">TechRecruit</span>
@@ -177,7 +177,7 @@ $renderNavIcon = static function (string $icon): void {
                     $descriptionClasses = $active ? 'text-white/72' : 'text-slate-500';
                     ?>
                     <a
-                        href="<?= $escape($path) ?>"
+                        href="<?= $escape($url($path)) ?>"
                         class="group flex min-h-[72px] items-center gap-3 rounded-[24px] px-3 py-3 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 <?= $linkClasses ?>"
                     >
                         <span class="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition <?= $iconWrapClasses ?>">
@@ -208,7 +208,7 @@ $renderNavIcon = static function (string $icon): void {
                         <span class="badge <?= $roleBadgeClass((string) ($authUser['role'] ?? null)) ?>">
                             <?= $escape($roleLabels[$authUser['role']] ?? (string) ($authUser['role'] ?? '-')) ?>
                         </span>
-                        <form action="/logout" method="post">
+                        <form action="<?= $escape($url('/logout')) ?>" method="post">
                             <?= $csrfField ?>
                             <button type="submit" class="btn btn-outline-secondary btn-sm">Sair</button>
                         </form>

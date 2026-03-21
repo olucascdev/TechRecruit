@@ -36,7 +36,7 @@ $actionIcon = static function (string $name): string {
         <h1 class="h3 mb-1">Campanhas WhatsApp</h1>
         <p class="text-muted mb-0">Monte o segmento, gere a fila inicial e acompanhe o disparo e a triagem.</p>
     </div>
-    <form method="post" action="/campaigns/process-due" class="d-flex flex-wrap align-items-end gap-2">
+    <form method="post" action="<?= $escape($url('/campaigns/process-due')) ?>" class="d-flex flex-wrap align-items-end gap-2">
         <?= $csrfField ?>
         <div>
             <label for="global_batch_limit" class="form-label small mb-1">Lote global</label>
@@ -89,7 +89,7 @@ $actionIcon = static function (string $name): string {
                     <div class="alert alert-danger"><?= $escape($errorMessage) ?></div>
                 <?php endif; ?>
 
-                <form method="post" action="/campaigns" class="row g-3">
+                <form method="post" action="<?= $escape($url('/campaigns')) ?>" class="row g-3">
                     <?= $csrfField ?>
                     <div class="col-12">
                         <label for="name" class="form-label">Nome da campanha</label>
@@ -239,10 +239,10 @@ $actionIcon = static function (string $name): string {
                                     <td><?= $escape($campaign['responded_count']) ?></td>
                                     <td class="text-end">
                                         <div class="inline-flex flex-nowrap items-center justify-end gap-2">
-                                            <a href="/campaigns/<?= $escape($campaign['id']) ?>" class="action-icon action-icon-sm action-icon-primary" title="Ver detalhes" aria-label="Ver detalhes">
+                                            <a href="<?= $escape($url('/campaigns/' . $campaign['id'])) ?>" class="action-icon action-icon-sm action-icon-primary" title="Ver detalhes" aria-label="Ver detalhes">
                                                 <?= $actionIcon('view') ?>
                                             </a>
-                                            <form method="post" action="/campaigns/<?= $escape($campaign['id']) ?>/delete" class="m-0" onsubmit="return confirm('Excluir esta campanha e toda a fila vinculada?');">
+                                            <form method="post" action="<?= $escape($url('/campaigns/' . $campaign['id'] . '/delete')) ?>" class="m-0" onsubmit="return confirm('Excluir esta campanha e toda a fila vinculada?');">
                                                 <?= $csrfField ?>
                                                 <button type="submit" class="action-icon action-icon-sm action-icon-danger" title="Excluir campanha" aria-label="Excluir campanha">
                                                     <?= $actionIcon('delete') ?>
@@ -261,10 +261,12 @@ $actionIcon = static function (string $name): string {
     </div>
 </div>
 <?php
+$processDueAction = $url('/campaigns/process-due');
+$processDueEndpoint = $url('/campaigns/process-due/run');
 $pageScripts = <<<HTML
 <script>
 (() => {
-    const form = document.querySelector('form[action="/campaigns/process-due"]');
+    const form = document.querySelector('form[action="{$processDueAction}"]');
     const toggle = document.querySelector('[data-auto-process-toggle="global"]');
     const statusNode = document.querySelector('[data-auto-process-status="global"]');
 
@@ -273,7 +275,7 @@ $pageScripts = <<<HTML
     }
 
     const batchInput = form.querySelector('input[name="batch_limit"]');
-    const endpoint = '/campaigns/process-due/run';
+    const endpoint = '{$processDueEndpoint}';
     const intervalMs = {$autoProcessIntervalSeconds} * 1000;
     const storageKey = 'techrecruit:auto-process:global';
     let timerId = null;

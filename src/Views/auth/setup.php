@@ -26,7 +26,7 @@ $isReady = $isReady ?? true;
             </div>
         <?php endif; ?>
 
-        <form action="/setup" method="post" class="row g-3">
+        <form action="<?= $escape($url('/setup')) ?>" method="post" class="row g-3">
             <?= $csrfField ?>
             <div class="col-12">
                 <label for="full_name" class="form-label">Nome completo</label>
@@ -89,7 +89,7 @@ $isReady = $isReady ?? true;
                 <button type="submit" class="btn btn-primary" <?= !$isReady ? 'disabled' : '' ?>>Criar primeiro administrador</button>
             </div>
             <div class="col-12">
-                <a href="/login" class="text-sm text-slate-600 hover:text-slate-900">Ir para o login</a>
+                <a href="<?= $escape($url('/login')) ?>" class="text-sm text-slate-600 hover:text-slate-900">Ir para o login</a>
             </div>
         </form>
     </div>

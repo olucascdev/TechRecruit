@@ -53,7 +53,7 @@ $actionIcon = static function (string $name): string {
                             <td><?= $escape($item['open_pendencies']) ?></td>
                             <td><?= $escape($item['last_review_at'] ?: '-') ?></td>
                             <td class="text-end">
-                                <a href="/candidates/<?= $escape($item['candidate_id']) ?>" class="action-icon action-icon-sm action-icon-primary" title="Analisar candidato" aria-label="Analisar candidato">
+                                <a href="<?= $escape($url('/candidates/' . $item['candidate_id'])) ?>" class="action-icon action-icon-sm action-icon-primary" title="Analisar candidato" aria-label="Analisar candidato">
                                     <?= $actionIcon('view') ?>
                                 </a>
                             </td>

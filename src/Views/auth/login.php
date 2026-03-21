@@ -20,7 +20,7 @@ $defaultLogin = $defaultLogin ?? '';
                     <div class="fw-semibold">Nenhum usuário interno encontrado.</div>
                     <div class="mt-2">Siga a mesma lógica do RecargaAki: faça o bootstrap do primeiro admin em <code>/setup</code>.</div>
                     <div class="mt-3 flex flex-wrap gap-2">
-                        <a href="/setup" class="btn btn-primary btn-sm">Abrir setup inicial</a>
+                        <a href="<?= $escape($url('/setup')) ?>" class="btn btn-primary btn-sm">Abrir setup inicial</a>
                     </div>
                     <div class="mt-3">Se preferir, a CLI continua disponível:</div>
                     <pre class="mt-3">php bin/create_management_user.php --name="Admin" --email="admin@empresa.com" --username="admin" --password="SENHA_SEGURA" --role=admin</pre>
@@ -28,7 +28,7 @@ $defaultLogin = $defaultLogin ?? '';
             </div>
         <?php endif; ?>
 
-        <form action="/login" method="post" class="row g-3">
+        <form action="<?= $escape($url('/login')) ?>" method="post" class="row g-3">
             <?= $csrfField ?>
             <div class="col-12">
                 <label for="login" class="form-label">Usuário ou e-mail</label>

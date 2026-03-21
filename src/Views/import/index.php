@@ -35,7 +35,7 @@ $actionIcon = static function (string $name): string {
                 <p class="text-muted mb-0">Arquivos aceitos: `.xlsx` e `.xls`, com tamanho máximo de 10MB.</p>
             </div>
             <div class="col-lg-5">
-                <form action="/import/upload" method="post" enctype="multipart/form-data" class="row g-2">
+                <form action="<?= $escape($url('/import/upload')) ?>" method="post" enctype="multipart/form-data" class="row g-2">
                     <?= $csrfField ?>
                     <div class="col-12">
                         <input type="file" class="form-control" name="excel_file" accept=".xlsx,.xls" required>
@@ -85,10 +85,10 @@ $actionIcon = static function (string $name): string {
                             <td><?= $escape($batch['created_at']) ?></td>
                             <td class="text-end">
                                 <div class="inline-flex flex-nowrap items-center justify-end gap-2">
-                                    <a href="/import/result/<?= $escape($batch['id']) ?>" class="action-icon action-icon-sm action-icon-primary" title="Ver resultado" aria-label="Ver resultado">
+                                    <a href="<?= $escape($url('/import/result/' . $batch['id'])) ?>" class="action-icon action-icon-sm action-icon-primary" title="Ver resultado" aria-label="Ver resultado">
                                         <?= $actionIcon('view') ?>
                                     </a>
-                                    <form method="post" action="/import/<?= $escape($batch['id']) ?>/delete" class="m-0" onsubmit="return confirm('Excluir este lote de importação? Os candidatos importados serão mantidos.');">
+                                    <form method="post" action="<?= $escape($url('/import/' . $batch['id'] . '/delete')) ?>" class="m-0" onsubmit="return confirm('Excluir este lote de importação? Os candidatos importados serão mantidos.');">
                                         <?= $csrfField ?>
                                         <button type="submit" class="action-icon action-icon-sm action-icon-danger" title="Excluir lote" aria-label="Excluir lote">
                                             <?= $actionIcon('delete') ?>
