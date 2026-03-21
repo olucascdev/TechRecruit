@@ -28,6 +28,8 @@ $value = static function (string $key, array $profile, array $portal): string {
     return match ($key) {
         'full_name' => (string) ($portal['candidate_full_name'] ?? ''),
         'cpf' => (string) ($portal['candidate_cpf'] ?? ''),
+        'cnpj' => (string) ($portal['cnpj'] ?? ''),
+        'pix_key' => (string) ($portal['pix_key'] ?? ''),
         'whatsapp' => (string) ($portal['whatsapp'] ?? ''),
         'email' => (string) ($portal['email'] ?? ''),
         'state' => (string) ($portal['state'] ?? ''),
@@ -68,15 +70,19 @@ $statusClass = static function (string $status): string {
 
                 <div class="card border-0 shadow-sm">
                     <div class="card-body">
-                        <h2 class="h5 mb-3">Preencha seu cadastro e envie os documentos</h2>
+                        <h2 class="h5 mb-3">Finalize seu cadastro W13 e envie os documentos</h2>
                         <form action="<?= $escape($portalFormAction ?? '') ?>" method="post" enctype="multipart/form-data" class="row g-3">
-                            <div class="col-md-8">
+                            <div class="col-md-6">
                                 <label for="full_name" class="form-label">Nome completo</label>
                                 <input type="text" class="form-control" id="full_name" name="full_name" value="<?= $escape($value('full_name', $profile, $portal)) ?>" <?= $isReadOnly ? 'disabled' : '' ?> required>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label for="cpf" class="form-label">CPF</label>
                                 <input type="text" class="form-control" id="cpf" name="cpf" value="<?= $escape($value('cpf', $profile, $portal)) ?>" <?= $isReadOnly ? 'disabled' : '' ?>>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="cnpj" class="form-label">CNPJ / MEI</label>
+                                <input type="text" class="form-control" id="cnpj" name="cnpj" value="<?= $escape($value('cnpj', $profile, $portal)) ?>" <?= $isReadOnly ? 'disabled' : '' ?> required>
                             </div>
                             <div class="col-md-4">
                                 <label for="birth_date" class="form-label">Data de nascimento</label>
@@ -90,15 +96,19 @@ $statusClass = static function (string $status): string {
                                 <label for="email" class="form-label">E-mail</label>
                                 <input type="email" class="form-control" id="email" name="email" value="<?= $escape($value('email', $profile, $portal)) ?>" <?= $isReadOnly ? 'disabled' : '' ?>>
                             </div>
+                            <div class="col-md-4">
+                                <label for="pix_key" class="form-label">Chave Pix</label>
+                                <input type="text" class="form-control" id="pix_key" name="pix_key" value="<?= $escape($value('pix_key', $profile, $portal)) ?>" <?= $isReadOnly ? 'disabled' : '' ?> required>
+                            </div>
                             <div class="col-md-2">
                                 <label for="state" class="form-label">UF</label>
                                 <input type="text" class="form-control" id="state" name="state" maxlength="2" value="<?= $escape($value('state', $profile, $portal)) ?>" <?= $isReadOnly ? 'disabled' : '' ?> required>
                             </div>
-                            <div class="col-md-5">
+                            <div class="col-md-4">
                                 <label for="city" class="form-label">Cidade</label>
                                 <input type="text" class="form-control" id="city" name="city" value="<?= $escape($value('city', $profile, $portal)) ?>" <?= $isReadOnly ? 'disabled' : '' ?> required>
                             </div>
-                            <div class="col-md-5">
+                            <div class="col-md-6">
                                 <label for="region" class="form-label">Regiao</label>
                                 <input type="text" class="form-control" id="region" name="region" value="<?= $escape($value('region', $profile, $portal)) ?>" <?= $isReadOnly ? 'disabled' : '' ?>>
                             </div>
@@ -137,7 +147,7 @@ $statusClass = static function (string $status): string {
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" value="1" id="terms_accepted" name="terms_accepted" <?= $portal['terms_accepted'] ? 'checked' : '' ?> <?= $isReadOnly ? 'disabled' : '' ?> required>
                                     <label class="form-check-label" for="terms_accepted">
-                                        Confirmo que as informacoes enviadas sao verdadeiras e autorizo o uso para fins de recrutamento.
+                                        Confirmo que as informacoes e documentos enviados sao verdadeiros e autorizo o uso para fins de recrutamento e habilitacao operacional na W13.
                                     </label>
                                 </div>
                             </div>
@@ -155,7 +165,7 @@ $statusClass = static function (string $status): string {
             <div class="col-lg-4">
                 <div class="card border-0 shadow-sm mb-4">
                     <div class="card-body">
-                        <h2 class="h5 mb-3">Checklist documental</h2>
+                        <h2 class="h5 mb-3">Checklist documental W13</h2>
                         <ul class="list-group list-group-flush">
                             <?php foreach ($checklist as $item): ?>
                                 <li class="list-group-item px-0 d-flex justify-content-between gap-3">

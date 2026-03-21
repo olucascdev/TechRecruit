@@ -34,12 +34,28 @@ final class PortalModel
             'label' => 'Comprovante de residencia',
             'required' => true,
         ],
-        'curriculo' => [
-            'label' => 'Curriculo',
+        'cartao_mei' => [
+            'label' => 'Cartao CNPJ / comprovante MEI',
             'required' => true,
         ],
+        'aso' => [
+            'label' => 'ASO valido',
+            'required' => true,
+        ],
+        'nr10' => [
+            'label' => 'Certificado NR10',
+            'required' => true,
+        ],
+        'nr35' => [
+            'label' => 'Certificado NR35',
+            'required' => true,
+        ],
+        'curriculo' => [
+            'label' => 'Curriculo',
+            'required' => false,
+        ],
         'certificado_tecnico' => [
-            'label' => 'Certificado tecnico',
+            'label' => 'Certificado tecnico adicional',
             'required' => false,
         ],
         'outro' => [
@@ -197,7 +213,7 @@ final class PortalModel
     private function hydratePortal(array $portal): array
     {
         $profileStatement = $this->pdo->prepare(
-            'SELECT full_name, cpf, birth_date, whatsapp, email, state, city, region, availability, experience_summary, notes, created_at, updated_at
+            'SELECT full_name, cpf, cnpj, pix_key, birth_date, whatsapp, email, state, city, region, availability, experience_summary, notes, created_at, updated_at
              FROM recruit_candidate_portal_profiles
              WHERE portal_id = :portal_id
              LIMIT 1'

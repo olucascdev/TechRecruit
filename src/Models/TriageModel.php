@@ -235,17 +235,18 @@ final class TriageModel
                 WHERE campaign.automation_type = :automation_type
                   AND campaign.status <> :cancelled
                   AND (
-                    REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(recipient.destination_contact, '+', ''), '-', ''), '(', ''), ')', ''), ' ', ''), '.', ''), '/', '') = :normalized_contact
+                    REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(recipient.destination_contact, '+', ''), '-', ''), '(', ''), ')', ''), ' ', ''), '.', ''), '/', '') = :normalized_contact_full
                     OR RIGHT(
                         REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(recipient.destination_contact, '+', ''), '-', ''), '(', ''), ')', ''), ' ', ''), '.', ''), '/', ''),
                         {$contactLength}
-                    ) = :normalized_contact
+                    ) = :normalized_contact_suffix
                   )";
 
         $params = [
             'automation_type' => 'triage_w13',
             'cancelled' => 'cancelled',
-            'normalized_contact' => $normalizedContact,
+            'normalized_contact_full' => $normalizedContact,
+            'normalized_contact_suffix' => $normalizedContact,
         ];
 
         if ($campaignId !== null) {
@@ -264,6 +265,41 @@ final class TriageModel
 
         $statement = $this->pdo->prepare($sql);
         $statement->execute($params);
+        $session = $statement->fetch();
+
+        return $session === false ? null : $this->decodeSession($session);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function findLatestSessionByCandidateId(int $candidateId): ?array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT
+                id,
+                campaign_id,
+                campaign_recipient_id,
+                candidate_id,
+                flow_version,
+                triage_status,
+                current_step,
+                automation_status,
+                needs_operator,
+                invalid_reply_count,
+                fallback_reason,
+                collected_data,
+                last_inbound_message,
+                last_outbound_message,
+                last_interaction_at,
+                created_at,
+                updated_at
+             FROM recruit_triage_sessions
+             WHERE candidate_id = :candidate_id
+             ORDER BY updated_at DESC, id DESC
+             LIMIT 1'
+        );
+        $statement->execute(['candidate_id' => $candidateId]);
         $session = $statement->fetch();
 
         return $session === false ? null : $this->decodeSession($session);

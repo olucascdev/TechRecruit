@@ -9,6 +9,7 @@ use TechRecruit\Database;
 use TechRecruit\Models\CandidateModel;
 use TechRecruit\Models\OperationsModel;
 use TechRecruit\Models\PortalModel;
+use TechRecruit\Models\TriageModel;
 
 final class CandidateController extends Controller
 {
@@ -19,6 +20,8 @@ final class CandidateController extends Controller
     private PortalModel $portalModel;
 
     private OperationsModel $operationsModel;
+
+    private TriageModel $triageModel;
 
     public function __construct(
         ?CandidateModel $candidateModel = null,
@@ -31,6 +34,7 @@ final class CandidateController extends Controller
         $this->candidateModel = $candidateModel ?? new CandidateModel($this->pdo);
         $this->portalModel = $portalModel ?? new PortalModel($this->pdo);
         $this->operationsModel = $operationsModel ?? new OperationsModel($this->pdo);
+        $this->triageModel = new TriageModel($this->pdo);
     }
 
     public function index(): void
@@ -86,6 +90,7 @@ final class CandidateController extends Controller
                 ? $this->absoluteUrl('/portal/' . $portal['access_token'])
                 : null,
             'operations' => $this->operationsModel->findByCandidateId($id),
+            'triageSession' => $this->triageModel->findLatestSessionByCandidateId($id),
         ], 'Candidato');
     }
 

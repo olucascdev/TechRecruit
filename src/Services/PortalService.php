@@ -185,6 +185,8 @@ final class PortalService
                     candidate_id,
                     full_name,
                     cpf,
+                    cnpj,
+                    pix_key,
                     birth_date,
                     whatsapp,
                     email,
@@ -199,6 +201,8 @@ final class PortalService
                     :candidate_id,
                     :full_name,
                     :cpf,
+                    :cnpj,
+                    :pix_key,
                     :birth_date,
                     :whatsapp,
                     :email,
@@ -212,6 +216,8 @@ final class PortalService
                  ON DUPLICATE KEY UPDATE
                     full_name = VALUES(full_name),
                     cpf = VALUES(cpf),
+                    cnpj = VALUES(cnpj),
+                    pix_key = VALUES(pix_key),
                     birth_date = VALUES(birth_date),
                     whatsapp = VALUES(whatsapp),
                     email = VALUES(email),
@@ -228,6 +234,8 @@ final class PortalService
                 'candidate_id' => $portal['candidate_id'],
                 'full_name' => $profileData['full_name'],
                 'cpf' => $profileData['cpf'],
+                'cnpj' => $profileData['cnpj'],
+                'pix_key' => $profileData['pix_key'],
                 'birth_date' => $profileData['birth_date'],
                 'whatsapp' => $profileData['whatsapp'],
                 'email' => $profileData['email'],
@@ -389,6 +397,8 @@ final class PortalService
     {
         $fullName = trim((string) ($formData['full_name'] ?? ($portal['profile']['full_name'] ?? $portal['candidate_full_name'] ?? '')));
         $cpf = trim((string) ($formData['cpf'] ?? ($portal['profile']['cpf'] ?? $portal['candidate_cpf'] ?? '')));
+        $cnpj = trim((string) ($formData['cnpj'] ?? ($portal['profile']['cnpj'] ?? '')));
+        $pixKey = trim((string) ($formData['pix_key'] ?? ($portal['profile']['pix_key'] ?? '')));
         $birthDate = trim((string) ($formData['birth_date'] ?? ($portal['profile']['birth_date'] ?? '')));
         $whatsapp = trim((string) ($formData['whatsapp'] ?? ($portal['profile']['whatsapp'] ?? $portal['whatsapp'] ?? '')));
         $email = trim((string) ($formData['email'] ?? ($portal['profile']['email'] ?? $portal['email'] ?? '')));
@@ -419,6 +429,14 @@ final class PortalService
             throw new InvalidArgumentException('Informe sua disponibilidade.');
         }
 
+        if ($cnpj === '') {
+            throw new InvalidArgumentException('Informe o CNPJ / MEI.');
+        }
+
+        if ($pixKey === '') {
+            throw new InvalidArgumentException('Informe a chave Pix.');
+        }
+
         if ($experienceSummary === '') {
             throw new InvalidArgumentException('Descreva sua experiencia resumida.');
         }
@@ -426,6 +444,8 @@ final class PortalService
         return [
             'full_name' => $fullName,
             'cpf' => $cpf === '' ? null : $cpf,
+            'cnpj' => $cnpj === '' ? null : $cnpj,
+            'pix_key' => $pixKey === '' ? null : $pixKey,
             'birth_date' => $birthDate === '' ? null : $birthDate,
             'whatsapp' => $whatsapp === '' ? null : $whatsapp,
             'email' => $email === '' ? null : $email,

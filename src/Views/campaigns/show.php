@@ -447,10 +447,14 @@ HTML;
                                                 </div>
                                                 <div class="small text-muted">Step: <?= $escape($recipient['triage_step'] ?? '-') ?></div>
                                                 <div class="small text-muted">Fluxo: <?= $escape($recipient['triage_automation_status'] ?? '-') ?></div>
-                                                <?php $qualification = is_array($recipient['collected_data']['qualification'] ?? null) ? $recipient['collected_data']['qualification'] : []; ?>
-                                                <?php if ($qualification !== []): ?>
+                                                <?php $prefilter = is_array($recipient['collected_data']['prefilter'] ?? null) ? $recipient['collected_data']['prefilter'] : []; ?>
+                                                <?php $classification = is_array($recipient['collected_data']['classification'] ?? null) ? $recipient['collected_data']['classification'] : []; ?>
+                                                <?php if ($classification !== []): ?>
                                                     <div class="small mt-1">
-                                                        <?= $escape($qualification['city'] ?? '-') ?>/<?= $escape($qualification['state'] ?? '-') ?> · Tel <?= $escape($qualification['phone'] ?? '-') ?>
+                                                        <?= $escape($classification['status_label'] ?? '-') ?> · <?= $escape($classification['technical_level_label'] ?? '-') ?> · <?= $escape($classification['field_level_label'] ?? '-') ?>
+                                                    </div>
+                                                    <div class="small text-muted">
+                                                        <?= $escape(($prefilter['city'] ?? '-') . '/' . ($prefilter['state'] ?? '-')) ?> · <?= $escape(($classification['service_labels'] ?? []) !== [] ? implode(', ', $classification['service_labels']) : '-') ?>
                                                     </div>
                                                 <?php endif; ?>
                                                 <?php if (!empty($recipient['needs_operator'])): ?>

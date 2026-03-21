@@ -11,7 +11,60 @@ use TechRecruit\Models\TriageModel;
 final class TriageBotService
 {
     public const AUTOMATION_TYPE = 'triage_w13';
-    public const FLOW_VERSION = '0.3.0';
+    public const FLOW_VERSION = '0.4.0';
+
+    /**
+     * @var array<string, array{label:string, level:string, keywords:list<string>, options:list<string>}>
+     */
+    private const SERVICE_OPTIONS = [
+        'vsat' => [
+            'label' => 'VSAT',
+            'level' => 'N3',
+            'keywords' => ['vsat', 'satelital', 'satelite'],
+            'options' => ['1'],
+        ],
+        'redes_firewall' => [
+            'label' => 'Redes / Firewall',
+            'level' => 'N2',
+            'keywords' => ['redes', 'firewall', 'switch', 'roteador', 'router'],
+            'options' => ['2'],
+        ],
+        'microinformatica' => [
+            'label' => 'Microinformatica',
+            'level' => 'N1',
+            'keywords' => ['microinformatica', 'microinformatica', 'desktop', 'notebook', 'micro'],
+            'options' => ['3'],
+        ],
+        'impressoras' => [
+            'label' => 'Impressoras',
+            'level' => 'N1',
+            'keywords' => ['impressora', 'impressoras'],
+            'options' => ['4'],
+        ],
+        'cabeamento' => [
+            'label' => 'Cabeamento',
+            'level' => 'N1',
+            'keywords' => ['cabeamento', 'cabo', 'cabling', 'patch panel'],
+            'options' => ['5'],
+        ],
+        'servidores' => [
+            'label' => 'Servidores',
+            'level' => 'N3',
+            'keywords' => ['servidor', 'servidores', 'vmware', 'virtualizacao'],
+            'options' => ['6'],
+        ],
+    ];
+
+    /**
+     * @var array<string, list<string>>
+     */
+    private const TOOL_KEYWORDS = [
+        'multimetro' => ['multimetro'],
+        'kit_ferramentas' => ['kit de ferramentas', 'ferramentas', 'toolkit'],
+        'alicate_crimpagem' => ['alicate de crimpagem', 'crimpagem', 'crimpador'],
+        'testador_rede' => ['testador de rede', 'testador', 'certificador'],
+        'escada' => ['escada'],
+    ];
 
     private PDO $pdo;
 
@@ -128,7 +181,7 @@ final class TriageBotService
         }
 
         $parsedIntent = $this->resolveIntent($messageBody);
-        $currentStep = (string) ($session['current_step'] ?? 'initial_offer');
+        $currentStep = $this->normalizeWorkflowStep((string) ($session['current_step'] ?? 'initial_offer'));
 
         $this->triageModel->logAnswer(
             (int) $session['id'],
@@ -156,12 +209,13 @@ final class TriageBotService
         return match ($currentStep) {
             'initial_offer' => $this->handleInitialOfferStep($session, $messageBody, $parsedIntent),
             'details_followup' => $this->handleDetailsFollowupStep($session, $messageBody, $parsedIntent),
-            'qualification' => $this->handleQualificationStep($session, $messageBody, $parsedIntent),
+            'prefilter' => $this->handlePreFilterStep($session, $messageBody),
+            'field_readiness' => $this->handleFieldReadinessStep($session, $messageBody),
             'approval_confirmation' => $this->handleApprovalConfirmationStep($session, $messageBody, $parsedIntent),
             'waiting_validation' => $this->handoffToOperator(
                 $session,
                 $messageBody,
-                'Candidato respondeu novamente enquanto aguardava validacao.'
+                'Candidato respondeu novamente enquanto aguardava validacao manual.'
             ),
             'completed' => $this->buildStaticResult($session, [
                 'parsed_intent' => $parsedIntent,
@@ -212,7 +266,7 @@ final class TriageBotService
     public function buildInitialOfferMessage(string $cityLabel): string
     {
         return trim(sprintf(
-            "Ola, tudo bem?\n\nAqui e da W13 Tecnologia. Estamos com oportunidade de atendimento tecnico na sua regiao.\n\nAtividade: atendimento de campo\nValor: R\$200 por atividade concluida\nTempo medio: ate 2h\nRegiao: %s\n\nVoce tem interesse e disponibilidade para esse atendimento?\n\nResponda:\n1 - SIM, tenho interesse\n2 - NAO tenho interesse\n3 - Talvez, preciso de mais detalhes\n\nEquipe W13 Tecnologia",
+            "W13 Tecnologia - Cadastro de Tecnicos de Campo\n\nOla, tudo bem?\nEstamos expandindo nossa operacao nacional e buscamos tecnicos parceiros na sua regiao para atendimentos em campo.\n\nRegiao alvo: %s\n\nVoce tem interesse em prestar servicos para a W13?\n\nResponda:\n1 - SIM\n2 - NAO\n3 - MAIS INFORMACOES",
             $cityLabel
         ));
     }
@@ -224,17 +278,17 @@ final class TriageBotService
     private function handleInitialOfferStep(array $session, string $messageBody, string $parsedIntent): array
     {
         if ($this->isInterestedReply($messageBody, $parsedIntent)) {
-            $reply = $this->buildQualificationPromptMessage();
+            $reply = $this->buildPreFilterPromptMessage();
             $collectedData = $this->mergeCollectedData($session, [
                 'interest_reply' => $messageBody,
-                'last_prompt' => 'qualification',
+                'last_prompt' => 'prefilter',
             ]);
 
             return $this->advanceSession(
                 $session,
                 [
                     'triage_status' => 'interested',
-                    'current_step' => 'qualification',
+                    'current_step' => 'prefilter',
                     'automation_status' => 'active',
                     'needs_operator' => false,
                     'invalid_reply_count' => 0,
@@ -248,7 +302,7 @@ final class TriageBotService
                     'parsed_intent' => 'interested',
                     'candidate_status' => 'interested',
                     'auto_reply' => $reply,
-                    'metadata' => ['transition' => 'qualification'],
+                    'metadata' => ['transition' => 'prefilter'],
                 ]
             );
         }
@@ -313,17 +367,17 @@ final class TriageBotService
     private function handleDetailsFollowupStep(array $session, string $messageBody, string $parsedIntent): array
     {
         if ($this->isInterestedReply($messageBody, $parsedIntent)) {
-            $reply = $this->buildQualificationPromptMessage();
+            $reply = $this->buildPreFilterPromptMessage();
             $collectedData = $this->mergeCollectedData($session, [
                 'details_confirmation_reply' => $messageBody,
-                'last_prompt' => 'qualification',
+                'last_prompt' => 'prefilter',
             ]);
 
             return $this->advanceSession(
                 $session,
                 [
                     'triage_status' => 'interested',
-                    'current_step' => 'qualification',
+                    'current_step' => 'prefilter',
                     'automation_status' => 'active',
                     'needs_operator' => false,
                     'invalid_reply_count' => 0,
@@ -337,7 +391,7 @@ final class TriageBotService
                     'parsed_intent' => 'interested',
                     'candidate_status' => 'interested',
                     'auto_reply' => $reply,
-                    'metadata' => ['transition' => 'qualification'],
+                    'metadata' => ['transition' => 'prefilter'],
                 ]
             );
         }
@@ -361,7 +415,7 @@ final class TriageBotService
             $messageBody,
             'details_followup',
             $this->buildDetailsRetryMessage(),
-            'Resposta invalida apos envio de detalhes.'
+            'Resposta invalida apos envio de mais informacoes.'
         );
     }
 
@@ -369,23 +423,23 @@ final class TriageBotService
      * @param array<string, mixed> $session
      * @return array<string, mixed>
      */
-    private function handleQualificationStep(array $session, string $messageBody, string $parsedIntent): array
+    private function handlePreFilterStep(array $session, string $messageBody): array
     {
-        $qualificationData = $this->extractQualificationData($messageBody);
+        $preFilterData = $this->extractPreFilterData($messageBody);
 
-        if ($this->isQualificationReplyValid($qualificationData, $messageBody)) {
-            $reply = $this->buildQualificationAckMessage();
+        if ($this->isPreFilterReplyValid($preFilterData, $messageBody)) {
+            $reply = $this->buildFieldReadinessPromptMessage();
             $collectedData = $this->mergeCollectedData($session, [
-                'qualification' => $qualificationData,
-                'qualification_raw_reply' => $messageBody,
-                'last_prompt' => 'waiting_validation',
+                'prefilter' => $preFilterData,
+                'prefilter_raw_reply' => $messageBody,
+                'last_prompt' => 'field_readiness',
             ]);
 
             return $this->advanceSession(
                 $session,
                 [
-                    'triage_status' => 'awaiting_validation',
-                    'current_step' => 'waiting_validation',
+                    'triage_status' => 'interested',
+                    'current_step' => 'field_readiness',
                     'automation_status' => 'active',
                     'needs_operator' => false,
                     'invalid_reply_count' => 0,
@@ -400,11 +454,16 @@ final class TriageBotService
                     'candidate_status' => 'interested',
                     'auto_reply' => $reply,
                     'metadata' => [
-                        'transition' => 'waiting_validation',
-                        'captured_fields' => array_keys(array_filter(
-                            $qualificationData,
-                            static fn (mixed $value): bool => $value !== null && $value !== ''
-                        )),
+                        'transition' => 'field_readiness',
+                        'captured_fields' => array_keys(array_filter([
+                            'city' => $preFilterData['city'] ?? null,
+                            'state' => $preFilterData['state'] ?? null,
+                            'mei_active' => $preFilterData['mei_active'] ?? null,
+                            'has_notebook' => $preFilterData['has_notebook'] ?? null,
+                            'has_console_cable' => $preFilterData['has_console_cable'] ?? null,
+                            'services' => ($preFilterData['service_keys'] ?? []) !== [] ? 'ok' : null,
+                            'immediate_availability' => $preFilterData['immediate_availability'] ?? null,
+                        ], static fn (mixed $value): bool => $value !== null && $value !== [])),
                     ],
                 ]
             );
@@ -413,9 +472,67 @@ final class TriageBotService
         return $this->handleInvalidStepReply(
             $session,
             $messageBody,
-            'qualification',
-            $this->buildQualificationRetryMessage(),
-            'Qualificacao enviada em formato insuficiente.'
+            'prefilter',
+            $this->buildPreFilterRetryMessage(),
+            'Pre-filtro enviado em formato insuficiente.'
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $session
+     * @return array<string, mixed>
+     */
+    private function handleFieldReadinessStep(array $session, string $messageBody): array
+    {
+        $collectedData = is_array($session['collected_data'] ?? null) ? $session['collected_data'] : [];
+        $preFilterData = is_array($collectedData['prefilter'] ?? null) ? $collectedData['prefilter'] : [];
+        $fieldReadinessData = $this->extractFieldReadinessData($messageBody);
+
+        if ($this->isFieldReadinessReplyValid($fieldReadinessData, $messageBody)) {
+            $classification = $this->buildW13Classification($preFilterData, $fieldReadinessData);
+            $reply = $this->buildFieldReadinessAckMessage($classification);
+            $updatedCollectedData = $this->mergeCollectedData($session, [
+                'field_readiness' => $fieldReadinessData,
+                'field_readiness_raw_reply' => $messageBody,
+                'classification' => $classification,
+                'last_prompt' => 'waiting_validation',
+            ]);
+
+            return $this->advanceSession(
+                $session,
+                [
+                    'triage_status' => 'awaiting_validation',
+                    'current_step' => 'waiting_validation',
+                    'automation_status' => 'active',
+                    'needs_operator' => false,
+                    'invalid_reply_count' => 0,
+                    'fallback_reason' => null,
+                    'collected_data' => $updatedCollectedData,
+                    'last_inbound_message' => $messageBody,
+                    'last_outbound_message' => $reply,
+                    'last_interaction_at' => date('Y-m-d H:i:s'),
+                ],
+                [
+                    'parsed_intent' => 'interested',
+                    'candidate_status' => 'interested',
+                    'auto_reply' => $reply,
+                    'metadata' => [
+                        'transition' => 'waiting_validation',
+                        'classification_status' => $classification['status'] ?? null,
+                        'technical_level' => $classification['technical_level'] ?? null,
+                        'field_level' => $classification['field_level'] ?? null,
+                        'premium_candidate' => $classification['premium_candidate'] ?? false,
+                    ],
+                ]
+            );
+        }
+
+        return $this->handleInvalidStepReply(
+            $session,
+            $messageBody,
+            'field_readiness',
+            $this->buildFieldReadinessRetryMessage(),
+            'Qualificacao tecnica e de seguranca enviada em formato insuficiente.'
         );
     }
 
@@ -457,7 +574,7 @@ final class TriageBotService
             $session,
             $messageBody,
             'approval_confirmation',
-            "Confirma disponibilidade?\n\nResponda:\n1 - CONFIRMO\n2 - NAO POSSO",
+            "Confirma disponibilidade para a programacao?\n\nResponda:\n1 - CONFIRMO\n2 - NAO POSSO",
             'Resposta invalida na confirmacao da atividade.'
         );
     }
@@ -631,6 +748,14 @@ final class TriageBotService
         return array_replace_recursive($currentData, $newData);
     }
 
+    private function normalizeWorkflowStep(string $step): string
+    {
+        return match ($step) {
+            'qualification' => 'prefilter',
+            default => $step,
+        };
+    }
+
     private function resolveIntent(string $messageBody): string
     {
         $normalized = $this->normalizeFreeText($messageBody);
@@ -644,7 +769,12 @@ final class TriageBotService
             return 'opt_out';
         }
 
-        if ($normalized === '3' || str_contains($normalized, 'mais detalhes') || str_contains($normalized, 'preciso de detalhes')) {
+        if (
+            $normalized === '3'
+            || str_contains($normalized, 'mais informacoes')
+            || str_contains($normalized, 'mais detalhes')
+            || str_contains($normalized, 'preciso de informacoes')
+        ) {
             return 'needs_details';
         }
 
@@ -697,17 +827,17 @@ final class TriageBotService
     /**
      * @return array<string, mixed>
      */
-    private function extractQualificationData(string $messageBody): array
+    private function extractPreFilterData(string $messageBody): array
     {
         $data = [
-            'full_name' => null,
             'city' => null,
             'state' => null,
-            'phone' => null,
+            'mei_active' => null,
             'has_notebook' => null,
             'has_console_cable' => null,
+            'service_keys' => [],
+            'service_labels' => [],
             'immediate_availability' => null,
-            'can_pickup_at_base' => null,
         ];
 
         $lines = preg_split('/\r\n|\r|\n/', trim($messageBody)) ?: [];
@@ -719,120 +849,490 @@ final class TriageBotService
                 continue;
             }
 
-            if (preg_match('/^\s*[-*]?\s*([^:]+?)\s*[:\-]\s*(.+)\s*$/u', $line, $matches) !== 1) {
+            if (($data['service_keys'] === []) && preg_match('/^\s*(servicos?|especialidades?)\s*[:\-]/iu', $line) === 1) {
+                $services = $this->parseServiceCategories($line);
+                $data['service_keys'] = $services;
+                $data['service_labels'] = $this->serviceLabels($services);
                 continue;
             }
 
-            $label = $this->normalizeFreeText($matches[1]);
-            $value = trim($matches[2]);
+            if (preg_match('/^\s*[-*]?\s*([^:]+?)\s*[:\-]\s*(.+)\s*$/u', $line, $matches) === 1) {
+                $label = $this->normalizeFreeText($matches[1]);
+                $value = trim($matches[2]);
 
-            if ($label === '') {
-                continue;
-            }
+                if ($this->containsAny($label, ['cidade', 'cidade atual', 'cidade/uf', 'regiao'])) {
+                    [$city, $state] = $this->splitCityAndState($value);
+                    $data['city'] = $data['city'] ?? $city;
+                    $data['state'] = $data['state'] ?? $state;
+                    continue;
+                }
 
-            if ($this->containsAny($label, ['nome completo', 'nome']) && $data['full_name'] === null) {
-                $data['full_name'] = $value;
-                continue;
-            }
+                if ($this->containsAny($label, ['uf', 'estado'])) {
+                    [, $state] = $this->splitCityAndState($value);
+                    $data['state'] = $data['state'] ?? $state ?? (mb_strtoupper(trim($value)) ?: null);
+                    continue;
+                }
 
-            if ($this->containsAny($label, ['cidade atual', 'cidade']) && $data['city'] === null) {
-                [$city, $state] = $this->splitCityAndState($value);
-                $data['city'] = $city;
-                $data['state'] = $data['state'] ?? $state;
-                continue;
-            }
+                if ($this->containsAny($label, ['mei', 'mei ativo', 'cnpj'])) {
+                    $decision = $this->parseBooleanValue($value);
+                    $data['mei_active'] = $decision ?? $data['mei_active'];
+                    continue;
+                }
 
-            if ($this->containsAny($label, ['uf', 'estado']) && $data['state'] === null) {
-                $state = $this->extractState($value);
+                if ($this->containsAny($label, ['notebook'])) {
+                    $decision = $this->parseBooleanValue($value);
+                    $data['has_notebook'] = $decision ?? $data['has_notebook'];
+                    continue;
+                }
 
-                if ($state !== null) {
-                    $data['state'] = $state;
+                if ($this->containsAny($label, ['cabo console', 'console'])) {
+                    $decision = $this->parseBooleanValue($value);
+                    $data['has_console_cable'] = $decision ?? $data['has_console_cable'];
+                    continue;
+                }
+
+                if ($this->containsAny($label, ['servicos', 'especialidades', 'servico'])) {
+                    $services = $this->parseServiceCategories($value);
+                    $data['service_keys'] = $services;
+                    $data['service_labels'] = $this->serviceLabels($services);
+                    continue;
+                }
+
+                if ($this->containsAny($label, ['disponibilidade', 'disponibilidade imediata'])) {
+                    $decision = $this->parseBooleanValue($value);
+                    $data['immediate_availability'] = $decision ?? $data['immediate_availability'];
                 }
 
                 continue;
             }
 
-            if ($this->containsAny($label, ['telefone', 'whatsapp', 'celular']) && $data['phone'] === null) {
-                $phone = $this->normalizePhoneDigits($value);
-                $data['phone'] = $phone !== '' ? $phone : null;
-                continue;
+            if ($data['city'] === null && str_contains($line, '/')) {
+                [$city, $state] = $this->splitCityAndState($line);
+                $data['city'] = $data['city'] ?? $city;
+                $data['state'] = $data['state'] ?? $state;
             }
 
-            if ($this->containsAny($label, ['possui notebook', 'notebook'])) {
-                $data['has_notebook'] = $this->parseBooleanValue($value);
-                continue;
-            }
+            if ($data['service_keys'] === []) {
+                $services = $this->parseServiceCategories($line);
 
-            if ($this->containsAny($label, ['possui cabo console', 'cabo console'])) {
-                $data['has_console_cable'] = $this->parseBooleanValue($value);
-                continue;
-            }
-
-            if ($this->containsAny($label, ['disponibilidade imediata', 'disponibilidade'])) {
-                $data['immediate_availability'] = $this->parseBooleanValue($value);
-                continue;
-            }
-
-            if ($this->containsAny($label, ['retirar equipamento', 'retirar em base', 'pode retirar em base'])) {
-                $data['can_pickup_at_base'] = $this->parseBooleanValue($value);
+                if ($services !== []) {
+                    $data['service_keys'] = $services;
+                    $data['service_labels'] = $this->serviceLabels($services);
+                }
             }
         }
 
-        if ($data['phone'] === null) {
-            $phone = $this->extractPhoneFromMessage($messageBody);
-            $data['phone'] = $phone !== '' ? $phone : null;
+        if ($data['city'] === null || $data['state'] === null) {
+            [$city, $state] = $this->splitCityAndState($messageBody);
+            $data['city'] = $data['city'] ?? $city;
+            $data['state'] = $data['state'] ?? $state;
         }
 
-        if ($data['state'] === null) {
-            $state = $this->extractState($messageBody);
-
-            if ($state !== null) {
-                $data['state'] = $state;
-            }
-        }
-
-        if ($data['full_name'] === null) {
-            $data['full_name'] = $this->extractPossibleName($lines);
-        }
-
-        if ($data['city'] === null) {
-            $data['city'] = $this->extractPossibleCity($lines);
+        if ($data['mei_active'] === null) {
+            $data['mei_active'] = $this->parseBooleanFromWholeMessage($messageBody, ['mei', 'cnpj']);
         }
 
         if ($data['has_notebook'] === null) {
-            $data['has_notebook'] = $this->parseBooleanFromWholeMessage($messageBody, 'notebook');
+            $data['has_notebook'] = $this->parseBooleanFromWholeMessage($messageBody, ['notebook']);
         }
 
         if ($data['has_console_cable'] === null) {
-            $data['has_console_cable'] = $this->parseBooleanFromWholeMessage($messageBody, 'cabo console');
+            $data['has_console_cable'] = $this->parseBooleanFromWholeMessage($messageBody, ['cabo console', 'console']);
+        }
+
+        if ($data['service_keys'] === []) {
+            $data['service_keys'] = $this->parseServiceCategories($messageBody);
+            $data['service_labels'] = $this->serviceLabels($data['service_keys']);
         }
 
         if ($data['immediate_availability'] === null) {
-            $data['immediate_availability'] = $this->parseBooleanFromWholeMessage($messageBody, 'disponibilidade');
-        }
-
-        if ($data['can_pickup_at_base'] === null) {
-            $data['can_pickup_at_base'] = $this->parseBooleanFromWholeMessage($messageBody, 'retirar');
+            $data['immediate_availability'] = $this->parseBooleanFromWholeMessage($messageBody, ['disponibilidade', 'imediata']);
         }
 
         return $data;
     }
 
-    /**
-     * @param array<string, mixed> $qualificationData
-     */
-    private function isQualificationReplyValid(array $qualificationData, string $messageBody): bool
+    private function isPreFilterReplyValid(array $preFilterData, string $messageBody): bool
     {
-        $filledFields = count(array_filter(
-            $qualificationData,
-            static fn (mixed $value): bool => $value !== null && $value !== ''
-        ));
+        $filledFields = 0;
 
-        if ($filledFields >= 4) {
+        if (($preFilterData['city'] ?? null) !== null) {
+            $filledFields++;
+        }
+
+        if (($preFilterData['state'] ?? null) !== null) {
+            $filledFields++;
+        }
+
+        if (($preFilterData['mei_active'] ?? null) !== null) {
+            $filledFields++;
+        }
+
+        if (($preFilterData['has_notebook'] ?? null) !== null) {
+            $filledFields++;
+        }
+
+        if (($preFilterData['has_console_cable'] ?? null) !== null) {
+            $filledFields++;
+        }
+
+        if (($preFilterData['service_keys'] ?? []) !== []) {
+            $filledFields++;
+        }
+
+        if (($preFilterData['immediate_availability'] ?? null) !== null) {
+            $filledFields++;
+        }
+
+        if (
+            ($preFilterData['city'] ?? null) !== null
+            && ($preFilterData['state'] ?? null) !== null
+            && ($preFilterData['mei_active'] ?? null) !== null
+            && ($preFilterData['service_keys'] ?? []) !== []
+            && ($preFilterData['immediate_availability'] ?? null) !== null
+        ) {
             return true;
         }
 
-        return mb_strlen(trim($messageBody)) >= 40 && ($filledFields >= 2);
+        return $filledFields >= 5 && mb_strlen(trim($messageBody)) >= 45;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function extractFieldReadinessData(string $messageBody): array
+    {
+        $data = [
+            'has_aso' => null,
+            'has_nr10' => null,
+            'has_nr35' => null,
+            'has_complete_toolkit' => null,
+            'tool_items' => [],
+        ];
+
+        $lines = preg_split('/\r\n|\r|\n/', trim($messageBody)) ?: [];
+
+        foreach ($lines as $line) {
+            $line = trim($line);
+
+            if ($line === '') {
+                continue;
+            }
+
+            if (preg_match('/^\s*[-*]?\s*([^:]+?)\s*[:\-]\s*(.+)\s*$/u', $line, $matches) === 1) {
+                $label = $this->normalizeFreeText($matches[1]);
+                $value = trim($matches[2]);
+
+                if ($this->containsAny($label, ['aso'])) {
+                    $decision = $this->parseBooleanValue($value);
+                    $data['has_aso'] = $decision ?? $data['has_aso'];
+                    continue;
+                }
+
+                if ($this->containsAny($label, ['nr10'])) {
+                    $decision = $this->parseBooleanValue($value);
+                    $data['has_nr10'] = $decision ?? $data['has_nr10'];
+                    continue;
+                }
+
+                if ($this->containsAny($label, ['nr35'])) {
+                    $decision = $this->parseBooleanValue($value);
+                    $data['has_nr35'] = $decision ?? $data['has_nr35'];
+                    continue;
+                }
+
+                if ($this->containsAny($label, ['ferramental', 'ferramentas', 'kit'])) {
+                    $decision = $this->parseBooleanValue($value);
+                    $data['has_complete_toolkit'] = $decision ?? $data['has_complete_toolkit'];
+                    $data['tool_items'] = array_values(array_unique(array_merge(
+                        $data['tool_items'],
+                        $this->extractToolItems($value)
+                    )));
+                }
+
+                continue;
+            }
+
+            $data['tool_items'] = array_values(array_unique(array_merge(
+                $data['tool_items'],
+                $this->extractToolItems($line)
+            )));
+        }
+
+        if ($data['has_aso'] === null) {
+            $data['has_aso'] = $this->parseBooleanFromWholeMessage($messageBody, ['aso']);
+        }
+
+        if ($data['has_nr10'] === null) {
+            $data['has_nr10'] = $this->parseBooleanFromWholeMessage($messageBody, ['nr10']);
+        }
+
+        if ($data['has_nr35'] === null) {
+            $data['has_nr35'] = $this->parseBooleanFromWholeMessage($messageBody, ['nr35']);
+        }
+
+        if ($data['has_complete_toolkit'] === null) {
+            $data['has_complete_toolkit'] = $this->parseBooleanFromWholeMessage($messageBody, ['ferramental', 'ferramentas', 'kit']);
+        }
+
+        return $data;
+    }
+
+    private function isFieldReadinessReplyValid(array $fieldReadinessData, string $messageBody): bool
+    {
+        $filledFields = 0;
+
+        foreach (['has_aso', 'has_nr10', 'has_nr35', 'has_complete_toolkit'] as $key) {
+            if (($fieldReadinessData[$key] ?? null) !== null) {
+                $filledFields++;
+            }
+        }
+
+        if ($filledFields === 4) {
+            return true;
+        }
+
+        return $filledFields >= 3 && mb_strlen(trim($messageBody)) >= 40;
+    }
+
+    /**
+     * @param array<string, mixed> $preFilterData
+     * @param array<string, mixed> $fieldReadinessData
+     * @return array<string, mixed>
+     */
+    private function buildW13Classification(array $preFilterData, array $fieldReadinessData): array
+    {
+        $serviceKeys = array_values(array_filter(
+            array_map(static fn (mixed $value): string => (string) $value, $preFilterData['service_keys'] ?? [])
+        ));
+        $serviceLabels = $this->serviceLabels($serviceKeys);
+        $technicalLevel = $this->resolveTechnicalLevel($serviceKeys);
+        $fieldLevel = $this->resolveFieldLevel($fieldReadinessData);
+        $fieldLevelLabel = $this->fieldLevelLabel($fieldLevel);
+        $status = $this->resolveClassificationStatus($preFilterData, $fieldReadinessData, $technicalLevel);
+        $statusLabel = $this->classificationStatusLabel($status);
+        $premiumCandidate = $this->isPremiumCandidate($preFilterData, $fieldReadinessData, $technicalLevel, $fieldLevel);
+
+        $missingRequirements = [];
+
+        if (($preFilterData['mei_active'] ?? null) !== true) {
+            $missingRequirements[] = 'MEI ativo';
+        }
+
+        if (($preFilterData['immediate_availability'] ?? null) !== true) {
+            $missingRequirements[] = 'disponibilidade imediata';
+        }
+
+        if (($preFilterData['has_notebook'] ?? null) !== true) {
+            $missingRequirements[] = 'notebook';
+        }
+
+        if (($preFilterData['has_console_cable'] ?? null) !== true) {
+            $missingRequirements[] = 'cabo console';
+        }
+
+        if (($fieldReadinessData['has_aso'] ?? null) !== true) {
+            $missingRequirements[] = 'ASO';
+        }
+
+        if (($fieldReadinessData['has_nr10'] ?? null) !== true) {
+            $missingRequirements[] = 'NR10';
+        }
+
+        if (($fieldReadinessData['has_nr35'] ?? null) !== true) {
+            $missingRequirements[] = 'NR35';
+        }
+
+        if (($fieldReadinessData['has_complete_toolkit'] ?? null) !== true) {
+            $missingRequirements[] = 'ferramental completo';
+        }
+
+        return [
+            'status' => $status,
+            'status_label' => $statusLabel,
+            'technical_level' => $technicalLevel,
+            'technical_level_label' => $technicalLevel ?? 'Nao classificado',
+            'field_level' => $fieldLevel,
+            'field_level_label' => $fieldLevelLabel,
+            'service_keys' => $serviceKeys,
+            'service_labels' => $serviceLabels,
+            'premium_candidate' => $premiumCandidate,
+            'ready_for_field' => $status === 'approved',
+            'missing_requirements' => $missingRequirements,
+        ];
+    }
+
+    private function resolveClassificationStatus(
+        array $preFilterData,
+        array $fieldReadinessData,
+        ?string $technicalLevel
+    ): string {
+        if (($preFilterData['mei_active'] ?? null) !== true) {
+            return 'rejected';
+        }
+
+        if ($technicalLevel === null || ($preFilterData['service_keys'] ?? []) === []) {
+            return 'bank';
+        }
+
+        if (($preFilterData['immediate_availability'] ?? null) !== true) {
+            return 'bank';
+        }
+
+        if (
+            ($fieldReadinessData['has_aso'] ?? null) === true
+            && ($fieldReadinessData['has_nr10'] ?? null) === true
+            && ($fieldReadinessData['has_nr35'] ?? null) === true
+            && ($fieldReadinessData['has_complete_toolkit'] ?? null) === true
+        ) {
+            return 'approved';
+        }
+
+        return 'pending';
+    }
+
+    private function isPremiumCandidate(
+        array $preFilterData,
+        array $fieldReadinessData,
+        ?string $technicalLevel,
+        string $fieldLevel
+    ): bool {
+        return ($preFilterData['mei_active'] ?? null) === true
+            && ($preFilterData['immediate_availability'] ?? null) === true
+            && $technicalLevel !== null
+            && $fieldLevel === 'complete'
+            && ($fieldReadinessData['has_complete_toolkit'] ?? null) === true;
+    }
+
+    private function resolveTechnicalLevel(array $serviceKeys): ?string
+    {
+        $rank = [
+            'N1' => 1,
+            'N2' => 2,
+            'N3' => 3,
+        ];
+        $resolved = null;
+        $resolvedRank = 0;
+
+        foreach ($serviceKeys as $serviceKey) {
+            $service = self::SERVICE_OPTIONS[$serviceKey] ?? null;
+
+            if ($service === null) {
+                continue;
+            }
+
+            $serviceLevel = $service['level'];
+            $serviceRank = $rank[$serviceLevel] ?? 0;
+
+            if ($serviceRank > $resolvedRank) {
+                $resolved = $serviceLevel;
+                $resolvedRank = $serviceRank;
+            }
+        }
+
+        return $resolved;
+    }
+
+    private function resolveFieldLevel(array $fieldReadinessData): string
+    {
+        $score = 0;
+
+        foreach (['has_aso', 'has_nr10', 'has_nr35'] as $key) {
+            if (($fieldReadinessData[$key] ?? null) === true) {
+                $score++;
+            }
+        }
+
+        return match (true) {
+            $score === 3 => 'complete',
+            $score >= 1 => 'partial',
+            default => 'restricted',
+        };
+    }
+
+    private function classificationStatusLabel(string $status): string
+    {
+        return match ($status) {
+            'approved' => 'Aprovado',
+            'pending' => 'Pendente',
+            'rejected' => 'Reprovado',
+            default => 'Banco',
+        };
+    }
+
+    private function fieldLevelLabel(string $fieldLevel): string
+    {
+        return match ($fieldLevel) {
+            'complete' => 'Completo',
+            'partial' => 'Parcial',
+            default => 'Restrito',
+        };
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function parseServiceCategories(string $value): array
+    {
+        $normalized = $this->normalizeFreeText($value);
+        $resolved = [];
+
+        foreach (self::SERVICE_OPTIONS as $key => $service) {
+            foreach ($service['options'] as $option) {
+                if (preg_match('/(^|[^0-9])' . preg_quote($option, '/') . '([^0-9]|$)/', $normalized) === 1) {
+                    $resolved[] = $key;
+                    continue 2;
+                }
+            }
+
+            foreach ($service['keywords'] as $keyword) {
+                if (str_contains($normalized, $keyword)) {
+                    $resolved[] = $key;
+                    continue 2;
+                }
+            }
+        }
+
+        return array_values(array_unique($resolved));
+    }
+
+    /**
+     * @param list<string> $serviceKeys
+     * @return list<string>
+     */
+    private function serviceLabels(array $serviceKeys): array
+    {
+        $labels = [];
+
+        foreach ($serviceKeys as $serviceKey) {
+            $service = self::SERVICE_OPTIONS[$serviceKey] ?? null;
+
+            if ($service !== null) {
+                $labels[] = $service['label'];
+            }
+        }
+
+        return array_values(array_unique($labels));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function extractToolItems(string $messageBody): array
+    {
+        $normalized = $this->normalizeFreeText($messageBody);
+        $items = [];
+
+        foreach (self::TOOL_KEYWORDS as $toolKey => $keywords) {
+            foreach ($keywords as $keyword) {
+                if (str_contains($normalized, $keyword)) {
+                    $items[] = $toolKey;
+                    continue 2;
+                }
+            }
+        }
+
+        return array_values(array_unique($items));
     }
 
     private function containsAny(string $subject, array $needles): bool
@@ -877,9 +1377,12 @@ final class TriageBotService
 
         if (
             str_contains($normalized, 'nao tenho')
+            || str_contains($normalized, 'nao possui')
             || str_contains($normalized, 'nao')
             || str_contains($normalized, 'sem')
-            || str_contains($normalized, 'indisponivel')
+            || str_contains($normalized, 'inativo')
+            || str_contains($normalized, 'vencido')
+            || str_contains($normalized, 'invalido')
         ) {
             return false;
         }
@@ -888,8 +1391,11 @@ final class TriageBotService
             str_contains($normalized, 'sim')
             || str_contains($normalized, 'tenho')
             || str_contains($normalized, 'possuo')
+            || str_contains($normalized, 'ativo')
+            || str_contains($normalized, 'regular')
             || str_contains($normalized, 'disponivel')
-            || str_contains($normalized, 'consigo')
+            || str_contains($normalized, 'completo')
+            || str_contains($normalized, 'ok')
         ) {
             return true;
         }
@@ -897,85 +1403,39 @@ final class TriageBotService
         return null;
     }
 
-    private function parseBooleanFromWholeMessage(string $messageBody, string $keyword): ?bool
+    /**
+     * @param list<string> $keywords
+     */
+    private function parseBooleanFromWholeMessage(string $messageBody, array $keywords): ?bool
     {
         $normalized = $this->normalizeFreeText($messageBody);
 
-        if (!str_contains($normalized, $keyword)) {
-            return null;
-        }
-
-        $segments = preg_split('/\r\n|\r|\n|,|;/', $normalized) ?: [];
-
-        foreach ($segments as $segment) {
-            if (!str_contains($segment, $keyword)) {
+        foreach ($keywords as $keyword) {
+            if (!str_contains($normalized, $keyword)) {
                 continue;
             }
 
-            $decision = $this->parseBooleanValue($segment);
+            $segments = preg_split('/\r\n|\r|\n|,|;/', $normalized) ?: [];
 
-            if ($decision !== null) {
-                return $decision;
+            foreach ($segments as $segment) {
+                if (!str_contains($segment, $keyword)) {
+                    continue;
+                }
+
+                $decision = $this->parseBooleanValue($segment);
+
+                if ($decision !== null) {
+                    return $decision;
+                }
             }
         }
 
         return null;
-    }
-
-    private function extractPhoneFromMessage(string $messageBody): string
-    {
-        if (preg_match('/(\+?\d[\d\-\s\(\)]{9,})/', $messageBody, $matches) !== 1) {
-            return '';
-        }
-
-        return $this->normalizePhoneDigits($matches[1]);
     }
 
     private function normalizePhoneDigits(string $phone): string
     {
         return preg_replace('/\D+/', '', $phone) ?? '';
-    }
-
-    /**
-     * @param list<string> $lines
-     */
-    private function extractPossibleName(array $lines): ?string
-    {
-        foreach ($lines as $line) {
-            $line = trim($line);
-
-            if ($line === '' || str_contains($line, ':') || str_contains($line, '-')) {
-                continue;
-            }
-
-            if (preg_match('/^[A-Za-zÀ-ÿ ]{5,}$/u', $line) === 1 && str_word_count($line) >= 2) {
-                return $line;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * @param list<string> $lines
-     */
-    private function extractPossibleCity(array $lines): ?string
-    {
-        foreach ($lines as $line) {
-            $line = trim($line);
-
-            if ($line === '' || !str_contains($line, '/')) {
-                continue;
-            }
-
-            [$city] = $this->splitCityAndState($line);
-
-            if ($city !== null) {
-                return $city;
-            }
-        }
-
-        return null;
     }
 
     /**
@@ -989,16 +1449,14 @@ final class TriageBotService
             return [trim($matches[1]), mb_strtoupper($matches[2])];
         }
 
-        return [$value !== '' ? $value : null, null];
-    }
+        if (preg_match('/\b([A-Za-z]{2})\b/u', $value, $matches) === 1) {
+            $state = mb_strtoupper($matches[1]);
+            $city = trim(preg_replace('/\b' . preg_quote($matches[1], '/') . '\b/u', '', $value) ?? '');
 
-    private function extractState(string $value): ?string
-    {
-        if (preg_match('/\b([A-Za-z]{2})\b/u', $value, $matches) !== 1) {
-            return null;
+            return [$city !== '' ? $city : null, $state];
         }
 
-        return mb_strtoupper($matches[1]);
+        return [$value !== '' ? $value : null, null];
     }
 
     private function requireSession(int $campaignRecipientId): array
@@ -1008,9 +1466,14 @@ final class TriageBotService
         return $session ?? [];
     }
 
-    private function buildQualificationPromptMessage(): string
+    private function buildPreFilterPromptMessage(): string
     {
-        return "Perfeito. Para seguirmos com sua priorizacao na W13, me envie por favor:\n\n- Nome completo\n- Cidade atual\n- UF\n- Telefone\n- Possui notebook?\n- Possui cabo console?\n- Tem disponibilidade imediata?\n- Pode retirar equipamento em base, se necessario?\n\nAssim validamos seu perfil para a atividade.";
+        return "Perfeito! Vamos fazer seu pre-cadastro na W13.\n\nPor favor, envie:\n- Cidade / UF\n- Possui MEI ativo? (obrigatorio)\n- Possui notebook?\n- Possui cabo console?\n- Quais servicos voce atende?\n1 - VSAT\n2 - Redes / Firewall\n3 - Microinformatica\n4 - Impressoras\n5 - Cabeamento\n6 - Servidores\n- Tem disponibilidade imediata?\n\nResponda idealmente assim:\nCidade/UF: Sao Mateus/ES\nMEI ativo: sim\nNotebook: sim\nCabo console: nao\nServicos: 2, 3, 5\nDisponibilidade imediata: sim";
+    }
+
+    private function buildFieldReadinessPromptMessage(): string
+    {
+        return "Otimo. Agora preciso validar sua aptidao para atividades em campo.\n\nVoce possui:\n- ASO valido?\n- NR10?\n- NR35?\n\nPossui ferramental completo para atendimento?\nExemplos: multimetro, kit de ferramentas, alicate de crimpagem, testador de rede, escada.\n\nEnvie idealmente assim:\nASO: sim\nNR10: sim\nNR35: nao\nFerramental completo: sim\nFerramentas: multimetro, kit de ferramentas, alicate de crimpagem";
     }
 
     private function buildNotInterestedMessage(): string
@@ -1020,27 +1483,43 @@ final class TriageBotService
 
     private function buildDetailsMessage(): string
     {
-        return "Claro. Seguem os detalhes:\n\n- Empresa: W13 Tecnologia\n- Tipo de atividade: atendimento tecnico de campo\n- Valor: R\$200 por atividade concluida\n- Tempo medio por site: ate 2h\n- Equipamentos necessarios: notebook e cabo console\n- Atendimento com retirada de equipamento em base, conforme localidade\n\nSe tiver interesse, responda com:\nSIM\n\nEquipe W13 Tecnologia";
+        return "Claro. Seguem mais informacoes sobre a base tecnica W13:\n\n- Atendimentos em campo em operacao nacional\n- Acionamentos por WhatsApp\n- Necessidade de padrao tecnico e documental\n- Prioridade para tecnicos com MEI, disponibilidade e seguranca regularizada\n\nSe quiser seguir com o pre-cadastro, responda:\nSIM";
     }
 
-    private function buildQualificationAckMessage(): string
+    /**
+     * @param array<string, mixed> $classification
+     */
+    private function buildFieldReadinessAckMessage(array $classification): string
     {
-        return "Recebido.\n\nSeu perfil sera validado pela equipe W13 para essa oportunidade.\nSe aprovado, entraremos em contato com a programacao do atendimento.\n\nObrigado pelo retorno.\n\nEquipe W13 Tecnologia";
+        $statusLabel = (string) ($classification['status_label'] ?? 'Pendente');
+        $technicalLevel = (string) ($classification['technical_level_label'] ?? 'Nao classificado');
+        $fieldLevel = (string) ($classification['field_level_label'] ?? 'Restrito');
+        $serviceLabels = $classification['service_labels'] ?? [];
+        $servicesLine = is_array($serviceLabels) && $serviceLabels !== []
+            ? implode(', ', array_map(static fn (mixed $value): string => (string) $value, $serviceLabels))
+            : 'Nao informado';
+
+        return "Recebido.\n\nSua classificacao preliminar na W13 ficou assim:\n- Status: {$statusLabel}\n- Nivel tecnico: {$technicalLevel}\n- Nivel de campo: {$fieldLevel}\n- Especialidades: {$servicesLine}\n\nNossa equipe vai validar seu perfil e seguir com a etapa documental para liberar operacao.\n\nEquipe W13 Tecnologia";
     }
 
     private function buildInitialOfferRetryMessage(): string
     {
-        return "Nao consegui identificar sua opcao.\n\nResponda com:\n1 - SIM, tenho interesse\n2 - NAO tenho interesse\n3 - Talvez, preciso de mais detalhes";
+        return "Nao consegui identificar sua opcao.\n\nResponda com:\n1 - SIM\n2 - NAO\n3 - MAIS INFORMACOES";
     }
 
     private function buildDetailsRetryMessage(): string
     {
-        return "Se quiser seguir, responda somente com:\nSIM\n\nSe nao tiver interesse, responda com:\n2";
+        return "Se quiser seguir para o pre-cadastro, responda somente com:\nSIM\n\nSe nao tiver interesse, responda com:\n2";
     }
 
-    private function buildQualificationRetryMessage(): string
+    private function buildPreFilterRetryMessage(): string
     {
-        return "Para validar seu perfil, preciso receber estes dados na mesma resposta:\n\n- Nome completo\n- Cidade atual\n- UF\n- Telefone\n- Possui notebook?\n- Possui cabo console?\n- Tem disponibilidade imediata?\n- Pode retirar equipamento em base, se necessario?";
+        return "Para seguir com o pre-cadastro W13, preciso receber estes dados na mesma resposta:\n\n- Cidade / UF\n- MEI ativo\n- Possui notebook\n- Possui cabo console\n- Quais servicos atende\n- Disponibilidade imediata";
+    }
+
+    private function buildFieldReadinessRetryMessage(): string
+    {
+        return "Para validar sua aptidao de campo, preciso destes dados na mesma resposta:\n\n- ASO valido\n- NR10\n- NR35\n- Ferramental completo\n- Lista resumida das ferramentas";
     }
 
     private function buildOperatorFallbackMessage(): string
@@ -1050,7 +1529,7 @@ final class TriageBotService
 
     private function buildApprovalAcceptedMessage(): string
     {
-        return "Perfeito.\n\nVoce sera incluido na programacao da W13.\nEm breve nossa equipe enviara os dados da atividade, orientacoes e procedimento de campo.\n\nEquipe W13 Tecnologia";
+        return "Perfeito.\n\nVoce foi confirmado na programacao da W13.\nEm breve nossa equipe enviara os dados da atividade, orientacoes e procedimento de campo.\n\nEquipe W13 Tecnologia";
     }
 
     private function buildApprovalDeclinedMessage(): string

@@ -10,6 +10,8 @@ Aplicação web PHP para importar planilhas de candidatos, consolidar base de re
 
 `v0.5.0` adiciona a validacao operacional: fila de analise, aprovacao/reprovacao, pedido de correcao, pendencias, observacoes internas, historico de decisao e mudanca de status controlada dentro do sistema.
 
+`v0.6.0` expande o modelo W13: triagem em 3 etapas (captacao, pre-filtro e seguranca), classificacao automatica (Aprovado/Pendente/Reprovado/Banco, N1-N3 e nivel de campo) e portal documental com CNPJ/PIX/ASO/NRs.
+
 ## Requisitos
 
 - PHP `>= 8.2`
@@ -90,6 +92,7 @@ mysql -u root -p techrecruit < database/migrations/004_create_candidate_portal_t
 mysql -u root -p techrecruit < database/migrations/005_create_operational_review_tables.sql
 mysql -u root -p techrecruit < database/migrations/006_create_triage_bot_tables.sql
 mysql -u root -p techrecruit < database/migrations/007_create_whatsgw_integration_tables.sql
+mysql -u root -p techrecruit < database/migrations/008_expand_w13_flow.sql
 ```
 
 ## 5. Rodar localmente
@@ -193,28 +196,40 @@ php.exe C:\caminho\TechRecruit\bin\process_campaign_queue.php --limit=25
 1. Crie uma campanha em `/campaigns` usando `Bot de triagem W13`
 2. Processe a fila para abrir as sessoes do bot
 3. Na tela da campanha, use `Simular retorno inbound` com:
-   - `1` para ir para a etapa de qualificacao
+   - `1` para ir para a etapa de pre-filtro
    - `2` para encerrar como nao interessado
    - `3` para receber mais detalhes e depois responder `SIM`
-4. Depois envie a qualificacao em texto livre, por exemplo:
+4. Depois envie o pre-filtro em texto livre, por exemplo:
 
 ```text
-Nome completo: Joao da Silva
-Cidade atual: Campinas
-UF: SP
-Telefone: 11999990000
-Possui notebook: sim
-Possui cabo console: sim
-Tem disponibilidade imediata: sim
-Pode retirar equipamento em base: sim
+Cidade/UF: Campinas/SP
+MEI ativo: sim
+Notebook: sim
+Cabo console: sim
+Servicos: 2, 3, 5
+Disponibilidade imediata: sim
 ```
 
-5. Confirme na tela da campanha:
+5. Em seguida envie a qualificacao tecnica e de seguranca, por exemplo:
+
+```text
+ASO: sim
+NR10: sim
+NR35: nao
+Ferramental completo: sim
+Ferramentas: multimetro, kit de ferramentas, alicate de crimpagem
+```
+
+6. Confirme na tela da campanha:
    - sessao de triagem criada por destinatario
    - status de triagem atualizado para `interested`, `needs_details`, `not_interested` ou `awaiting_validation`
-   - dados de qualificacao salvos na sessao
+   - dados de pre-filtro, seguranca e classificacao salvos na sessao
+   - classificacao preliminar W13 com:
+     - `status`: `approved`, `pending`, `rejected` ou `bank`
+     - `technical_level`: `N1`, `N2` ou `N3`
+     - `field_level`: `complete`, `partial` ou `restricted`
    - fallback para operador quando houver duas respostas invalidas seguidas
-6. Opcionalmente teste o endpoint inbound:
+7. Opcionalmente teste o endpoint inbound:
 
 ```bash
 curl -X POST http://127.0.0.1:8090/triage/inbound \
@@ -246,8 +261,15 @@ curl -X POST http://127.0.0.1:8090/triage/inbound \
 1. Vá em `/candidates/{id}`
 2. Clique em `Gerar link do portal`
 3. Abra o link/token gerado
-4. Preencha o formulário, aceite os termos e envie os documentos obrigatórios
-5. Volte ao candidato no backoffice e confirme:
+4. Preencha o formulário com `CNPJ / MEI`, `CPF`, `Pix`, disponibilidade e experiencia
+5. Envie os documentos obrigatórios W13:
+   - documento de identidade
+   - comprovante de residencia
+   - cartao CNPJ / comprovante MEI
+   - ASO
+   - NR10
+   - NR35
+6. Volte ao candidato no backoffice e confirme:
    - status do portal
    - checklist documental
    - dados enviados pelo candidato

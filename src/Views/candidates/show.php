@@ -32,6 +32,11 @@ $portalUrl = $portalUrl ?? null;
 $portalProfile = is_array($portal['profile'] ?? null) ? $portal['profile'] : [];
 $portalChecklist = is_array($portal['checklist'] ?? null) ? $portal['checklist'] : [];
 $portalDocuments = is_array($portal['documents'] ?? null) ? $portal['documents'] : [];
+$triageSession = is_array($triageSession ?? null) ? $triageSession : [];
+$triageCollected = is_array($triageSession['collected_data'] ?? null) ? $triageSession['collected_data'] : [];
+$triagePreFilter = is_array($triageCollected['prefilter'] ?? null) ? $triageCollected['prefilter'] : [];
+$triageFieldReadiness = is_array($triageCollected['field_readiness'] ?? null) ? $triageCollected['field_readiness'] : [];
+$triageClassification = is_array($triageCollected['classification'] ?? null) ? $triageCollected['classification'] : [];
 
 $portalStatusBadge = static function (string $status): string {
     return match ($status) {
@@ -53,6 +58,26 @@ $reviewActionBadge = static function (string $action): string {
         'reject', 'document_reject' => 'dark',
         'request_correction', 'document_request_correction' => 'danger',
         'pendency_resolved' => 'primary',
+        default => 'secondary',
+    };
+};
+
+$triageStatusBadge = static function (string $status): string {
+    return match ($status) {
+        'approved' => 'success',
+        'awaiting_validation' => 'primary',
+        'needs_details' => 'warning text-dark',
+        'not_interested', 'rejected_unavailable' => 'dark',
+        'interested' => 'success',
+        default => 'secondary',
+    };
+};
+
+$classificationBadge = static function (string $status): string {
+    return match ($status) {
+        'approved' => 'success',
+        'pending' => 'warning text-dark',
+        'rejected' => 'dark',
         default => 'secondary',
     };
 };
@@ -110,6 +135,96 @@ HTML;
         </div>
     </div>
     <a href="/candidates" class="btn btn-outline-secondary">Voltar</a>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+            <div>
+                <h2 class="h5 mb-1">Classificacao W13</h2>
+                <p class="text-muted mb-0">Leitura consolidada da triagem automatica antes do portal e da operacao.</p>
+            </div>
+            <?php if ($triageSession !== []): ?>
+                <span class="badge bg-<?= $triageStatusBadge((string) ($triageSession['triage_status'] ?? 'sent')) ?>">
+                    <?= $escape($statusLabel((string) ($triageSession['triage_status'] ?? 'sent'))) ?>
+                </span>
+            <?php endif; ?>
+        </div>
+
+        <?php if ($triageSession === []): ?>
+            <div class="alert alert-light border mb-0">Nenhuma sessao de triagem encontrada para este candidato ainda.</div>
+        <?php else: ?>
+            <div class="row g-4">
+                <div class="col-lg-4">
+                    <div class="border rounded p-3 h-100">
+                        <h3 class="h6 mb-3">Status preliminar</h3>
+                        <dl class="row mb-0">
+                            <dt class="col-sm-5">Fluxo</dt>
+                            <dd class="col-sm-7"><?= $escape($triageSession['automation_status'] ?? '-') ?></dd>
+                            <dt class="col-sm-5">Etapa</dt>
+                            <dd class="col-sm-7"><?= $escape($statusLabel((string) ($triageSession['current_step'] ?? '-'))) ?></dd>
+                            <dt class="col-sm-5">Status W13</dt>
+                            <dd class="col-sm-7">
+                                <?php if ($triageClassification !== []): ?>
+                                    <span class="badge bg-<?= $classificationBadge((string) ($triageClassification['status'] ?? 'bank')) ?>">
+                                        <?= $escape((string) ($triageClassification['status_label'] ?? 'Banco')) ?>
+                                    </span>
+                                <?php else: ?>
+                                    -
+                                <?php endif; ?>
+                            </dd>
+                            <dt class="col-sm-5">Nivel tecnico</dt>
+                            <dd class="col-sm-7"><?= $escape($triageClassification['technical_level_label'] ?? '-') ?></dd>
+                            <dt class="col-sm-5">Nivel campo</dt>
+                            <dd class="col-sm-7"><?= $escape($triageClassification['field_level_label'] ?? '-') ?></dd>
+                            <dt class="col-sm-5">Premium</dt>
+                            <dd class="col-sm-7"><?= !empty($triageClassification['premium_candidate']) ? 'Sim' : 'Nao' ?></dd>
+                        </dl>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="border rounded p-3 h-100">
+                        <h3 class="h6 mb-3">Pre-filtro</h3>
+                        <dl class="row mb-0">
+                            <dt class="col-sm-5">Cidade</dt>
+                            <dd class="col-sm-7"><?= $escape(($triagePreFilter['city'] ?? '-') . ' / ' . ($triagePreFilter['state'] ?? '-')) ?></dd>
+                            <dt class="col-sm-5">MEI ativo</dt>
+                            <dd class="col-sm-7"><?= isset($triagePreFilter['mei_active']) ? (($triagePreFilter['mei_active'] ?? false) ? 'Sim' : 'Nao') : '-' ?></dd>
+                            <dt class="col-sm-5">Notebook</dt>
+                            <dd class="col-sm-7"><?= isset($triagePreFilter['has_notebook']) ? (($triagePreFilter['has_notebook'] ?? false) ? 'Sim' : 'Nao') : '-' ?></dd>
+                            <dt class="col-sm-5">Console</dt>
+                            <dd class="col-sm-7"><?= isset($triagePreFilter['has_console_cable']) ? (($triagePreFilter['has_console_cable'] ?? false) ? 'Sim' : 'Nao') : '-' ?></dd>
+                            <dt class="col-sm-5">Disponibilidade</dt>
+                            <dd class="col-sm-7"><?= isset($triagePreFilter['immediate_availability']) ? (($triagePreFilter['immediate_availability'] ?? false) ? 'Imediata' : 'Nao imediata') : '-' ?></dd>
+                        </dl>
+                        <div class="small text-muted mt-3">Especialidades</div>
+                        <div class="fw-semibold"><?= $escape(($triageClassification['service_labels'] ?? []) !== [] ? implode(', ', $triageClassification['service_labels']) : '-') ?></div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="border rounded p-3 h-100">
+                        <h3 class="h6 mb-3">Seguranca e ferramental</h3>
+                        <dl class="row mb-0">
+                            <dt class="col-sm-5">ASO</dt>
+                            <dd class="col-sm-7"><?= isset($triageFieldReadiness['has_aso']) ? (($triageFieldReadiness['has_aso'] ?? false) ? 'Sim' : 'Nao') : '-' ?></dd>
+                            <dt class="col-sm-5">NR10</dt>
+                            <dd class="col-sm-7"><?= isset($triageFieldReadiness['has_nr10']) ? (($triageFieldReadiness['has_nr10'] ?? false) ? 'Sim' : 'Nao') : '-' ?></dd>
+                            <dt class="col-sm-5">NR35</dt>
+                            <dd class="col-sm-7"><?= isset($triageFieldReadiness['has_nr35']) ? (($triageFieldReadiness['has_nr35'] ?? false) ? 'Sim' : 'Nao') : '-' ?></dd>
+                            <dt class="col-sm-5">Ferramental</dt>
+                            <dd class="col-sm-7"><?= isset($triageFieldReadiness['has_complete_toolkit']) ? (($triageFieldReadiness['has_complete_toolkit'] ?? false) ? 'Completo' : 'Incompleto') : '-' ?></dd>
+                        </dl>
+                        <?php if (($triageClassification['missing_requirements'] ?? []) !== []): ?>
+                            <div class="small text-muted mt-3">Pendencias mapeadas</div>
+                            <div class="small"><?= $escape(implode(', ', $triageClassification['missing_requirements'])) ?></div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
+    </div>
 </div>
 
 <div class="card border-0 shadow-sm mt-4">
@@ -201,10 +316,14 @@ HTML;
                             <dl class="row mb-0">
                                 <dt class="col-sm-5">Nome</dt>
                                 <dd class="col-sm-7"><?= $escape($portalProfile['full_name'] ?? '-') ?></dd>
+                                <dt class="col-sm-5">CNPJ / MEI</dt>
+                                <dd class="col-sm-7"><?= $escape($portalProfile['cnpj'] ?? '-') ?></dd>
                                 <dt class="col-sm-5">WhatsApp</dt>
                                 <dd class="col-sm-7"><?= $escape($portalProfile['whatsapp'] ?? '-') ?></dd>
                                 <dt class="col-sm-5">E-mail</dt>
                                 <dd class="col-sm-7"><?= $escape($portalProfile['email'] ?? '-') ?></dd>
+                                <dt class="col-sm-5">Pix</dt>
+                                <dd class="col-sm-7"><?= $escape($portalProfile['pix_key'] ?? '-') ?></dd>
                                 <dt class="col-sm-5">Cidade</dt>
                                 <dd class="col-sm-7"><?= $escape(($portalProfile['city'] ?? '-') . ' / ' . ($portalProfile['state'] ?? '-')) ?></dd>
                                 <dt class="col-sm-5">Disponibilidade</dt>
