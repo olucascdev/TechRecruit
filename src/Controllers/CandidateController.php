@@ -86,7 +86,9 @@ final class CandidateController extends Controller
             return;
         }
 
-        $portal = $this->portalModel->findByCandidateId($id);
+        $portal = $this->safePortalByCandidateId($id);
+        $operations = $this->safeOperationsByCandidateId($id);
+        $triageSession = $this->safeLatestTriageSessionByCandidateId($id);
 
         $this->render('candidates/show', [
             'candidate' => $candidate,
@@ -96,8 +98,8 @@ final class CandidateController extends Controller
             'portalUrl' => $portal !== null
                 ? $this->absoluteUrl('/portal/' . $portal['access_token'])
                 : null,
-            'operations' => $this->operationsModel->findByCandidateId($id),
-            'triageSession' => $this->triageModel->findLatestSessionByCandidateId($id),
+            'operations' => $operations,
+            'triageSession' => $triageSession,
         ], 'Candidato');
     }
 
@@ -210,5 +212,57 @@ final class CandidateController extends Controller
             array_map(static fn (mixed $value): string => trim((string) $value), $values),
             static fn (string $value): bool => $value !== ''
         ));
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function safePortalByCandidateId(int $candidateId): ?array
+    {
+        try {
+            return $this->portalModel->findByCandidateId($candidateId);
+        } catch (Throwable $exception) {
+            error_log('[CandidateController] Failed to load candidate portal data: ' . $exception->getMessage());
+
+            return null;
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function safeOperationsByCandidateId(int $candidateId): array
+    {
+        try {
+            return $this->operationsModel->findByCandidateId($candidateId);
+        } catch (Throwable $exception) {
+            error_log('[CandidateController] Failed to load candidate operations data: ' . $exception->getMessage());
+
+            return [
+                'summary' => [
+                    'open_pendencies' => 0,
+                    'pending_documents' => 0,
+                    'approved_documents' => 0,
+                    'rejected_documents' => 0,
+                    'correction_documents' => 0,
+                ],
+                'pendencies' => [],
+                'history' => [],
+            ];
+        }
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function safeLatestTriageSessionByCandidateId(int $candidateId): ?array
+    {
+        try {
+            return $this->triageModel->findLatestSessionByCandidateId($candidateId);
+        } catch (Throwable $exception) {
+            error_log('[CandidateController] Failed to load candidate triage data: ' . $exception->getMessage());
+
+            return null;
+        }
     }
 }

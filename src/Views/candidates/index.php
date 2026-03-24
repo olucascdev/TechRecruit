@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use TechRecruit\Support\LabelTranslator;
+
 $escape = static fn (mixed $value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 $filters = $filters ?? ['skill' => '', 'status' => '', 'state' => '', 'search' => ''];
 $candidates = $candidates ?? [];
@@ -25,7 +27,7 @@ $statusBadge = static function (string $status): string {
     };
 };
 
-$statusLabel = static fn (string $status): string => ucwords(str_replace('_', ' ', $status));
+$statusLabel = static fn (string $status): string => LabelTranslator::toPtBr($status);
 $actionIcon = static function (string $name): string {
     return match ($name) {
         'view' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.25 12s3.75-6.75 9.75-6.75S21.75 12 21.75 12 18 18.75 12 18.75 2.25 12 2.25 12Z"/><circle cx="12" cy="12" r="3.25"/></svg>',
@@ -141,7 +143,7 @@ $buildPageUrl = static function (int $targetPage) use ($filters): string {
     <div class="card-body">
         <form method="get" action="<?= $escape($url('/candidates')) ?>" class="row g-3">
             <div class="col-md-3">
-                <label for="skill" class="form-label">Skill</label>
+                <label for="skill" class="form-label">Habilidade</label>
                 <select id="skill" name="skill" class="form-select">
                     <option value="">Todas</option>
                     <?php foreach ($skills as $skill): ?>
@@ -223,7 +225,7 @@ $buildPageUrl = static function (int $targetPage) use ($filters): string {
                         >
                     </th>
                     <th>Nome</th>
-                    <th>Skills</th>
+                    <th>Habilidades</th>
                     <th>WhatsApp</th>
                     <th>Estado</th>
                     <th>Status</th>

@@ -301,7 +301,10 @@ final class CampaignService
                 $providerResult = $this->sendOutboundMessage(
                     $destinationContact,
                     $messageBody,
-                    $messageCustomId
+                    $messageCustomId,
+                    [
+                        'prefer_interactive' => $this->triageBotService->isTriageAutomationType((string) ($campaign['automation_type'] ?? 'broadcast')),
+                    ]
                 );
 
                 $this->pdo->beginTransaction();
@@ -1096,6 +1099,28 @@ final class CampaignService
     {
         $this->assertWhatsGwConfigured();
 
+        $preferInteractive = (bool) ($options['prefer_interactive'] ?? false);
+
+        if ($preferInteractive) {
+            $interactivePayload = $this->buildInteractivePayloadFromMessage($messageBody);
+
+            if ($interactivePayload !== null) {
+                $interactiveBody = trim((string) ($interactivePayload['message_body'] ?? $messageBody));
+                unset($interactivePayload['message_body']);
+
+                if ($interactiveBody !== '') {
+                    return $this->whatsGwClient->sendInteractiveMessage(
+                        $destinationContact,
+                        $interactiveBody,
+                        $interactivePayload,
+                        array_merge($options, [
+                            'message_custom_id' => $messageCustomId,
+                        ])
+                    );
+                }
+            }
+        }
+
         $result = $this->whatsGwClient->sendTextMessage(
             $destinationContact,
             $messageBody,
@@ -1148,6 +1173,7 @@ final class CampaignService
         try {
             $result = $this->sendOutboundMessage($destinationContact, $messageBody, $messageCustomId, [
                 'check_status' => 0,
+                'prefer_interactive' => true,
             ]);
 
             $this->logMessageEvent(
@@ -1193,6 +1219,158 @@ final class CampaignService
                 'error' => $exception->getMessage(),
             ];
         }
+    }
+
+    /**
+     * @return array{message_body:string,buttons?:array<int, array<string, mixed>>,listButton?:array<string, mixed>}|null
+     */
+    private function buildInteractivePayloadFromMessage(string $messageBody): ?array
+    {
+        $lines = preg_split('/\R/u', $messageBody) ?: [];
+        $promptLines = [];
+        $options = [];
+        $optionsStartIndex = null;
+
+        foreach ($lines as $index => $line) {
+            $trimmed = trim((string) $line);
+
+            if ($trimmed === '') {
+                continue;
+            }
+
+            if (preg_match('/\b(digite|responda|selecione)\b/iu', $trimmed) === 1) {
+                $optionsStartIndex = $index + 1;
+            }
+        }
+
+        foreach ($lines as $index => $line) {
+            $trimmed = trim((string) $line);
+
+            if ($trimmed === '') {
+                if ($promptLines !== [] && end($promptLines) !== '') {
+                    $promptLines[] = '';
+                }
+
+                continue;
+            }
+
+            if (preg_match('/\b(digite|responda|selecione)\b/iu', $trimmed) === 1) {
+                continue;
+            }
+
+            $canParseOptions = $optionsStartIndex === null || $index >= $optionsStartIndex;
+
+            if ($canParseOptions && preg_match('/^([0-9]{1,2})\s*[-:)\.]\s*(.+)$/u', $trimmed, $matches) === 1) {
+                $optionId = trim($matches[1]);
+                $optionLabel = trim($matches[2]);
+
+                if ($optionLabel !== '') {
+                    $options[] = [
+                        'id' => $optionId,
+                        'label' => $optionLabel,
+                    ];
+                }
+
+                continue;
+            }
+
+            $promptLines[] = $trimmed;
+        }
+
+        if (count($options) < 2) {
+            return null;
+        }
+
+        $uniqueOptions = [];
+
+        foreach ($options as $option) {
+            $optionId = (string) ($option['id'] ?? '');
+
+            if ($optionId === '' || isset($uniqueOptions[$optionId])) {
+                continue;
+            }
+
+            $uniqueOptions[$optionId] = $option;
+        }
+
+        $options = array_values($uniqueOptions);
+
+        if (count($options) < 2) {
+            return null;
+        }
+
+        $prompt = trim(implode("\n", $promptLines));
+
+        if ($prompt === '') {
+            $prompt = 'Selecione uma opcao';
+        }
+
+        if (count($options) <= 3) {
+            $buttons = [];
+
+            foreach ($options as $index => $option) {
+                $buttonLabel = $this->truncateInteractiveLabel((string) $option['label'], 20);
+                $buttons[] = [
+                    'buttonType' => 'quickReply',
+                    'buttonId' => 'opt_' . $option['id'],
+                    'buttonText' => [
+                        'displayText' => $buttonLabel,
+                    ],
+                    'type' => $index + 1,
+                ];
+            }
+
+            return [
+                'message_body' => $prompt,
+                'buttons' => $buttons,
+            ];
+        }
+
+        $rows = [];
+
+        foreach ($options as $option) {
+            $rows[] = [
+                'title' => $this->truncateInteractiveLabel((string) $option['label'], 24),
+                'rowId' => 'opt_' . $option['id'],
+                'description' => 'Opcao ' . $option['id'],
+            ];
+        }
+
+        return [
+            'message_body' => $prompt,
+            'listButton' => [
+                'sections' => [[
+                    'rows' => $rows,
+                ]],
+                'buttonText' => 'Selecionar',
+                'title' => 'Selecione as opções',
+                'footerText' => 'W13 Tecnologia',
+                'listType' => 1,
+            ],
+        ];
+    }
+
+    private function truncateInteractiveLabel(string $value, int $maxLength): string
+    {
+        $value = trim($value);
+
+        if ($value === '') {
+            return '';
+        }
+
+        if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+            if (mb_strlen($value) <= $maxLength) {
+                return $value;
+            }
+
+            return rtrim(mb_substr($value, 0, max(1, $maxLength - 3))) . '...';
+        }
+
+        if (strlen($value) <= $maxLength) {
+            return $value;
+        }
+
+        return rtrim(substr($value, 0, max(1, $maxLength - 1))) . '...';
     }
 
     /**

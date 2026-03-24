@@ -66,10 +66,21 @@ function techRecruitFallbackRedirect(string $requestPath): string
     if (
         $requestPath === '/candidates/status'
         || $requestPath === '/candidates/bulk-delete'
-        || str_starts_with($requestPath, '/operations/')
         || str_starts_with($requestPath, '/portal/documents/')
     ) {
         return '/candidates';
+    }
+
+    if (preg_match('#^/operations/candidates/(\d+)/(note|decision|documents/decision)$#', $requestPath, $matches) === 1) {
+        return '/operations/' . $matches[1];
+    }
+
+    if ($requestPath === '/operations' || preg_match('#^/operations/\d+$#', $requestPath) === 1) {
+        return $requestPath;
+    }
+
+    if (preg_match('#^/operations/pendencies/\d+/resolve$#', $requestPath) === 1) {
+        return '/operations';
     }
 
     if (preg_match('#^/campaigns/(\d+)/(process|pause|resume|cancel|delete|reply|process/run)$#', $requestPath, $matches) === 1) {
@@ -164,11 +175,14 @@ try {
     $router->post('/campaigns/{id}/reply', [CampaignController::class, 'reply']);
     $router->post('/triage/inbound', [TriageController::class, 'inbound']);
     $router->get('/operations', [OperationsController::class, 'index']);
+    $router->get('/operations/{id}', [OperationsController::class, 'show']);
     $router->get('/faq', [FaqController::class, 'index']);
     $router->post('/operations/candidates/{id}/note', [OperationsController::class, 'addNote']);
     $router->post('/operations/candidates/{id}/decision', [OperationsController::class, 'candidateDecision']);
     $router->post('/operations/documents/{id}/decision', [OperationsController::class, 'documentDecision']);
+    $router->post('/operations/candidates/{id}/documents/decision', [OperationsController::class, 'documentDecisions']);
     $router->post('/operations/pendencies/{id}/resolve', [OperationsController::class, 'resolvePendency']);
+    $router->get('/p/{shortCode}', [PortalController::class, 'short']);
     $router->get('/portal/{token}', [PortalController::class, 'show']);
     $router->post('/portal/{token}/submit', [PortalController::class, 'submit']);
     $router->get('/portal/documents/{id}', [PortalController::class, 'downloadDocument']);

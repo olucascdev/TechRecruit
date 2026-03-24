@@ -9,6 +9,7 @@ use PDO;
 use TechRecruit\Database;
 use TechRecruit\Models\CandidateModel;
 use TechRecruit\Models\PortalModel;
+use TechRecruit\Support\AppUrl;
 use Throwable;
 
 final class PortalService
@@ -138,6 +139,63 @@ final class PortalService
     }
 
     /**
+     * @param array<string, mixed> $portal
+     */
+    public function buildPortalPublicUrl(array $portal, bool $correctionMode = false): string
+    {
+        $token = trim((string) ($portal['access_token'] ?? ''));
+
+        if ($token === '') {
+            return $this->absoluteUrl('/portal');
+        }
+
+        return $this->absoluteUrl('/portal/' . $token . ($correctionMode ? '?mode=correction' : ''));
+    }
+
+    /**
+     * @param array<string, mixed> $portal
+     */
+    public function buildPortalShortUrl(array $portal, bool $correctionMode = false): string
+    {
+        $shortCode = $this->buildPortalShortCode($portal);
+
+        return $this->absoluteUrl('/p/' . $shortCode . ($correctionMode ? '?mode=correction' : ''));
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function resolvePortalByShortCode(string $shortCode): ?array
+    {
+        if (preg_match('/^([0-9a-z]+)-([a-f0-9]{10})$/i', trim($shortCode), $matches) !== 1) {
+            return null;
+        }
+
+        $portalIdBase36 = strtolower($matches[1]);
+        $checksum = strtolower($matches[2]);
+
+        $portalId = (int) base_convert($portalIdBase36, 36, 10);
+
+        if ($portalId < 1) {
+            return null;
+        }
+
+        $portal = $this->portalModel->findById($portalId);
+
+        if ($portal === null) {
+            return null;
+        }
+
+        $expectedChecksum = substr(hash('sha256', (string) ($portal['access_token'] ?? '')), 0, 10);
+
+        if (!hash_equals($expectedChecksum, $checksum)) {
+            return null;
+        }
+
+        return $portal;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function sendPortalLink(int $candidateId, string $portalUrl): array
@@ -220,8 +278,9 @@ final class PortalService
 
         $profileData = $this->validateProfileData($formData, $portal);
         $termsAccepted = isset($formData['terms_accepted']) && (string) $formData['terms_accepted'] === '1';
+        $alreadyAccepted = !empty($portal['terms_accepted']);
 
-        if (!$termsAccepted) {
+        if (!$termsAccepted && !$alreadyAccepted) {
             throw new InvalidArgumentException('Você precisa aceitar os termos para concluir o cadastro.');
         }
 
@@ -791,7 +850,7 @@ final class PortalService
         return null;
     }
 
-    private function buildPortalLinkMessage(string $fullName, string $portalUrl): string
+    public function buildPortalLinkMessage(string $fullName, string $portalUrl): string
     {
         $firstName = trim((string) strtok(trim($fullName), ' '));
 
@@ -804,6 +863,121 @@ final class PortalService
             $firstName,
             $portalUrl
         ));
+    }
+
+    /**
+     * @param list<string> $pendingItems
+     */
+    public function buildPortalCorrectionMessage(string $fullName, string $portalUrl, array $pendingItems): string
+    {
+        $firstName = trim((string) strtok(trim($fullName), ' '));
+
+        if ($firstName === '') {
+            $firstName = 'Tecnico';
+        }
+
+        $pendingLine = $pendingItems !== []
+            ? implode("\n", array_map(static fn (string $item): string => '- ' . $item, $pendingItems))
+            : '- Validacao documental pendente';
+
+        return trim(
+            "Olá, {$firstName}.\n\n" .
+            "Identificamos pendências na validação dos seus documentos.\n" .
+            "Acesse o link abaixo para ajustar apenas os itens solicitados:\n\n" .
+            "{$portalUrl}\n\n" .
+            "Itens para ajuste:\n" .
+            "{$pendingLine}\n\n" .
+            "Assim que reenviar, nossa equipe faz uma nova análise.\n\n" .
+            "Equipe W13 Tecnologia"
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $portal
+     */
+    private function buildPortalShortCode(array $portal): string
+    {
+        $portalId = max(1, (int) ($portal['id'] ?? 0));
+        $token = (string) ($portal['access_token'] ?? '');
+        $checksum = substr(hash('sha256', $token), 0, 10);
+
+        return strtolower(base_convert((string) $portalId, 10, 36)) . '-' . $checksum;
+    }
+
+    private function absoluteUrl(string $path): string
+    {
+        $relativePath = AppUrl::relative($path);
+        $configuredAppUrl = $this->env('APP_URL');
+
+        if ($configuredAppUrl !== null) {
+            $normalizedAppUrl = $this->normalizeBaseUrl($configuredAppUrl);
+
+            if ($normalizedAppUrl !== null) {
+                $basePath = AppUrl::basePath();
+                $routePath = $basePath !== '' && str_starts_with($relativePath, $basePath)
+                    ? substr($relativePath, strlen($basePath)) ?: '/'
+                    : $relativePath;
+
+                return $normalizedAppUrl . $routePath;
+            }
+        }
+
+        $host = trim((string) ($_SERVER['HTTP_HOST'] ?? ''));
+
+        if ($host === '') {
+            return $relativePath;
+        }
+
+        $isHttps = (
+            (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off')
+            || strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https'
+        );
+
+        return ($isHttps ? 'https' : 'http') . '://' . $host . $relativePath;
+    }
+
+    private function normalizeBaseUrl(string $value): ?string
+    {
+        $value = trim($value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        $parsed = parse_url($value);
+
+        if (!is_array($parsed) || !isset($parsed['scheme'], $parsed['host'])) {
+            return null;
+        }
+
+        $scheme = strtolower((string) $parsed['scheme']);
+        $host = trim((string) $parsed['host']);
+
+        if ($host === '') {
+            return null;
+        }
+
+        $port = isset($parsed['port']) ? (int) $parsed['port'] : null;
+        $base = $scheme . '://' . $host;
+
+        if ($port !== null) {
+            $base .= ':' . $port;
+        }
+
+        return rtrim($base, '/');
+    }
+
+    private function env(string $key): ?string
+    {
+        $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
+
+        if ($value === false || $value === null) {
+            return null;
+        }
+
+        $value = trim((string) $value);
+
+        return $value !== '' ? $value : null;
     }
 
     private function applyCandidateStatus(int $candidateId, string $newStatus, string $operator, ?string $reason): void

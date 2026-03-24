@@ -192,6 +192,65 @@ final class PortalModel
     /**
      * @return array<string, mixed>|null
      */
+    public function findById(int $portalId): ?array
+    {
+        $statement = $this->pdo->prepare(
+            "SELECT
+                portal.id,
+                portal.candidate_id,
+                portal.access_token,
+                portal.status,
+                portal.terms_version,
+                portal.terms_accepted,
+                portal.terms_accepted_at,
+                portal.last_accessed_at,
+                portal.submitted_at,
+                portal.created_by,
+                portal.created_at,
+                portal.updated_at,
+                candidate.full_name AS candidate_full_name,
+                candidate.cpf AS candidate_cpf,
+                candidate.status AS candidate_status,
+                contact_data.whatsapp,
+                contact_data.email,
+                address_data.state,
+                address_data.city,
+                address_data.region
+             FROM recruit_candidate_portals portal
+             INNER JOIN recruit_candidates candidate ON candidate.id = portal.candidate_id
+             LEFT JOIN (
+                SELECT
+                    candidate_id,
+                    MAX(CASE WHEN type = 'whatsapp' AND is_primary = 1 THEN value END) AS whatsapp,
+                    MAX(CASE WHEN type = 'email' AND is_primary = 1 THEN value END) AS email
+                FROM recruit_candidate_contacts
+                GROUP BY candidate_id
+             ) AS contact_data ON contact_data.candidate_id = portal.candidate_id
+             LEFT JOIN (
+                SELECT
+                    candidate_id,
+                    MAX(state) AS state,
+                    MAX(city) AS city,
+                    MAX(region) AS region
+                FROM recruit_candidate_addresses
+                GROUP BY candidate_id
+             ) AS address_data ON address_data.candidate_id = portal.candidate_id
+             WHERE portal.id = :id
+             LIMIT 1"
+        );
+        $statement->execute(['id' => $portalId]);
+        $portal = $statement->fetch();
+
+        if ($portal === false) {
+            return null;
+        }
+
+        return $this->hydratePortal($portal);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
     public function findDocumentById(int $documentId): ?array
     {
         $statement = $this->pdo->prepare(

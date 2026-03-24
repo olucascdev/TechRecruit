@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use TechRecruit\Support\LabelTranslator;
+
 $escape = static fn (mixed $value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 $users = $users ?? [];
 $roles = $roles ?? [];
@@ -66,7 +68,7 @@ $badgeClassForStatus = static function (string $status): string {
                         >
                     </div>
                     <div class="col-12">
-                        <label for="username" class="form-label">Username</label>
+                        <label for="username" class="form-label">Usuário de login</label>
                         <input
                             id="username"
                             name="username"
@@ -91,7 +93,7 @@ $badgeClassForStatus = static function (string $status): string {
                         >
                     </div>
                     <div class="col-12">
-                        <label for="role" class="form-label">Role</label>
+                        <label for="role" class="form-label">Perfil</label>
                         <select id="role" name="role" class="form-select" required>
                             <?php foreach ($roles as $role => $label): ?>
                                 <option value="<?= $escape($role) ?>" <?= ($formData['role'] ?? '') === $role ? 'selected' : '' ?>>
@@ -157,7 +159,7 @@ $badgeClassForStatus = static function (string $status): string {
                 <tr>
                     <th>Usuário</th>
                     <th>Login</th>
-                    <th>Role</th>
+                    <th>Perfil</th>
                     <th>Status</th>
                     <th>Último login</th>
                     <th>Criado em</th>
@@ -184,12 +186,12 @@ $badgeClassForStatus = static function (string $status): string {
                             </td>
                             <td>
                                 <span class="badge bg-<?= $badgeClassForRole((string) $user['role']) ?>">
-                                    <?= $escape($roles[$user['role']] ?? $user['role']) ?>
+                                    <?= $escape($roles[$user['role']] ?? LabelTranslator::toPtBr((string) $user['role'])) ?>
                                 </span>
                             </td>
                             <td>
                                 <span class="badge bg-<?= $badgeClassForStatus((string) $user['status']) ?>">
-                                    <?= $escape($statuses[$user['status']] ?? $user['status']) ?>
+                                    <?= $escape($statuses[$user['status']] ?? LabelTranslator::toPtBr((string) $user['status'])) ?>
                                 </span>
                             </td>
                             <td><?= $escape($user['last_login_at'] ?: 'Nunca acessou') ?></td>

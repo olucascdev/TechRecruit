@@ -90,7 +90,7 @@ final class WhatsGwWebhookService
         $chatType = strtolower(trim((string) ($payload['chat_type'] ?? '')));
         $messageState = strtolower(trim((string) ($payload['message_state'] ?? '')));
         $contactPhoneNumber = trim((string) ($payload['contact_phone_number'] ?? ''));
-        $messageBody = trim((string) ($payload['message_body'] ?? ''));
+        $messageBody = $this->resolveMessageBody($payload);
 
         if ($contactPhoneNumber === '' || $messageBody === '') {
             return [
@@ -100,7 +100,18 @@ final class WhatsGwWebhookService
             ];
         }
 
-        if ($messageType !== '' && $messageType !== 'text') {
+        $acceptedMessageTypes = [
+            'text',
+            'button',
+            'buttons',
+            'buttons_response',
+            'list',
+            'list_response',
+            'interactive',
+            'template_button_reply',
+        ];
+
+        if ($messageType !== '' && !in_array($messageType, $acceptedMessageTypes, true)) {
             return [
                 'event' => 'message',
                 'status' => 'ignored',
@@ -157,6 +168,57 @@ final class WhatsGwWebhookService
             'received_unix_time' => $payload['received_time'] ?? null,
             'provider_payload' => $payload,
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    private function resolveMessageBody(array $payload): string
+    {
+        $candidates = [
+            $payload['message_body'] ?? null,
+            $payload['button_id'] ?? null,
+            $payload['buttonId'] ?? null,
+            $payload['selectedButtonId'] ?? null,
+            $payload['selectedRowId'] ?? null,
+            $payload['list_row_id'] ?? null,
+        ];
+
+        foreach ($candidates as $candidate) {
+            $value = trim((string) $candidate);
+
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        $additionalInfos = $payload['additional_infos'] ?? null;
+
+        if (is_string($additionalInfos) && $additionalInfos !== '') {
+            $decoded = json_decode($additionalInfos, true);
+
+            if (is_array($decoded)) {
+                $nestedCandidates = [
+                    $decoded['message']['buttonsResponseMessage']['selectedButtonId'] ?? null,
+                    $decoded['message']['buttonsResponseMessage']['selectedDisplayText'] ?? null,
+                    $decoded['message']['listResponseMessage']['singleSelectReply']['selectedRowId'] ?? null,
+                    $decoded['message']['listResponseMessage']['title'] ?? null,
+                    $decoded['message']['templateButtonReplyMessage']['selectedId'] ?? null,
+                    $decoded['message']['templateButtonReplyMessage']['selectedDisplayText'] ?? null,
+                    $decoded['message']['conversation'] ?? null,
+                ];
+
+                foreach ($nestedCandidates as $candidate) {
+                    $value = trim((string) $candidate);
+
+                    if ($value !== '') {
+                        return $value;
+                    }
+                }
+            }
+        }
+
+        return '';
     }
 
     /**

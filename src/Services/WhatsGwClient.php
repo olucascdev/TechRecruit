@@ -107,6 +107,71 @@ final class WhatsGwClient
     }
 
     /**
+     * @param array<string, mixed> $interactivePayload
+     * @param array<string, mixed> $options
+     * @return array<string, mixed>
+     */
+    public function sendInteractiveMessage(
+        string $contactPhoneNumber,
+        string $messageBody,
+        array $interactivePayload,
+        array $options = []
+    ): array {
+        if (!$this->isConfigured()) {
+            throw new InvalidArgumentException('WhatsGW não configurado. Defina WHATSGW_API_KEY e WHATSGW_PHONE_NUMBER ou WHATSGW_INSTANCE_ID.');
+        }
+
+        $contactPhoneNumber = $this->normalizePhone($contactPhoneNumber);
+        $messageBody = trim($messageBody);
+
+        if ($contactPhoneNumber === null || $contactPhoneNumber === '') {
+            throw new InvalidArgumentException('Contato de destino inválido para envio no WhatsGW.');
+        }
+
+        if ($messageBody === '') {
+            throw new InvalidArgumentException('Mensagem vazia para envio no WhatsGW.');
+        }
+
+        if ($interactivePayload === []) {
+            throw new InvalidArgumentException('Payload interativo vazio para envio no WhatsGW.');
+        }
+
+        $payload = [
+            'apikey' => $this->apiKey,
+            'phone_number' => $this->phoneNumber ?? '',
+            'contact_phone_number' => $contactPhoneNumber,
+            'message_custom_id' => $options['message_custom_id'] ?? null,
+            'message_type' => 'text',
+            'message_body' => $messageBody,
+            'check_status' => $options['check_status'] ?? $this->checkStatus,
+            'simule_typing' => $options['simule_typing'] ?? $this->simulateTyping,
+        ];
+
+        if ($this->instanceId !== null) {
+            $payload['w_instancia_id'] = $this->instanceId;
+        }
+
+        foreach (['buttons', 'listButton'] as $key) {
+            if (array_key_exists($key, $interactivePayload)) {
+                $payload[$key] = $interactivePayload[$key];
+            }
+        }
+
+        if (!array_key_exists('buttons', $payload) && !array_key_exists('listButton', $payload)) {
+            throw new InvalidArgumentException('Payload interativo inválido para o WhatsGW.');
+        }
+
+        $response = $this->postJson('/Send', $payload);
+
+        return array_merge($response, [
+            'request_payload' => $payload,
+            'message_custom_id' => $payload['message_custom_id'],
+            'provider_message_id' => $this->extractProviderValue($response['decoded_body'], ['message_id']),
+            'provider_waid' => $this->extractProviderValue($response['decoded_body'], ['waid']),
+        ]);
+    }
+
+    /**
      * @param array<string, mixed> $payload
      * @return array<string, mixed>
      */

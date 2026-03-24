@@ -3,8 +3,20 @@
 declare(strict_types=1);
 
 $renderTailwindHead = static function (): void {
-    $assetPath = dirname(__DIR__, 3) . '/public/assets/app.css';
-    $assetVersion = is_file($assetPath) ? (string) filemtime($assetPath) : 'dev';
+    $assetCandidates = [
+        dirname(__DIR__, 3) . '/public/assets/app.css',
+        dirname(__DIR__, 3) . '/assets/app.css',
+    ];
+    $assetPath = null;
+
+    foreach ($assetCandidates as $candidate) {
+        if (is_file($candidate)) {
+            $assetPath = $candidate;
+            break;
+        }
+    }
+
+    $assetVersion = is_string($assetPath) ? (string) filemtime($assetPath) : 'dev';
     $assetUrl = isset($url) && is_callable($url) ? $url('/assets/app.css') : '/assets/app.css';
     ?>
     <link rel="preconnect" href="https://fonts.googleapis.com">

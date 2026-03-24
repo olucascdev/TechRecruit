@@ -54,7 +54,7 @@ $isReady = $isReady ?? true;
                 >
             </div>
             <div class="col-12">
-                <label for="username" class="form-label">Username</label>
+                <label for="username" class="form-label">Usuário de login</label>
                 <input
                     id="username"
                     name="username"

@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use TechRecruit\Support\LabelTranslator;
+
 $escape = static fn (mixed $value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 $campaigns = $campaigns ?? [];
 $skills = $skills ?? [];
@@ -23,6 +25,7 @@ $campaignStatusClass = static function (string $status): string {
         default => 'secondary',
     };
 };
+$statusLabel = static fn (string $status): string => LabelTranslator::toPtBr($status);
 $actionIcon = static function (string $name): string {
     return match ($name) {
         'view' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.25 12s3.75-6.75 9.75-6.75S21.75 12 21.75 12 18 18.75 12 18.75 2.25 12 2.25 12Z"/><circle cx="12" cy="12" r="3.25"/></svg>',
@@ -114,7 +117,7 @@ $actionIcon = static function (string $name): string {
                         </select>
                     </div>
                     <div class="col-md-6">
-                        <label for="skill" class="form-label">Skill</label>
+                        <label for="skill" class="form-label">Habilidade</label>
                         <select id="skill" name="skill" class="form-select">
                             <option value="">Todas</option>
                             <?php foreach ($skills as $skill): ?>
@@ -141,7 +144,7 @@ $actionIcon = static function (string $name): string {
                             <option value="">Todos</option>
                             <?php foreach ($candidateStatuses as $status): ?>
                                 <option value="<?= $escape($status) ?>" <?= ($formData['status'] ?? '') === $status ? 'selected' : '' ?>>
-                                    <?= $escape(ucwords(str_replace('_', ' ', $status))) ?>
+                                    <?= $escape($statusLabel($status)) ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
@@ -228,7 +231,7 @@ $actionIcon = static function (string $name): string {
                                     </td>
                                     <td>
                                         <span class="badge bg-<?= $campaignStatusClass((string) $campaign['status']) ?>">
-                                            <?= $escape(ucwords(str_replace('_', ' ', (string) $campaign['status']))) ?>
+                                            <?= $escape($statusLabel((string) $campaign['status'])) ?>
                                         </span>
                                     </td>
                                     <td><?= $escape($campaign['audience_count']) ?></td>
@@ -345,7 +348,7 @@ $pageScripts = <<<HTML
             }
 
             setStatus(
-                `Último lote: \${result.processed} item(ns), \${result.sent} enviado(s), \${result.failed} falha(s), \${result.opt_out} opt-out em \${result.campaigns} campanha(s).`,
+                `Último lote: \${result.processed} item(ns), \${result.sent} enviado(s), \${result.failed} falha(s), \${result.opt_out} descadastro(s) em \${result.campaigns} campanha(s).`,
                 'text-success'
             );
 

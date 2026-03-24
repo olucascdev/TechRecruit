@@ -59,8 +59,16 @@ LEFT JOIN (
     FROM recruit_review_history
     GROUP BY portal_id
 ) AS review_stats ON review_stats.portal_id = portal.id
-WHERE portal.status IN ('submitted', 'under_review', 'correction_requested')
+WHERE portal.status IN ('link_sent', 'in_progress', 'submitted', 'under_review', 'correction_requested')
 ORDER BY
+    CASE portal.status
+        WHEN 'under_review' THEN 0
+        WHEN 'submitted' THEN 1
+        WHEN 'correction_requested' THEN 2
+        WHEN 'in_progress' THEN 3
+        WHEN 'link_sent' THEN 4
+        ELSE 5
+    END,
     COALESCE(pendency_stats.open_pendencies, 0) DESC,
     portal.updated_at DESC,
     candidate.full_name ASC

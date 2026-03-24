@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use TechRecruit\Support\LabelTranslator;
+
 $escape = static fn (mixed $value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 $campaign = $campaign ?? [];
 $filters = is_array($campaign['segment_filters'] ?? null) ? $campaign['segment_filters'] : [];
@@ -60,6 +62,7 @@ $activityClass = static function (string $eventType): string {
         default => 'secondary',
     };
 };
+$statusLabel = static fn (string $status): string => LabelTranslator::toPtBr($status);
 $actionIcon = static function (string $name): string {
     return match ($name) {
         'delete' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 7.5h15"/><path d="M9.75 3.75h4.5"/><path d="M6.75 7.5 7.5 19.5a1.5 1.5 0 0 0 1.5 1.5h6a1.5 1.5 0 0 0 1.5-1.5l.75-12"/><path d="M10 11.25v5.25"/><path d="M14 11.25v5.25"/></svg>',
@@ -73,7 +76,7 @@ $actionIcon = static function (string $name): string {
         <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
             <h1 class="h3 mb-0"><?= $escape($campaign['name'] ?? '') ?></h1>
             <span class="badge bg-<?= $campaignStatusClass((string) ($campaign['status'] ?? 'draft')) ?>">
-                <?= $escape(ucwords(str_replace('_', ' ', (string) ($campaign['status'] ?? 'draft')))) ?>
+                <?= $escape($statusLabel((string) ($campaign['status'] ?? 'draft'))) ?>
             </span>
         </div>
         <p class="text-muted mb-0">Criada em <?= $escape($campaign['created_at'] ?? '-') ?> por <?= $escape($campaign['created_by'] ?? '-') ?></p>
@@ -172,7 +175,7 @@ $actionIcon = static function (string $name): string {
     <div class="col-md-2">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body">
-                <div class="text-muted small">Opt-out</div>
+                <div class="text-muted small">Descadastro</div>
                 <div class="fs-3 fw-semibold"><?= $escape($recipientStats['opt_out_recipients'] ?? 0) ?></div>
             </div>
         </div>
@@ -269,7 +272,7 @@ $pageScripts = <<<HTML
             }
 
             setStatus(
-                `Último lote: \${result.processed} item(ns), \${result.sent} enviado(s), \${result.failed} falha(s), \${result.opt_out} opt-out. Status: \${result.status || '-'}.`,
+                `Último lote: \${result.processed} item(ns), \${result.sent} enviado(s), \${result.failed} falha(s), \${result.opt_out} descadastro(s).`,
                 'text-success'
             );
 
@@ -347,7 +350,7 @@ HTML;
         <div class="col-md-3">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
-                    <div class="text-muted small">Fallback operador</div>
+                    <div class="text-muted small">Encaminhados ao operador</div>
                     <div class="fs-3 fw-semibold"><?= $escape($triageStats['operator_count'] ?? 0) ?></div>
                 </div>
             </div>
@@ -366,8 +369,8 @@ HTML;
                     <ul class="list-group list-group-flush">
                         <?php foreach ($filters as $label => $value): ?>
                             <li class="list-group-item px-0 d-flex justify-content-between gap-3">
-                                <span class="text-muted"><?= $escape(ucwords(str_replace('_', ' ', (string) $label))) ?></span>
-                                <span class="fw-semibold text-end"><?= $escape($value) ?></span>
+                                <span class="text-muted"><?= $escape($statusLabel((string) $label)) ?></span>
+                                <span class="fw-semibold text-end"><?= $escape((string) $label === 'status' ? $statusLabel((string) $value) : (string) $value) ?></span>
                             </li>
                         <?php endforeach; ?>
                     </ul>
@@ -454,26 +457,26 @@ HTML;
                                 <tr>
                                     <td>
                                         <div class="fw-semibold"><?= $escape($recipient['candidate_name_snapshot']) ?></div>
-                                        <div class="text-muted small">Base: <?= $escape($recipient['candidate_status_snapshot']) ?></div>
+                                        <div class="text-muted small">Base: <?= $escape($statusLabel((string) ($recipient['candidate_status_snapshot'] ?? '-'))) ?></div>
                                     </td>
                                     <td><?= $escape($recipient['destination_contact']) ?></td>
                                     <td>
                                         <span class="badge bg-<?= $recipientStatusClass((string) $recipient['status']) ?>">
-                                            <?= $escape(ucwords(str_replace('_', ' ', (string) $recipient['status']))) ?>
+                                            <?= $escape($statusLabel((string) $recipient['status'])) ?>
                                         </span>
                                     </td>
-                                    <td><?= $escape($recipient['queue_status'] ?? '-') ?></td>
-                                    <td><?= $escape(ucwords(str_replace('_', ' ', (string) ($recipient['current_candidate_status'] ?? '-')))) ?></td>
+                                    <td><?= $escape($statusLabel((string) ($recipient['queue_status'] ?? '-'))) ?></td>
+                                    <td><?= $escape($statusLabel((string) ($recipient['current_candidate_status'] ?? '-'))) ?></td>
                                     <?php if ($isTriageCampaign): ?>
                                         <td>
                                             <?php if (!empty($recipient['triage_session_id'])): ?>
                                                 <div class="mb-1">
                                                     <span class="badge bg-<?= $triageStatusClass($recipient['triage_status'] ?? null) ?>">
-                                                        <?= $escape(ucwords(str_replace('_', ' ', (string) ($recipient['triage_status'] ?? 'sent')))) ?>
+                                                        <?= $escape($statusLabel((string) ($recipient['triage_status'] ?? 'sent'))) ?>
                                                     </span>
                                                 </div>
-                                                <div class="small text-muted">Etapa: <?= $escape($recipient['triage_step'] ?? '-') ?></div>
-                                                <div class="small text-muted">Fluxo: <?= $escape($recipient['triage_automation_status'] ?? '-') ?></div>
+                                                <div class="small text-muted">Etapa: <?= $escape($statusLabel((string) ($recipient['triage_step'] ?? '-'))) ?></div>
+                                                <div class="small text-muted">Fluxo: <?= $escape($statusLabel((string) ($recipient['triage_automation_status'] ?? '-'))) ?></div>
                                                 <?php $prefilter = is_array($recipient['collected_data']['prefilter'] ?? null) ? $recipient['collected_data']['prefilter'] : []; ?>
                                                 <?php $classification = is_array($recipient['collected_data']['classification'] ?? null) ? $recipient['collected_data']['classification'] : []; ?>
                                                 <?php if ($classification !== []): ?>
@@ -530,7 +533,7 @@ HTML;
                                         <div class="text-muted small"><?= $escape($inbound['source_contact']) ?></div>
                                     </td>
                                     <td><?= $escape($inbound['message_body']) ?></td>
-                                    <td><?= $escape($inbound['parsed_intent']) ?></td>
+                                    <td><?= $escape($statusLabel((string) ($inbound['parsed_intent'] ?? '-'))) ?></td>
                                     <td><?= $escape($inbound['received_at']) ?></td>
                                 </tr>
                             <?php endforeach; ?>
@@ -557,14 +560,14 @@ HTML;
                                 <div class="d-flex justify-content-between gap-3 flex-wrap">
                                     <div class="fw-semibold">
                                         <span class="badge bg-<?= $activityClass((string) $log['event_type']) ?> me-2">
-                                            <?= $escape($log['event_type']) ?>
+                                            <?= $escape($statusLabel((string) $log['event_type'])) ?>
                                         </span>
                                         <?= $escape($log['candidate_name'] ?? 'Campanha') ?>
                                     </div>
                                     <div class="small text-muted"><?= $escape($log['created_at']) ?></div>
                                 </div>
                                 <div class="small text-muted mb-1">
-                                    Direcao: <?= $escape($log['direction']) ?>
+                                    Direcao: <?= $escape($statusLabel((string) $log['direction'])) ?>
                                 </div>
                                 <?php if (!empty($log['message_body'])): ?>
                                     <div class="small"><?= $escape($log['message_body']) ?></div>

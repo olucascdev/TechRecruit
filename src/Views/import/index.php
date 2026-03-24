@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use TechRecruit\Support\LabelTranslator;
+
 $escape = static fn (mixed $value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 $batches = $batches ?? [];
 $statusClass = static function (string $status): string {
@@ -12,6 +14,7 @@ $statusClass = static function (string $status): string {
         default => 'secondary',
     };
 };
+$statusLabel = static fn (string $status): string => LabelTranslator::toPtBr($status);
 $actionIcon = static function (string $name): string {
     return match ($name) {
         'view' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.25 12s3.75-6.75 9.75-6.75S21.75 12 21.75 12 18 18.75 12 18.75 2.25 12 2.25 12Z"/><circle cx="12" cy="12" r="3.25"/></svg>',
@@ -76,7 +79,7 @@ $actionIcon = static function (string $name): string {
                             <td><?= $escape($batch['filename']) ?></td>
                             <td>
                                 <span class="badge bg-<?= $statusClass((string) $batch['status']) ?>">
-                                    <?= $escape($batch['status']) ?>
+                                    <?= $escape($statusLabel((string) $batch['status'])) ?>
                                 </span>
                             </td>
                             <td><?= $escape($batch['total_rows']) ?></td>

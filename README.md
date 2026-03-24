@@ -396,3 +396,8 @@ Sem `event`, o inbound manual agora exige sessão autenticada do backoffice e CS
 
 - Arquivos de `storage/` são ignorados no git.
 - O projeto não usa framework fullstack; o roteamento e renderização são próprios.
+
+## Deploy em VPS com Docker
+
+- Arquivos de deploy adicionados: `Dockerfile`, `docker-compose.yml`, `.env.docker.example`
+- Guia completo: `docs/deploy-vps-docker.md`

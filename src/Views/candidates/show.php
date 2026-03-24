@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use TechRecruit\Support\LabelTranslator;
+
 $escape = static fn (mixed $value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 $candidateStatusUrl = $url('/candidates/status');
 $candidate = $candidate ?? [];
@@ -22,7 +24,7 @@ $statusBadge = static function (string $status): string {
     };
 };
 
-$statusLabel = static fn (string $status): string => ucwords(str_replace('_', ' ', $status));
+$statusLabel = static fn (string $status): string => LabelTranslator::toPtBr($status);
 $addresses = is_array($candidate['addresses'] ?? null) ? $candidate['addresses'] : [];
 $contacts = is_array($candidate['contacts'] ?? null) ? $candidate['contacts'] : [];
 $skills = is_array($candidate['skills'] ?? null) ? $candidate['skills'] : [];
@@ -82,6 +84,7 @@ $classificationBadge = static function (string $status): string {
         default => 'secondary',
     };
 };
+$candidateStatusUrlEscaped = $escape($candidateStatusUrl);
 $actionIcon = static function (string $name): string {
     return match ($name) {
         'view' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.25 12s3.75-6.75 9.75-6.75S21.75 12 21.75 12 18 18.75 12 18.75 2.25 12 2.25 12Z"/><circle cx="12" cy="12" r="3.25"/></svg>',
@@ -90,6 +93,30 @@ $actionIcon = static function (string $name): string {
         default => '',
     };
 };
+
+$pageStyles = <<<HTML
+<style>
+.candidate-details {
+    display: grid;
+    gap: 0.9rem;
+}
+
+.candidate-details dl.row > dd {
+    margin-inline-start: 0;
+}
+
+.candidate-details dl.row > dt,
+.candidate-details dl.row > dd {
+    margin-bottom: 0.35rem;
+}
+
+@media (max-width: 991.98px) {
+    .candidate-details {
+        gap: 0.75rem;
+    }
+}
+</style>
+HTML;
 
 $pageScripts = <<<HTML
 <script>
@@ -112,7 +139,7 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             formData.set('_token', window.TechRecruit?.csrfToken || '');
 
-            const response = await fetch('<?= $escape($candidateStatusUrl) ?>', {
+            const response = await fetch('{$candidateStatusUrlEscaped}', {
                 method: 'POST',
                 headers: window.TechRecruit?.csrfHeaders ? window.TechRecruit.csrfHeaders({
                     'Accept': 'application/json',
@@ -142,7 +169,8 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 HTML;
 ?>
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+<div class="candidate-details">
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
     <div>
         <h1 class="h3 mb-1"><?= $escape($candidate['full_name'] ?? '') ?></h1>
         <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -255,9 +283,9 @@ HTML;
     </div>
 </div>
 
-<div class="card border-0 shadow-sm mt-4">
+<div class="card border-0 shadow-sm mt-3">
     <div class="card-body">
-        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
             <div>
                 <h2 class="h5 mb-1">Portal de cadastro e documentos</h2>
                 <p class="text-muted mb-0">Link único, formulário do candidato, checklist e anexos internos. Ao gerar, o sistema tenta enviar o link por WhatsApp automaticamente.</p>
@@ -277,7 +305,7 @@ HTML;
                 Nenhum portal gerado para este candidato ainda.
             </div>
         <?php else: ?>
-            <div class="row g-4">
+            <div class="row g-3">
                 <div class="col-lg-4">
                     <div class="border rounded p-3 h-100">
                         <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
@@ -366,7 +394,7 @@ HTML;
                 </div>
             </div>
 
-            <div class="row g-4 mt-1">
+            <div class="row g-3 mt-1">
                 <div class="col-lg-6">
                     <div class="border rounded p-3 h-100">
                         <h3 class="h6 mb-3">Resumo profissional</h3>
@@ -433,17 +461,16 @@ HTML;
 </div>
 
 <?php if ($portal !== null): ?>
-    <div class="card border-0 shadow-sm mt-4">
+    <div class="card border-0 shadow-sm mt-3">
         <div class="card-body">
-            <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
                 <div>
                     <h2 class="h5 mb-1">Validação operacional</h2>
-                    <p class="text-muted mb-0">Fila, decisões, pendências e histórico da análise humana.</p>
+                    <p class="text-muted mb-0">A revisão documental agora acontece em tela dedicada para o gestor operacional.</p>
                 </div>
-                <a href="<?= $escape($url('/operations')) ?>" class="btn btn-outline-dark">Ver fila operacional</a>
+                <a href="<?= $escape($url('/operations/' . ($candidate['id'] ?? ''))) ?>" class="btn btn-outline-dark">Abrir validacao operacional</a>
             </div>
-
-            <div class="row g-4 mb-4">
+            <div class="row g-3 mb-0">
                 <div class="col-md-3">
                     <div class="border rounded p-3 h-100">
                         <div class="text-muted small">Docs pendentes</div>
@@ -458,182 +485,14 @@ HTML;
                 </div>
                 <div class="col-md-3">
                     <div class="border rounded p-3 h-100">
-                        <div class="text-muted small">Pendências abertas</div>
+                        <div class="text-muted small">Pendencias abertas</div>
                         <div class="fs-4 fw-semibold"><?= $escape($operationSummary['open_pendencies'] ?? 0) ?></div>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="border rounded p-3 h-100">
-                        <div class="text-muted small">Docs com correção</div>
+                        <div class="text-muted small">Docs com correcao</div>
                         <div class="fs-4 fw-semibold"><?= $escape($operationSummary['correction_documents'] ?? 0) ?></div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="row g-4">
-                <div class="col-lg-4">
-                    <div class="border rounded p-3 mb-4">
-                        <h3 class="h6 mb-3">Observação interna</h3>
-                        <form method="post" action="<?= $escape($url('/operations/candidates/' . ($candidate['id'] ?? '') . '/note')) ?>" class="row g-2">
-                            <?= $csrfField ?>
-                            <div class="col-12">
-                                <textarea name="message" class="form-control" rows="4" placeholder="Ex.: Documento legível, validar comprovante de residência." required></textarea>
-                            </div>
-                            <div class="col-12 d-grid">
-                                <button type="submit" class="btn btn-outline-secondary">Salvar observação</button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <div class="border rounded p-3">
-                        <h3 class="h6 mb-3">Decisão do candidato</h3>
-                        <form method="post" action="<?= $escape($url('/operations/candidates/' . ($candidate['id'] ?? '') . '/decision')) ?>" class="row g-2">
-                            <?= $csrfField ?>
-                            <div class="col-12">
-                                <label for="decision" class="form-label">Ação</label>
-                                <select id="decision" name="decision" class="form-select" required>
-                                    <option value="">Selecione</option>
-                                    <option value="approve">Aprovar</option>
-                                    <option value="request_correction">Pedir correção</option>
-                                    <option value="reject">Reprovar</option>
-                                </select>
-                            </div>
-                            <div class="col-12">
-                                <label for="decision_message" class="form-label">Observação / motivo</label>
-                                <textarea id="decision_message" name="message" class="form-control" rows="4" placeholder="Obrigatório para correção ou reprovação."></textarea>
-                            </div>
-                            <div class="col-12 d-grid">
-                                <button type="submit" class="btn btn-primary">Registrar decisão</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
-                <div class="col-lg-8">
-                    <div class="border rounded p-3 mb-4">
-                        <h3 class="h6 mb-3">Análise documental</h3>
-                        <?php if ($portalDocuments === []): ?>
-                            <p class="text-muted mb-0">Nenhum documento para analisar.</p>
-                        <?php else: ?>
-                            <div class="table-responsive">
-                                <table class="table table-sm align-middle">
-                                    <thead>
-                                    <tr>
-                                        <th>Documento</th>
-                                        <th>Status</th>
-                                        <th>Ação</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    <?php foreach ($portalDocuments as $document): ?>
-                                        <tr>
-                                            <td>
-                                                <div class="fw-semibold"><?= $escape($statusLabel((string) $document['document_type'])) ?></div>
-                                                <div class="small text-muted"><?= $escape($document['original_name']) ?></div>
-                                                <a href="<?= $escape($url('/portal/documents/' . $document['id'])) ?>" target="_blank" class="small">Abrir anexo</a>
-                                            </td>
-                                            <td><?= $escape($statusLabel((string) $document['review_status'])) ?></td>
-                                            <td style="min-width: 320px;">
-                                                <form method="post" action="<?= $escape($url('/operations/documents/' . $document['id'] . '/decision')) ?>" class="row g-2">
-                                                    <?= $csrfField ?>
-                                                    <input type="hidden" name="candidate_id" value="<?= $escape($candidate['id'] ?? '') ?>">
-                                                    <div class="col-md-5">
-                                                        <select name="decision" class="form-select form-select-sm" required>
-                                                            <option value="">Ação</option>
-                                                            <option value="approve">Aprovar</option>
-                                                            <option value="request_correction">Pedir correção</option>
-                                                            <option value="reject">Reprovar</option>
-                                                        </select>
-                                                    </div>
-                                                    <div class="col-md-7">
-                                                        <input type="text" name="message" class="form-control form-control-sm" placeholder="Motivo / observação">
-                                                    </div>
-                                                    <div class="col-12 d-grid">
-                                                        <button type="submit" class="btn btn-sm btn-outline-primary">Salvar análise</button>
-                                                    </div>
-                                                </form>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-
-                    <div class="border rounded p-3 mb-4">
-                        <h3 class="h6 mb-3">Pendências</h3>
-                        <?php if ($operationPendencies === []): ?>
-                            <p class="text-muted mb-0">Nenhuma pendencia registrada.</p>
-                        <?php else: ?>
-                            <div class="table-responsive">
-                                <table class="table table-sm align-middle">
-                                    <thead>
-                                    <tr>
-                                        <th>Título</th>
-                                        <th>Status</th>
-                                        <th>Ação</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    <?php foreach ($operationPendencies as $pendency): ?>
-                                        <tr>
-                                            <td>
-                                                <div class="fw-semibold"><?= $escape($pendency['title']) ?></div>
-                                                <div class="small text-muted"><?= $escape($pendency['description'] ?: '-') ?></div>
-                                            </td>
-                                            <td><?= $escape($statusLabel((string) $pendency['status'])) ?></td>
-                                            <td style="min-width: 240px;">
-                                                <?php if (($pendency['status'] ?? '') === 'open'): ?>
-                                                    <form method="post" action="<?= $escape($url('/operations/pendencies/' . $pendency['id'] . '/resolve')) ?>" class="row g-2">
-                                                        <?= $csrfField ?>
-                                                        <input type="hidden" name="candidate_id" value="<?= $escape($candidate['id'] ?? '') ?>">
-                                                        <div class="col-12">
-                                                            <input type="text" name="message" class="form-control form-control-sm" placeholder="Observação de resolução">
-                                                        </div>
-                                                        <div class="col-12 d-grid">
-                                                            <button type="submit" class="btn btn-sm btn-outline-success">Resolver</button>
-                                                        </div>
-                                                    </form>
-                                                <?php else: ?>
-                                                    <div class="small text-muted">
-                                                        Resolvida por <?= $escape($pendency['resolved_by'] ?: '-') ?> em <?= $escape($pendency['resolved_at'] ?: '-') ?>
-                                                    </div>
-                                                <?php endif; ?>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-
-                    <div class="border rounded p-3">
-                        <h3 class="h6 mb-3">Histórico de decisão</h3>
-                        <?php if ($operationHistory === []): ?>
-                            <p class="text-muted mb-0">Nenhuma decisão registrada ainda.</p>
-                        <?php else: ?>
-                            <div class="timeline">
-                                <?php foreach ($operationHistory as $item): ?>
-                                    <div class="timeline-item">
-                                        <div class="d-flex justify-content-between gap-3 flex-wrap">
-                                            <div class="fw-semibold">
-                                                <span class="badge bg-<?= $reviewActionBadge((string) $item['action']) ?> me-2">
-                                                    <?= $escape($statusLabel((string) $item['action'])) ?>
-                                                </span>
-                                                <?= $escape($item['document_type'] ? $statusLabel((string) $item['document_type']) : 'Cadastro') ?>
-                                            </div>
-                                            <div class="small text-muted"><?= $escape($item['created_at']) ?></div>
-                                        </div>
-                                        <div class="small mb-1">Por <?= $escape($item['created_by']) ?></div>
-                                        <?php if (!empty($item['message'])): ?>
-                                            <div class="small text-muted"><?= nl2br($escape($item['message'])) ?></div>
-                                        <?php endif; ?>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
-                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -641,9 +500,9 @@ HTML;
     </div>
 <?php endif; ?>
 
-<div class="row g-4">
+<div class="row g-3">
     <div class="col-lg-8">
-        <div class="row g-4">
+        <div class="row g-3">
             <div class="col-md-6">
                 <div class="card border-0 shadow-sm h-100">
                     <div class="card-body">
@@ -692,7 +551,7 @@ HTML;
             <div class="col-md-6">
                 <div class="card border-0 shadow-sm h-100">
                     <div class="card-body">
-                        <h2 class="h5 mb-3">Skills</h2>
+                        <h2 class="h5 mb-3">Habilidades</h2>
                         <?php if ($skills === []): ?>
                             <p class="text-muted mb-0">Nenhuma skill cadastrada.</p>
                         <?php else: ?>
@@ -729,7 +588,7 @@ HTML;
         </div>
     </div>
     <div class="col-lg-4">
-        <div class="card border-0 shadow-sm mb-4">
+        <div class="card border-0 shadow-sm mb-3">
             <div class="card-body">
                 <h2 class="h5 mb-3">Alterar status</h2>
                 <div id="status-feedback" class="d-none"></div>
@@ -775,4 +634,5 @@ HTML;
             </div>
         </div>
     </div>
+</div>
 </div>

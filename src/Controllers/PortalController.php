@@ -42,11 +42,30 @@ final class PortalController extends Controller
 
         $this->portalService->markPortalAccessed($token);
         $portal = $this->portalModel->findByToken($token) ?? $portal;
+        $mode = strtolower(trim((string) ($_GET['mode'] ?? '')));
+        $isCorrectionMode = $mode === 'correction';
 
         $this->render('portal/show', [
             'portal' => $portal,
-            'portalFormAction' => '/portal/' . $token . '/submit',
+            'portalFormAction' => '/portal/' . $token . '/submit' . ($isCorrectionMode ? '?mode=correction' : ''),
         ], 'Portal do Candidato', 'layout/portal');
+    }
+
+    public function short(string $shortCode): void
+    {
+        $portal = $this->portalService->resolvePortalByShortCode($shortCode);
+
+        if ($portal === null) {
+            http_response_code(404);
+            echo 'Link do portal nao encontrado.';
+
+            return;
+        }
+
+        $mode = strtolower(trim((string) ($_GET['mode'] ?? '')));
+        $query = $mode === 'correction' ? '?mode=correction' : '';
+
+        $this->redirect('/portal/' . (string) $portal['access_token'] . $query);
     }
 
     public function submit(string $token): void
@@ -68,7 +87,8 @@ final class PortalController extends Controller
             );
         }
 
-        $this->redirect('/portal/' . $token);
+        $mode = strtolower(trim((string) ($_GET['mode'] ?? '')));
+        $this->redirect('/portal/' . $token . ($mode === 'correction' ? '?mode=correction' : ''));
     }
 
     public function generate(int $candidateId): void
@@ -81,7 +101,7 @@ final class PortalController extends Controller
 
         try {
             $portal = $this->portalService->generatePortalForCandidate($candidateId, $this->resolveOperator());
-            $portalUrl = $this->absoluteUrl('/portal/' . $portal['access_token']);
+            $portalUrl = $this->portalService->buildPortalShortUrl($portal);
             $dispatchResult = $this->portalService->sendPortalLink($candidateId, $portalUrl);
 
             if (!empty($dispatchResult['success'])) {
