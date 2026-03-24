@@ -2307,7 +2307,16 @@ final class TriageBotService
 
     private function buildPreFilterServicesRetryMessage(): string
     {
-        return "Selecione um serviço válido no menu e, ao terminar, escolha:\n" .
+        return "Selecione as opções: quais serviços você atende?\n" .
+            "Você pode escolher vários itens. ✅\n" .
+            "Escolha um por vez e, ao terminar, selecione: Concluir seleção.\n\n" .
+            "Selecione:\n" .
+            "1 - VSAT\n" .
+            "2 - Redes / Firewall\n" .
+            "3 - Microinformática\n" .
+            "4 - Impressoras\n" .
+            "5 - Cabeamento\n" .
+            "6 - Servidores\n" .
             "9 - CONCLUIR SELEÇÃO";
     }
 

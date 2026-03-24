@@ -1,0 +1,61 @@
+name: CD
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      deploy_branch:
+        description: Branch to deploy
+        required: true
+        default: main
+      deploy_mode:
+        description: Deploy mode
+        required: true
+        type: choice
+        default: build
+        options:
+          - build
+          - pull
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: ${{ vars.DEPLOY_ENABLED == 'true' }}
+    name: Deploy to VPS
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Deploy with SSH
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH != '' && vars.DEPLOY_PATH || '/opt/TechRecruit' }}
+          DEPLOY_BRANCH: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy_branch || 'main' }}
+          DEPLOY_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy_mode || 'build' }}
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT != '' && secrets.DEPLOY_PORT || '22' }}
+          script_stop: true
+          envs: DEPLOY_PATH,DEPLOY_BRANCH,DEPLOY_MODE
+          script: |
+            set -euo pipefail
+
+            if [ ! -d "$DEPLOY_PATH/.git" ]; then
+              echo "ERROR: Repository not found at $DEPLOY_PATH"
+              echo "Clone the project on the VPS first."
+              exit 1
+            fi
+
+            cd "$DEPLOY_PATH"
+            git fetch --all --prune
+            git checkout "$DEPLOY_BRANCH"
+            git pull --ff-only origin "$DEPLOY_BRANCH"
+
+            bash scripts/deploy/docker-compose-deploy.sh "$DEPLOY_MODE"

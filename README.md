@@ -401,3 +401,45 @@ Sem `event`, o inbound manual agora exige sessão autenticada do backoffice e CS
 
 - Arquivos de deploy adicionados: `Dockerfile`, `docker-compose.yml`, `.env.docker.example`
 - Guia completo: `docs/deploy-vps-docker.md`
+
+## CI/CD (GitHub Actions)
+
+Este repositório já inclui automação de integração e deploy:
+
+- `CI`: `.github/workflows/ci.yml`
+  - lint PHP
+  - build CSS (`npm run build:css`)
+  - build Docker de validação
+- `CD`: `.github/workflows/cd.yml`
+  - deploy na VPS via SSH em `push` para `main`
+  - opção manual (`workflow_dispatch`) com `deploy_branch` e `deploy_mode`
+
+### Como habilitar o deploy automático
+
+1. Configure a variável do repositório:
+
+```text
+DEPLOY_ENABLED=true
+```
+
+2. Configure os secrets:
+
+```text
+DEPLOY_HOST
+DEPLOY_USER
+DEPLOY_SSH_KEY
+DEPLOY_PORT (opcional)
+```
+
+3. Configure a variável (opcional):
+
+```text
+DEPLOY_PATH=/opt/TechRecruit
+```
+
+4. Na VPS, mantenha o projeto clonado em `DEPLOY_PATH` e com `.env.docker` preenchido.
+
+O deploy remoto executa:
+
+- `git pull` da branch alvo
+- `bash scripts/deploy/docker-compose-deploy.sh build` (ou `pull`)

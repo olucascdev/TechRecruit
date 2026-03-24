@@ -48,8 +48,7 @@ Ajuste no `.env.docker` (obrigatorio):
 ## 4) Build da imagem e deploy
 
 ```bash
-docker compose build --pull
-docker compose up -d
+bash scripts/deploy/docker-compose-deploy.sh build
 ```
 
 Ver status:
@@ -91,8 +90,13 @@ Exemplo Nginx pronto no projeto:
 
 ```bash
 git pull
-docker compose build --pull
-docker compose up -d
+bash scripts/deploy/docker-compose-deploy.sh build
+```
+
+Se você já publica imagem em registry e quer apenas baixar, use modo `pull`:
+
+```bash
+bash scripts/deploy/docker-compose-deploy.sh pull
 ```
 
 ## 8) Backup recomendado
@@ -120,3 +124,27 @@ docker push seuusuario/techrecruit:v1
 ```
 
 Depois, no `docker-compose.yml`, troque a imagem do serviço `app` e `worker` para essa imagem publicada.
+
+## CI/CD com GitHub Actions
+
+O projeto inclui dois workflows:
+
+- `.github/workflows/ci.yml`: lint PHP, build de assets e build Docker em `push`/`pull_request`
+- `.github/workflows/cd.yml`: deploy automático em VPS via SSH (branch `main` ou manual)
+
+Para habilitar o deploy contínuo (`CD`):
+
+1. Configure no repositório GitHub a variável:
+   - `DEPLOY_ENABLED=true`
+2. Configure os secrets:
+   - `DEPLOY_HOST` (IP/domínio da VPS)
+   - `DEPLOY_USER` (usuário SSH)
+   - `DEPLOY_SSH_KEY` (chave privada SSH)
+   - `DEPLOY_PORT` (opcional, padrão `22`)
+3. Configure a variável (opcional):
+   - `DEPLOY_PATH` (padrão `/opt/TechRecruit`)
+
+Observações:
+
+- A pasta da VPS (`DEPLOY_PATH`) deve já conter o repositório clonado e `.env.docker` pronto.
+- O workflow usa `git pull` + `bash scripts/deploy/docker-compose-deploy.sh` no servidor.
