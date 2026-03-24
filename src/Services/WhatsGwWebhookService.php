@@ -102,6 +102,9 @@ final class WhatsGwWebhookService
 
         $acceptedMessageTypes = [
             'text',
+            'audio',
+            'ptt',
+            'voice',
             'button',
             'buttons',
             'buttons_response',
@@ -216,6 +219,12 @@ final class WhatsGwWebhookService
                     }
                 }
             }
+        }
+
+        $messageType = strtolower(trim((string) ($payload['message_type'] ?? '')));
+
+        if (in_array($messageType, ['audio', 'ptt', 'voice'], true)) {
+            return '[audio]';
         }
 
         return '';

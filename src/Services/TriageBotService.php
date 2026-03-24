@@ -663,45 +663,7 @@ final class TriageBotService
 
             $typedServices = $this->parseServiceCategories($messageBody);
 
-            if (count($typedServices) > 1) {
-                $merged = array_values(array_unique(array_merge($selectedServiceKeys, $typedServices)));
-
-                return $this->advanceToPreFilterAvailability($session, $messageBody, $preFilterData, $merged);
-            }
-
-            $option = $this->parseMenuOption($messageBody, ['1', '2', '3', '4', '5', '6', '9']);
-
-            if ($option === null) {
-                $normalizedServiceReply = $this->normalizeFreeText($messageBody);
-
-                if (str_contains($normalizedServiceReply, 'conclu') || $normalizedServiceReply === 'fim') {
-                    $option = '9';
-                }
-            }
-
-            if ($option === '9') {
-                if ($selectedServiceKeys === []) {
-                    return $this->handleInvalidStepReply(
-                        $session,
-                        $messageBody,
-                        'prefilter',
-                        $this->buildPreFilterServicesRetryMessage(),
-                        'Tentativa de finalizar servicos sem selecao.'
-                    );
-                }
-
-                return $this->advanceToPreFilterAvailability($session, $messageBody, $preFilterData, $selectedServiceKeys);
-            }
-
-            if ($option === null && count($typedServices) === 1) {
-                $selectedServiceKeys = array_values(array_unique(array_merge($selectedServiceKeys, $typedServices)));
-            } elseif ($option !== null && in_array($option, ['1', '2', '3', '4', '5', '6'], true)) {
-                $serviceFromOption = $this->parseServiceCategories($option);
-
-                if ($serviceFromOption !== []) {
-                    $selectedServiceKeys = array_values(array_unique(array_merge($selectedServiceKeys, $serviceFromOption)));
-                }
-            } else {
+            if ($typedServices === []) {
                 return $this->handleInvalidStepReply(
                     $session,
                     $messageBody,
@@ -711,39 +673,9 @@ final class TriageBotService
                 );
             }
 
-            $preFilterData['service_keys'] = $selectedServiceKeys;
-            $preFilterData['service_labels'] = $this->serviceLabels($selectedServiceKeys);
-            $reply = $this->buildPreFilterServicesPromptMessage($preFilterData['service_labels']);
-            $updatedCollectedData = $this->mergeCollectedData($session, [
-                'prefilter' => $preFilterData,
-                'prefilter_progress' => 'services',
-                'last_prompt' => 'prefilter_services',
-            ]);
+            $selectedServiceKeys = array_values(array_unique(array_merge($selectedServiceKeys, $typedServices)));
 
-            return $this->advanceSession(
-                $session,
-                [
-                    'triage_status' => 'interested',
-                    'current_step' => 'prefilter',
-                    'automation_status' => 'active',
-                    'needs_operator' => false,
-                    'invalid_reply_count' => 0,
-                    'fallback_reason' => null,
-                    'collected_data' => $updatedCollectedData,
-                    'last_inbound_message' => $messageBody,
-                    'last_outbound_message' => $reply,
-                    'last_interaction_at' => date('Y-m-d H:i:s'),
-                ],
-                [
-                    'parsed_intent' => 'interested',
-                    'candidate_status' => 'interested',
-                    'auto_reply' => $reply,
-                    'metadata' => [
-                        'transition' => 'prefilter_services',
-                        'service_keys' => $selectedServiceKeys,
-                    ],
-                ]
-            );
+            return $this->advanceToPreFilterAvailability($session, $messageBody, $preFilterData, $selectedServiceKeys);
         }
 
         if ($progress === 'availability') {
@@ -2156,22 +2088,18 @@ final class TriageBotService
      */
     private function buildPreFilterServicesPromptMessage(array $selectedServices = []): string
     {
-        $selectedLine = $selectedServices !== []
-            ? "\nSelecionados até agora: " . implode(', ', $selectedServices) . "\n"
-            : "\n";
-
         return "Selecione as opções: quais serviços você atende?\n" .
-            "Você pode escolher vários itens. ✅\n" .
-            "Escolha um por vez e, ao terminar, selecione: Concluir seleção." .
-            $selectedLine .
+            "Você pode selecionar quantos serviços quiser. ✅\n" .
+            "Responda digitando os números em texto (ex.: 1,2,5).\n" .
+            "Você pode enviar um ou vários números na mesma mensagem.\n" .
+            "Não envie áudio nesta etapa.\n" .
             "\nSelecione:\n" .
             "1 - VSAT\n" .
             "2 - Redes / Firewall\n" .
             "3 - Microinformática\n" .
             "4 - Impressoras\n" .
             "5 - Cabeamento\n" .
-            "6 - Servidores\n" .
-            "9 - CONCLUIR SELEÇÃO";
+            "6 - Servidores";
     }
 
     private function buildPreFilterAvailabilityPromptMessage(): string
@@ -2308,16 +2236,17 @@ final class TriageBotService
     private function buildPreFilterServicesRetryMessage(): string
     {
         return "Selecione as opções: quais serviços você atende?\n" .
-            "Você pode escolher vários itens. ✅\n" .
-            "Escolha um por vez e, ao terminar, selecione: Concluir seleção.\n\n" .
+            "Escreva sua resposta em texto (ex.: 1,2,5).\n" .
+            "Não envie áudio para essa etapa.\n" .
+            "Você pode selecionar quantos serviços quiser. ✅\n" .
+            "Você pode enviar um ou vários números na mesma mensagem.\n\n" .
             "Selecione:\n" .
             "1 - VSAT\n" .
             "2 - Redes / Firewall\n" .
             "3 - Microinformática\n" .
             "4 - Impressoras\n" .
             "5 - Cabeamento\n" .
-            "6 - Servidores\n" .
-            "9 - CONCLUIR SELEÇÃO";
+            "6 - Servidores";
     }
 
     private function buildFieldReadinessToolkitDescriptionRetryMessage(): string

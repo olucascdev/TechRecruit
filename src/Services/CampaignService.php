@@ -1299,54 +1299,33 @@ final class CampaignService
             return null;
         }
 
+        if (count($options) > 3) {
+            return null;
+        }
+
         $prompt = trim(implode("\n", $promptLines));
 
         if ($prompt === '') {
             $prompt = 'Selecione uma opcao';
         }
 
-        if (count($options) <= 3) {
-            $buttons = [];
+        $buttons = [];
 
-            foreach ($options as $index => $option) {
-                $buttonLabel = $this->truncateInteractiveLabel((string) $option['label'], 20);
-                $buttons[] = [
-                    'buttonType' => 'quickReply',
-                    'buttonId' => 'opt_' . $option['id'],
-                    'buttonText' => [
-                        'displayText' => $buttonLabel,
-                    ],
-                    'type' => $index + 1,
-                ];
-            }
-
-            return [
-                'message_body' => $prompt,
-                'buttons' => $buttons,
-            ];
-        }
-
-        $rows = [];
-
-        foreach ($options as $option) {
-            $rows[] = [
-                'title' => $this->truncateInteractiveLabel((string) $option['label'], 24),
-                'rowId' => 'opt_' . $option['id'],
-                'description' => 'Opcao ' . $option['id'],
+        foreach ($options as $index => $option) {
+            $buttonLabel = $this->truncateInteractiveLabel((string) $option['label'], 20);
+            $buttons[] = [
+                'buttonType' => 'quickReply',
+                'buttonId' => 'opt_' . $option['id'],
+                'buttonText' => [
+                    'displayText' => $buttonLabel,
+                ],
+                'type' => $index + 1,
             ];
         }
 
         return [
             'message_body' => $prompt,
-            'listButton' => [
-                'sections' => [[
-                    'rows' => $rows,
-                ]],
-                'buttonText' => 'Selecionar',
-                'title' => 'Selecione as opções',
-                'footerText' => 'W13 Tecnologia',
-                'listType' => 1,
-            ],
+            'buttons' => $buttons,
         ];
     }
 
