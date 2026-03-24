@@ -176,12 +176,25 @@ final class PortalController extends Controller
             exit;
         }
 
-        $mimeType = trim((string) ($document['mime_type'] ?? '')) ?: 'application/octet-stream';
+        $mimeType = strtolower(trim((string) ($document['mime_type'] ?? '')));
+        $safeMimeTypes = [
+            'application/pdf',
+            'image/jpeg',
+            'image/pjpeg',
+            'image/png',
+        ];
+
+        if (!in_array($mimeType, $safeMimeTypes, true)) {
+            $mimeType = 'application/octet-stream';
+        }
+
+        $disposition = $mimeType === 'application/octet-stream' ? 'attachment' : 'inline';
         $fileName = preg_replace('/[^A-Za-z0-9._-]+/', '-', basename((string) $document['original_name'])) ?: 'documento';
 
+        header('X-Content-Type-Options: nosniff');
         header('Content-Type: ' . $mimeType);
         header('Content-Length: ' . (string) filesize((string) $document['stored_path']));
-        header('Content-Disposition: inline; filename="' . $fileName . '"');
+        header('Content-Disposition: ' . $disposition . '; filename="' . $fileName . '"');
 
         readfile((string) $document['stored_path']);
         exit;

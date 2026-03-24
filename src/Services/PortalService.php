@@ -16,6 +16,16 @@ final class PortalService
 {
     public const TERMS_VERSION = 'portal-v1';
 
+    /**
+     * @var array<string, list<string>>
+     */
+    private const ALLOWED_UPLOAD_MIME_TYPES = [
+        'pdf' => ['application/pdf'],
+        'jpg' => ['image/jpeg', 'image/pjpeg'],
+        'jpeg' => ['image/jpeg', 'image/pjpeg'],
+        'png' => ['image/png'],
+    ];
+
     private PDO $pdo;
 
     private CandidateModel $candidateModel;
@@ -644,7 +654,6 @@ final class PortalService
             $tmpName = (string) ($file['tmp_name'] ?? '');
             $originalName = trim((string) ($file['name'] ?? 'arquivo'));
             $fileSize = (int) ($file['size'] ?? 0);
-            $mimeType = trim((string) ($file['type'] ?? ''));
 
             if ($fileSize < 1) {
                 throw new InvalidArgumentException(
@@ -663,6 +672,14 @@ final class PortalService
             if (!in_array($extension, ['pdf', 'jpg', 'jpeg', 'png'], true)) {
                 throw new InvalidArgumentException(
                     sprintf('O arquivo "%s" precisa ser PDF, JPG, JPEG ou PNG.', $item['label'])
+                );
+            }
+
+            $detectedMimeType = $this->detectUploadedMimeType($tmpName, $extension);
+
+            if (!in_array($detectedMimeType, self::ALLOWED_UPLOAD_MIME_TYPES[$extension] ?? [], true)) {
+                throw new InvalidArgumentException(
+                    sprintf('O arquivo "%s" não corresponde ao tipo esperado (%s).', $item['label'], strtoupper($extension))
                 );
             }
 
@@ -697,12 +714,77 @@ final class PortalService
                 'document_type' => $documentType,
                 'original_name' => $originalName,
                 'stored_path' => $storedPath,
-                'mime_type' => $mimeType !== '' ? $mimeType : null,
+                'mime_type' => $detectedMimeType,
                 'file_size' => $fileSize,
             ];
         }
 
         return $storedDocuments;
+    }
+
+    private function detectUploadedMimeType(string $tmpName, string $extension): string
+    {
+        if ($tmpName === '' || !is_file($tmpName) || !is_readable($tmpName)) {
+            throw new InvalidArgumentException('Arquivo temporário inválido para validação.');
+        }
+
+        $extension = strtolower(trim($extension));
+
+        if ($extension === 'pdf') {
+            $handle = fopen($tmpName, 'rb');
+
+            if ($handle === false) {
+                return 'application/octet-stream';
+            }
+
+            $signature = fread($handle, 5);
+            fclose($handle);
+
+            return $signature === '%PDF-' ? 'application/pdf' : 'application/octet-stream';
+        }
+
+        if (in_array($extension, ['jpg', 'jpeg', 'png'], true) && function_exists('exif_imagetype')) {
+            $imageType = @exif_imagetype($tmpName);
+
+            if ($imageType === IMAGETYPE_JPEG) {
+                return 'image/jpeg';
+            }
+
+            if ($imageType === IMAGETYPE_PNG) {
+                return 'image/png';
+            }
+        }
+
+        if (function_exists('finfo_open')) {
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+
+            if ($finfo !== false) {
+                $mime = finfo_file($finfo, $tmpName);
+                finfo_close($finfo);
+
+                if (is_string($mime) && trim($mime) !== '') {
+                    $normalized = strtolower(trim(explode(';', $mime)[0]));
+
+                    if ($normalized !== '') {
+                        return $normalized;
+                    }
+                }
+            }
+        }
+
+        if (function_exists('mime_content_type')) {
+            $mime = mime_content_type($tmpName);
+
+            if (is_string($mime) && trim($mime) !== '') {
+                $normalized = strtolower(trim(explode(';', $mime)[0]));
+
+                if ($normalized !== '') {
+                    return $normalized;
+                }
+            }
+        }
+
+        return 'application/octet-stream';
     }
 
     /**
