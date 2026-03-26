@@ -327,10 +327,15 @@ final class PortalService
                     pix_key,
                     birth_date,
                     whatsapp,
+                    secondary_phone,
                     email,
                     state,
                     city,
                     region,
+                    service_region,
+                    bank_name,
+                    bank_agency,
+                    bank_account,
                     availability,
                     experience_summary,
                     notes
@@ -343,10 +348,15 @@ final class PortalService
                     :pix_key,
                     :birth_date,
                     :whatsapp,
+                    :secondary_phone,
                     :email,
                     :state,
                     :city,
                     :region,
+                    :service_region,
+                    :bank_name,
+                    :bank_agency,
+                    :bank_account,
                     :availability,
                     :experience_summary,
                     :notes
@@ -358,10 +368,15 @@ final class PortalService
                     pix_key = VALUES(pix_key),
                     birth_date = VALUES(birth_date),
                     whatsapp = VALUES(whatsapp),
+                    secondary_phone = VALUES(secondary_phone),
                     email = VALUES(email),
                     state = VALUES(state),
                     city = VALUES(city),
                     region = VALUES(region),
+                    service_region = VALUES(service_region),
+                    bank_name = VALUES(bank_name),
+                    bank_agency = VALUES(bank_agency),
+                    bank_account = VALUES(bank_account),
                     availability = VALUES(availability),
                     experience_summary = VALUES(experience_summary),
                     notes = VALUES(notes),
@@ -376,10 +391,15 @@ final class PortalService
                 'pix_key' => $profileData['pix_key'],
                 'birth_date' => $profileData['birth_date'],
                 'whatsapp' => $profileData['whatsapp'],
+                'secondary_phone' => $profileData['secondary_phone'],
                 'email' => $profileData['email'],
                 'state' => $profileData['state'],
                 'city' => $profileData['city'],
                 'region' => $profileData['region'],
+                'service_region' => $profileData['service_region'],
+                'bank_name' => $profileData['bank_name'],
+                'bank_agency' => $profileData['bank_agency'],
+                'bank_account' => $profileData['bank_account'],
                 'availability' => $profileData['availability'],
                 'experience_summary' => $profileData['experience_summary'],
                 'notes' => $profileData['notes'],
@@ -562,20 +582,26 @@ final class PortalService
         $pixKey = trim((string) ($formData['pix_key'] ?? ($portal['profile']['pix_key'] ?? '')));
         $birthDate = trim((string) ($formData['birth_date'] ?? ($portal['profile']['birth_date'] ?? '')));
         $whatsapp = trim((string) ($formData['whatsapp'] ?? ($portal['profile']['whatsapp'] ?? $portal['whatsapp'] ?? '')));
+        $secondaryPhone = trim((string) ($formData['secondary_phone'] ?? ($portal['profile']['secondary_phone'] ?? '')));
         $email = trim((string) ($formData['email'] ?? ($portal['profile']['email'] ?? $portal['email'] ?? '')));
         $state = mb_strtoupper(trim((string) ($formData['state'] ?? ($portal['profile']['state'] ?? $portal['state'] ?? ''))));
         $city = trim((string) ($formData['city'] ?? ($portal['profile']['city'] ?? $portal['city'] ?? '')));
         $region = trim((string) ($formData['region'] ?? ($portal['profile']['region'] ?? $portal['region'] ?? '')));
+        $serviceRegion = trim((string) ($formData['service_region'] ?? ($portal['profile']['service_region'] ?? '')));
+        $bankName = trim((string) ($formData['bank_name'] ?? ($portal['profile']['bank_name'] ?? '')));
+        $bankAgency = trim((string) ($formData['bank_agency'] ?? ($portal['profile']['bank_agency'] ?? '')));
+        $bankAccount = trim((string) ($formData['bank_account'] ?? ($portal['profile']['bank_account'] ?? '')));
         $availability = trim((string) ($formData['availability'] ?? ($portal['profile']['availability'] ?? '')));
         $experienceSummary = trim((string) ($formData['experience_summary'] ?? ($portal['profile']['experience_summary'] ?? '')));
         $notes = trim((string) ($formData['notes'] ?? ($portal['profile']['notes'] ?? '')));
+        $isCorrectionRequested = (string) ($portal['status'] ?? '') === 'correction_requested';
 
         if ($fullName === '') {
             throw new InvalidArgumentException('Informe seu nome completo.');
         }
 
-        if ($whatsapp === '' && $email === '') {
-            throw new InvalidArgumentException('Informe ao menos um WhatsApp ou e-mail para contato.');
+        if ($whatsapp === '' && $secondaryPhone === '' && $email === '') {
+            throw new InvalidArgumentException('Informe ao menos um WhatsApp, telefone secundário ou e-mail para contato.');
         }
 
         if ($state !== '' && strlen($state) !== 2) {
@@ -598,6 +624,28 @@ final class PortalService
             throw new InvalidArgumentException('Informe a chave Pix.');
         }
 
+        $hasAnyBankField = $bankName !== '' || $bankAgency !== '' || $bankAccount !== '';
+
+        if (!$isCorrectionRequested || $hasAnyBankField) {
+            if ($bankName === '') {
+                throw new InvalidArgumentException('Informe o banco para pagamento.');
+            }
+
+            if ($bankAgency === '') {
+                throw new InvalidArgumentException('Informe a agência bancária.');
+            }
+
+            if ($bankAccount === '') {
+                throw new InvalidArgumentException('Informe a conta bancária.');
+            }
+        }
+
+        if (!$isCorrectionRequested || $serviceRegion !== '') {
+            if ($serviceRegion === '') {
+                throw new InvalidArgumentException('Informe sua região de atendimento.');
+            }
+        }
+
         if ($experienceSummary === '') {
             throw new InvalidArgumentException('Descreva sua experiência resumida.');
         }
@@ -609,10 +657,15 @@ final class PortalService
             'pix_key' => $pixKey === '' ? null : $pixKey,
             'birth_date' => $birthDate === '' ? null : $birthDate,
             'whatsapp' => $whatsapp === '' ? null : $whatsapp,
+            'secondary_phone' => $secondaryPhone === '' ? null : $secondaryPhone,
             'email' => $email === '' ? null : $email,
             'state' => $state === '' ? null : $state,
             'city' => $city === '' ? null : $city,
             'region' => $region === '' ? null : $region,
+            'service_region' => $serviceRegion === '' ? null : $serviceRegion,
+            'bank_name' => $bankName === '' ? null : $bankName,
+            'bank_agency' => $bankAgency === '' ? null : $bankAgency,
+            'bank_account' => $bankAccount === '' ? null : $bankAccount,
             'availability' => $availability === '' ? null : $availability,
             'experience_summary' => $experienceSummary === '' ? null : $experienceSummary,
             'notes' => $notes === '' ? null : $notes,
@@ -806,6 +859,7 @@ final class PortalService
         ]);
 
         $this->upsertContact($candidateId, 'whatsapp', $profileData['whatsapp']);
+        $this->upsertSecondaryPhone($candidateId, $profileData['secondary_phone']);
         $this->upsertContact($candidateId, 'email', $profileData['email']);
         $this->upsertAddress(
             $candidateId,
@@ -854,6 +908,53 @@ final class PortalService
             'UPDATE recruit_candidate_contacts
              SET value = :value,
                  is_primary = 1
+             WHERE id = :id'
+        );
+        $updateStatement->execute([
+            'value' => $value,
+            'id' => $contactId,
+        ]);
+    }
+
+    private function upsertSecondaryPhone(int $candidateId, ?string $value): void
+    {
+        if ($value === null || trim($value) === '') {
+            return;
+        }
+
+        $statement = $this->pdo->prepare(
+            'SELECT id
+             FROM recruit_candidate_contacts
+             WHERE candidate_id = :candidate_id
+               AND type = :type
+               AND is_primary = 0
+             ORDER BY id ASC
+             LIMIT 1'
+        );
+        $statement->execute([
+            'candidate_id' => $candidateId,
+            'type' => 'phone',
+        ]);
+        $contactId = $statement->fetchColumn();
+
+        if ($contactId === false) {
+            $insertStatement = $this->pdo->prepare(
+                'INSERT INTO recruit_candidate_contacts (candidate_id, type, value, is_primary)
+                 VALUES (:candidate_id, :type, :value, :is_primary)'
+            );
+            $insertStatement->execute([
+                'candidate_id' => $candidateId,
+                'type' => 'phone',
+                'value' => $value,
+                'is_primary' => 0,
+            ]);
+
+            return;
+        }
+
+        $updateStatement = $this->pdo->prepare(
+            'UPDATE recruit_candidate_contacts
+             SET value = :value
              WHERE id = :id'
         );
         $updateStatement->execute([
@@ -941,7 +1042,7 @@ final class PortalService
         }
 
         return trim(sprintf(
-            "Olá, %s.\n\nSeu perfil foi pré-aprovado na W13 Tecnologia.\nPara finalizar seu cadastro, acesse o portal abaixo e envie os dados e documentos obrigatórios:\n\n%s\n\nDocumentos esperados:\n- Documento de identidade\n- Comprovante de residência\n- CNPJ / MEI\n- ASO\n- NR10\n- NR35\n\nAssim que a validação for concluída, sua liberação operacional segue para a próxima etapa.\n\nEquipe W13 Tecnologia",
+            "Olá, %s.\n\nSeu perfil foi pré-aprovado na W13 Tecnologia.\nPara finalizar seu cadastro, acesse o portal abaixo e envie os dados e documentos obrigatórios:\n\n%s\n\nDocumentos esperados:\n- Documento de identidade\n- Comprovante de residência\n- CNPJ / MEI\n- Comprovante bancário\n- ASO\n- NR10\n- NR35\n\nAssim que a validação for concluída, sua liberação operacional segue para a próxima etapa.\n\nEquipe W13 Tecnologia",
             $firstName,
             $portalUrl
         ));

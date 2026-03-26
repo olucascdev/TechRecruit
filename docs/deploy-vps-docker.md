@@ -101,6 +101,14 @@ bash scripts/deploy/docker-compose-deploy.sh pull
 
 ## 8) Backup recomendado
 
+## Migração incremental (ambiente já em produção)
+
+Se seu banco já existia antes das mudanças recentes do portal, aplique a migration 011 manualmente:
+
+```bash
+docker compose exec -T db sh -lc 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' < database/migrations/011_add_portal_banking_fields.sql
+```
+
 Banco:
 
 ```bash

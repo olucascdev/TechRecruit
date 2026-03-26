@@ -38,6 +38,10 @@ final class PortalModel
             'label' => 'Cartao CNPJ / comprovante MEI',
             'required' => true,
         ],
+        'comprovante_bancario' => [
+            'label' => 'Comprovante bancario',
+            'required' => true,
+        ],
         'aso' => [
             'label' => 'ASO válido',
             'required' => true,
@@ -272,7 +276,7 @@ final class PortalModel
     private function hydratePortal(array $portal): array
     {
         $profileStatement = $this->pdo->prepare(
-            'SELECT full_name, cpf, cnpj, pix_key, birth_date, whatsapp, email, state, city, region, availability, experience_summary, notes, created_at, updated_at
+            'SELECT full_name, cpf, cnpj, pix_key, birth_date, whatsapp, secondary_phone, email, state, city, region, service_region, bank_name, bank_agency, bank_account, availability, experience_summary, notes, created_at, updated_at
              FROM recruit_candidate_portal_profiles
              WHERE portal_id = :portal_id
              LIMIT 1'

@@ -56,9 +56,14 @@ $value = static function (string $key, array $profile, array $portal): string {
         'pix_key' => (string) ($portal['pix_key'] ?? ''),
         'whatsapp' => (string) ($portal['whatsapp'] ?? ''),
         'email' => (string) ($portal['email'] ?? ''),
+        'secondary_phone' => '',
         'state' => (string) ($portal['state'] ?? ''),
         'city' => (string) ($portal['city'] ?? ''),
         'region' => (string) ($portal['region'] ?? ''),
+        'service_region' => '',
+        'bank_name' => '',
+        'bank_agency' => '',
+        'bank_account' => '',
         default => '',
     };
 };
@@ -126,12 +131,28 @@ $statusClass = static function (string $status): string {
                                     <input type="text" class="form-control" id="whatsapp" name="whatsapp" value="<?= $escape($value('whatsapp', $profile, $portal)) ?>" <?= $isReadOnly ? 'disabled' : '' ?>>
                                 </div>
                                 <div class="col-md-4">
+                                    <label for="secondary_phone" class="form-label">Telefone secundário</label>
+                                    <input type="text" class="form-control" id="secondary_phone" name="secondary_phone" value="<?= $escape($value('secondary_phone', $profile, $portal)) ?>" <?= $isReadOnly ? 'disabled' : '' ?>>
+                                </div>
+                                <div class="col-md-4">
                                     <label for="email" class="form-label">E-mail</label>
                                     <input type="email" class="form-control" id="email" name="email" value="<?= $escape($value('email', $profile, $portal)) ?>" <?= $isReadOnly ? 'disabled' : '' ?>>
                                 </div>
                                 <div class="col-md-4">
                                     <label for="pix_key" class="form-label">Chave Pix</label>
                                     <input type="text" class="form-control" id="pix_key" name="pix_key" value="<?= $escape($value('pix_key', $profile, $portal)) ?>" <?= $isReadOnly ? 'disabled' : '' ?> required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="bank_name" class="form-label">Banco</label>
+                                    <input type="text" class="form-control" id="bank_name" name="bank_name" value="<?= $escape($value('bank_name', $profile, $portal)) ?>" <?= $isReadOnly ? 'disabled' : '' ?> required>
+                                </div>
+                                <div class="col-md-2">
+                                    <label for="bank_agency" class="form-label">Agência</label>
+                                    <input type="text" class="form-control" id="bank_agency" name="bank_agency" value="<?= $escape($value('bank_agency', $profile, $portal)) ?>" <?= $isReadOnly ? 'disabled' : '' ?> required>
+                                </div>
+                                <div class="col-md-2">
+                                    <label for="bank_account" class="form-label">Conta</label>
+                                    <input type="text" class="form-control" id="bank_account" name="bank_account" value="<?= $escape($value('bank_account', $profile, $portal)) ?>" <?= $isReadOnly ? 'disabled' : '' ?> required>
                                 </div>
                                 <div class="col-md-2">
                                     <label for="state" class="form-label">UF</label>
@@ -144,6 +165,10 @@ $statusClass = static function (string $status): string {
                                 <div class="col-md-6">
                                     <label for="region" class="form-label">Regiao</label>
                                     <input type="text" class="form-control" id="region" name="region" value="<?= $escape($value('region', $profile, $portal)) ?>" <?= $isReadOnly ? 'disabled' : '' ?>>
+                                </div>
+                                <div class="col-12">
+                                    <label for="service_region" class="form-label">Região de atendimento</label>
+                                    <input type="text" class="form-control" id="service_region" name="service_region" value="<?= $escape($value('service_region', $profile, $portal)) ?>" placeholder="Ex.: Grande Vitória e cidades até 150km" <?= $isReadOnly ? 'disabled' : '' ?> required>
                                 </div>
                                 <div class="col-12">
                                     <label for="availability" class="form-label">Disponibilidade</label>
