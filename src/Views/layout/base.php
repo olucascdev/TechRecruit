@@ -55,6 +55,12 @@ if ($authUser !== null && ($authUser['role'] ?? null) === \TechRecruit\Models\Us
         'description' => 'Acesso, roles e gestão',
         'icon' => 'users',
     ];
+    $navItems['/api-docs/'] = [
+        'label' => 'API Docs',
+        'description' => 'Swagger / integração externa',
+        'icon' => 'api',
+        'external' => true,
+    ];
 }
 
 $roleBadgeClass = static function (?string $role): string {
@@ -116,6 +122,15 @@ $renderNavIcon = static function (string $icon): void {
             </svg>
             <?php
             return;
+        case 'api':
+            ?>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="h-5 w-5">
+                <path d="M7 8l-4 4 4 4"></path>
+                <path d="m17 8 4 4-4 4"></path>
+                <path d="m14 4-4 16"></path>
+            </svg>
+            <?php
+            return;
     }
 };
 ?>
@@ -167,7 +182,8 @@ $renderNavIcon = static function (string $icon): void {
             <nav class="mt-6 flex-1 space-y-2" aria-label="Navegação principal">
                 <?php foreach ($navItems as $path => $item): ?>
                     <?php
-                    $active = $path === '/candidates' && $currentPath === '/' ? 'active' : $isActive($path);
+                    $isExternal = !empty($item['external']);
+                    $active = !$isExternal && ($path === '/candidates' && $currentPath === '/' ? 'active' : $isActive($path));
                     $linkClasses = $active
                         ? 'bg-ink-950 text-white shadow-soft ring-1 ring-ink-900/10'
                         : 'bg-transparent text-slate-600 hover:bg-slate-100 hover:text-ink-950';
@@ -175,9 +191,11 @@ $renderNavIcon = static function (string $icon): void {
                         ? 'bg-white/12 text-white'
                         : 'bg-slate-100 text-slate-600 group-hover:bg-white group-hover:text-ink-950';
                     $descriptionClasses = $active ? 'text-white/72' : 'text-slate-500';
+                    $href = $isExternal ? $escape($url($path)) : $escape($url($path));
+                    $target = $isExternal ? ' target="_blank" rel="noopener noreferrer"' : '';
                     ?>
                     <a
-                        href="<?= $escape($url($path)) ?>"
+                        href="<?= $href ?>"<?= $target ?>
                         class="group flex min-h-[72px] items-center gap-3 rounded-[24px] px-3 py-3 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 <?= $linkClasses ?>"
                     >
                         <span class="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition <?= $iconWrapClasses ?>">

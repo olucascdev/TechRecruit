@@ -14,6 +14,7 @@ use TechRecruit\Controllers\FaqController;
 use TechRecruit\Controllers\SetupController;
 use TechRecruit\Controllers\TriageController;
 use TechRecruit\Controllers\UserController;
+use TechRecruit\Controllers\Api\CandidateApiController;
 use TechRecruit\Router;
 use TechRecruit\Security\Csrf;
 use TechRecruit\Support\AppUrl;
@@ -153,11 +154,16 @@ try {
     $requestPath = techRecruitRequestPath();
     $requestMethod = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
 
-    if ($requestMethod === 'POST' && $requestPath !== '/triage/inbound' && !Csrf::isValid(Csrf::requestToken())) {
+    $isApiRequest = str_starts_with($requestPath, '/api/');
+
+    if ($requestMethod === 'POST' && !$isApiRequest && $requestPath !== '/triage/inbound' && !Csrf::isValid(Csrf::requestToken())) {
         techRecruitHandleCsrfFailure($requestPath);
     }
 
     $router = new Router();
+
+    $router->get('/api/candidates', [CandidateApiController::class, 'index']);
+    $router->get('/api/candidates/{id}', [CandidateApiController::class, 'show']);
 
     $router->get('/setup', [SetupController::class, 'show']);
     $router->post('/setup', [SetupController::class, 'store']);

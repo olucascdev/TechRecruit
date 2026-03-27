@@ -1,0 +1,685 @@
+openapi: 3.0.3
+info:
+  title: TechRecruit Candidates API
+  description: |
+    API para consulta de candidatos do TechRecruit por sistemas externos.
+
+    **Autenticação:** todas as rotas exigem o header `Authorization: Bearer <API_KEY>`.
+    A chave é configurada na variável de ambiente `API_KEY` do servidor.
+  version: 1.0.0
+
+servers:
+  - url: https://seudominio.com
+    description: Produção
+  - url: http://localhost:8090
+    description: Local
+
+security:
+  - BearerAuth: []
+
+paths:
+  /api/candidates:
+    get:
+      summary: Listar candidatos
+      description: Retorna lista paginada de candidatos com dados resumidos.
+      operationId: listCandidates
+      parameters:
+        - name: page
+          in: query
+          description: Número da página (começa em 1)
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: per_page
+          in: query
+          description: Itens por página (máximo 100)
+          schema:
+            type: integer
+            default: 30
+            minimum: 1
+            maximum: 100
+        - name: search
+          in: query
+          description: Busca por nome, CPF ou contato
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: Filtrar por status do candidato
+          schema:
+            $ref: '#/components/schemas/CandidateStatus'
+        - name: skill
+          in: query
+          description: Filtrar por habilidade
+          schema:
+            type: string
+        - name: state
+          in: query
+          description: Filtrar por UF (ex. SP, RJ)
+          schema:
+            type: string
+            maxLength: 2
+      responses:
+        '200':
+          description: Lista de candidatos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CandidateSummary'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+              example:
+                data:
+                  - id: 42
+                    full_name: "João da Silva"
+                    cpf: "123.456.789-00"
+                    status: "approved"
+                    created_at: "2026-01-10 09:00:00"
+                    updated_at: "2026-03-15 14:22:00"
+                    phone: "(11) 91234-5678"
+                    whatsapp: "(11) 91234-5678"
+                    email: "joao@email.com"
+                    skills: "Eletricista, NR10"
+                    state: "SP"
+                    city: "São Paulo"
+                meta:
+                  page: 1
+                  per_page: 30
+                  total: 120
+                  total_pages: 4
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/NotConfigured'
+
+  /api/candidates/{id}:
+    get:
+      summary: Detalhe completo do candidato
+      description: |
+        Retorna todos os dados do candidato, incluindo:
+        - Contatos (telefone, whatsapp, email)
+        - Habilidades e níveis
+        - Endereços
+        - Histórico de mudanças de status
+        - Portal do candidato (perfil preenchido, documentos enviados, checklist)
+        - Operações (pendências e histórico de revisão)
+        - Última sessão de triagem (bot WhatsApp)
+      operationId: getCandidate
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID do candidato
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Candidato encontrado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CandidateFull'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/NotConfigured'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: Chave configurada na variável de ambiente `API_KEY` do servidor
+
+  responses:
+    Unauthorized:
+      description: Chave de API ausente ou inválida
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorMessage'
+          example:
+            message: "Não autorizado."
+    NotFound:
+      description: Recurso não encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorMessage'
+          example:
+            message: "Candidato não encontrado."
+    NotConfigured:
+      description: API_KEY não configurada no servidor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorMessage'
+          example:
+            message: "API não configurada. Defina a variável de ambiente API_KEY."
+
+  schemas:
+    ErrorMessage:
+      type: object
+      properties:
+        message:
+          type: string
+
+    CandidateStatus:
+      type: string
+      enum:
+        - imported
+        - queued
+        - message_sent
+        - responded
+        - not_interested
+        - interested
+        - awaiting_docs
+        - docs_sent
+        - under_review
+        - approved
+        - rejected
+        - awaiting_contract
+        - contract_signed
+        - closed
+
+    PaginationMeta:
+      type: object
+      properties:
+        page:
+          type: integer
+        per_page:
+          type: integer
+        total:
+          type: integer
+        total_pages:
+          type: integer
+
+    CandidateSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        full_name:
+          type: string
+        cpf:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/CandidateStatus'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        phone:
+          type: string
+          nullable: true
+        whatsapp:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        skills:
+          type: string
+          nullable: true
+          description: Skills separadas por vírgula
+        state:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+
+    CandidateFull:
+      allOf:
+        - type: object
+          properties:
+            id:
+              type: integer
+            full_name:
+              type: string
+            cpf:
+              type: string
+              nullable: true
+            status:
+              $ref: '#/components/schemas/CandidateStatus'
+            source_batch_id:
+              type: integer
+              nullable: true
+            notes:
+              type: string
+              nullable: true
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+            contacts:
+              type: array
+              items:
+                $ref: '#/components/schemas/Contact'
+            skills:
+              type: array
+              items:
+                $ref: '#/components/schemas/Skill'
+            addresses:
+              type: array
+              items:
+                $ref: '#/components/schemas/Address'
+            status_history:
+              type: array
+              items:
+                $ref: '#/components/schemas/StatusHistory'
+            portal:
+              $ref: '#/components/schemas/Portal'
+              nullable: true
+            operations:
+              $ref: '#/components/schemas/Operations'
+            triage_session:
+              $ref: '#/components/schemas/TriageSession'
+              nullable: true
+
+    Contact:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [phone, whatsapp, email]
+        value:
+          type: string
+        is_primary:
+          type: integer
+          enum: [0, 1]
+        created_at:
+          type: string
+          format: date-time
+
+    Skill:
+      type: object
+      properties:
+        id:
+          type: integer
+        skill:
+          type: string
+        level:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    Address:
+      type: object
+      properties:
+        id:
+          type: integer
+        state:
+          type: string
+        city:
+          type: string
+        region:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    StatusHistory:
+      type: object
+      properties:
+        id:
+          type: integer
+        from_status:
+          $ref: '#/components/schemas/CandidateStatus'
+          nullable: true
+        to_status:
+          $ref: '#/components/schemas/CandidateStatus'
+        changed_by:
+          type: string
+        reason:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    Portal:
+      type: object
+      properties:
+        id:
+          type: integer
+        candidate_id:
+          type: integer
+        access_token:
+          type: string
+        status:
+          type: string
+          enum:
+            - draft
+            - link_sent
+            - in_progress
+            - submitted
+            - under_review
+            - correction_requested
+            - approved
+            - rejected
+            - expired
+        terms_accepted:
+          type: integer
+          enum: [0, 1]
+        terms_accepted_at:
+          type: string
+          format: date-time
+          nullable: true
+        submitted_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_by:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        profile:
+          $ref: '#/components/schemas/PortalProfile'
+          nullable: true
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/Document'
+        checklist:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChecklistItem'
+
+    PortalProfile:
+      type: object
+      properties:
+        full_name:
+          type: string
+        cpf:
+          type: string
+          nullable: true
+        cnpj:
+          type: string
+          nullable: true
+        pix_key:
+          type: string
+          nullable: true
+        birth_date:
+          type: string
+          format: date
+          nullable: true
+        whatsapp:
+          type: string
+          nullable: true
+        secondary_phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        state:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        region:
+          type: string
+          nullable: true
+        service_region:
+          type: string
+          nullable: true
+        bank_name:
+          type: string
+          nullable: true
+        bank_agency:
+          type: string
+          nullable: true
+        bank_account:
+          type: string
+          nullable: true
+        availability:
+          type: string
+          nullable: true
+        experience_summary:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Document:
+      type: object
+      properties:
+        id:
+          type: integer
+        portal_id:
+          type: integer
+        candidate_id:
+          type: integer
+        document_type:
+          type: string
+          enum:
+            - documento_identidade
+            - comprovante_residencia
+            - cartao_mei
+            - comprovante_bancario
+            - aso
+            - nr10
+            - nr35
+            - curriculo
+            - certificado_tecnico
+            - outro
+        original_name:
+          type: string
+        stored_path:
+          type: string
+        mime_type:
+          type: string
+        file_size:
+          type: integer
+        review_status:
+          type: string
+          enum: [pending, approved, rejected, correction_requested]
+        uploaded_at:
+          type: string
+          format: date-time
+
+    ChecklistItem:
+      type: object
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        required:
+          type: boolean
+        uploaded_count:
+          type: integer
+        received:
+          type: boolean
+
+    Operations:
+      type: object
+      properties:
+        summary:
+          type: object
+          properties:
+            open_pendencies:
+              type: integer
+            pending_documents:
+              type: integer
+            approved_documents:
+              type: integer
+            rejected_documents:
+              type: integer
+            correction_documents:
+              type: integer
+        pendencies:
+          type: array
+          items:
+            $ref: '#/components/schemas/Pendency'
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReviewHistory'
+
+    Pendency:
+      type: object
+      properties:
+        id:
+          type: integer
+        document_id:
+          type: integer
+          nullable: true
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [open, resolved]
+        created_by:
+          type: string
+        resolved_by:
+          type: string
+          nullable: true
+        resolved_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ReviewHistory:
+      type: object
+      properties:
+        id:
+          type: integer
+        document_id:
+          type: integer
+          nullable: true
+        action:
+          type: string
+          enum:
+            - note
+            - approve
+            - reject
+            - request_correction
+            - document_approve
+            - document_reject
+            - document_request_correction
+            - pendency_resolved
+            - status_sync
+        message:
+          type: string
+          nullable: true
+        created_by:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        document_type:
+          type: string
+          nullable: true
+        original_name:
+          type: string
+          nullable: true
+
+    TriageSession:
+      type: object
+      properties:
+        id:
+          type: integer
+        campaign_id:
+          type: integer
+        campaign_recipient_id:
+          type: integer
+        candidate_id:
+          type: integer
+        flow_version:
+          type: string
+        triage_status:
+          type: string
+          enum:
+            - sent
+            - no_response
+            - interested
+            - not_interested
+            - needs_details
+            - awaiting_validation
+            - approved
+            - rejected_unavailable
+        current_step:
+          type: string
+          enum:
+            - initial_offer
+            - details_followup
+            - qualification
+            - waiting_validation
+            - approval_confirmation
+            - completed
+            - operator_fallback
+        automation_status:
+          type: string
+          enum: [active, waiting_operator, completed]
+        needs_operator:
+          type: integer
+          enum: [0, 1]
+        invalid_reply_count:
+          type: integer
+        fallback_reason:
+          type: string
+          nullable: true
+        collected_data:
+          type: object
+          description: Dados coletados pelo bot durante a triagem
+          nullable: true
+        last_inbound_message:
+          type: string
+          nullable: true
+        last_outbound_message:
+          type: string
+          nullable: true
+        last_interaction_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
