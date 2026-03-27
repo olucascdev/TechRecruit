@@ -256,10 +256,10 @@ php.exe C:\caminho\TechRecruit\bin\process_campaign_queue.php --limit=25
 
 ```text
 Cidade/UF: Campinas/SP
-MEI ativo: sim
-Notebook: sim
-Cabo console: sim
+CNPJ ativo: 1 (MEI)
+Ferramental: sim
 Serviços: 2, 3, 5
+Material para serviço: sim
 Disponibilidade imediata: sim
 ```
 

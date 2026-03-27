@@ -516,24 +516,25 @@ final class TriageBotService
         }
 
         if ($progress === 'mei') {
-            $meiActive = $this->parseYesNoOption($messageBody, $parsedIntent);
+            $cnpjType = $this->parseCnpjTypeOption($messageBody);
 
-            if ($meiActive === null) {
+            if ($cnpjType === null) {
                 return $this->handleInvalidStepReply(
                     $session,
                     $messageBody,
                     'prefilter',
-                    $this->buildYesNoRetryMessage('MEI ativo'),
-                    'Resposta invalida para MEI ativo.'
+                    $this->buildYesNoRetryMessage('CNPJ ativo'),
+                    'Resposta invalida para CNPJ ativo.'
                 );
             }
 
-            $preFilterData['mei_active'] = $meiActive;
-            $reply = $this->buildPreFilterNotebookPromptMessage();
+            $preFilterData['cnpj_type'] = $cnpjType;
+            $preFilterData['mei_active'] = true; // Mantém compatibilidade com lógica existente
+            $reply = $this->buildPreFilterToolingPromptMessage();
             $updatedCollectedData = $this->mergeCollectedData($session, [
                 'prefilter' => $preFilterData,
-                'prefilter_progress' => 'notebook',
-                'last_prompt' => 'prefilter_notebook',
+                'prefilter_progress' => 'tooling',
+                'last_prompt' => 'prefilter_tooling',
             ]);
 
             return $this->advanceSession(
@@ -555,74 +556,29 @@ final class TriageBotService
                     'candidate_status' => 'interested',
                     'auto_reply' => $reply,
                     'metadata' => [
-                        'transition' => 'prefilter_notebook',
-                        'mei_active' => $meiActive,
+                        'transition' => 'prefilter_tooling',
+                        'cnpj_type' => $cnpjType,
                     ],
                 ]
             );
         }
 
-        if ($progress === 'notebook') {
-            $hasNotebook = $this->parseYesNoOption($messageBody, $parsedIntent);
+        if ($progress === 'tooling') {
+            $hasTooling = $this->parseYesNoOption($messageBody, $parsedIntent);
 
-            if ($hasNotebook === null) {
+            if ($hasTooling === null) {
                 return $this->handleInvalidStepReply(
                     $session,
                     $messageBody,
                     'prefilter',
-                    $this->buildYesNoRetryMessage('notebook proprio'),
-                    'Resposta invalida para notebook.'
+                    $this->buildYesNoRetryMessage('ferramental para atendimento'),
+                    'Resposta invalida para ferramental.'
                 );
             }
 
-            $preFilterData['has_notebook'] = $hasNotebook;
-            $reply = $this->buildPreFilterConsolePromptMessage();
-            $updatedCollectedData = $this->mergeCollectedData($session, [
-                'prefilter' => $preFilterData,
-                'prefilter_progress' => 'console',
-                'last_prompt' => 'prefilter_console',
-            ]);
-
-            return $this->advanceSession(
-                $session,
-                [
-                    'triage_status' => 'interested',
-                    'current_step' => 'prefilter',
-                    'automation_status' => 'active',
-                    'needs_operator' => false,
-                    'invalid_reply_count' => 0,
-                    'fallback_reason' => null,
-                    'collected_data' => $updatedCollectedData,
-                    'last_inbound_message' => $messageBody,
-                    'last_outbound_message' => $reply,
-                    'last_interaction_at' => date('Y-m-d H:i:s'),
-                ],
-                [
-                    'parsed_intent' => 'interested',
-                    'candidate_status' => 'interested',
-                    'auto_reply' => $reply,
-                    'metadata' => [
-                        'transition' => 'prefilter_console',
-                        'has_notebook' => $hasNotebook,
-                    ],
-                ]
-            );
-        }
-
-        if ($progress === 'console') {
-            $hasConsoleCable = $this->parseYesNoOption($messageBody, $parsedIntent);
-
-            if ($hasConsoleCable === null) {
-                return $this->handleInvalidStepReply(
-                    $session,
-                    $messageBody,
-                    'prefilter',
-                    $this->buildYesNoRetryMessage('cabo console'),
-                    'Resposta invalida para cabo console.'
-                );
-            }
-
-            $preFilterData['has_console_cable'] = $hasConsoleCable;
+            $preFilterData['has_tooling'] = $hasTooling;
+            $preFilterData['has_notebook'] = $hasTooling; // Mantém compatibilidade
+            $preFilterData['has_console_cable'] = $hasTooling; // Mantém compatibilidade
             $reply = $this->buildPreFilterServicesPromptMessage();
             $updatedCollectedData = $this->mergeCollectedData($session, [
                 'prefilter' => $preFilterData,
@@ -650,7 +606,7 @@ final class TriageBotService
                     'auto_reply' => $reply,
                     'metadata' => [
                         'transition' => 'prefilter_services',
-                        'has_console_cable' => $hasConsoleCable,
+                        'has_tooling' => $hasTooling,
                     ],
                 ]
             );
@@ -674,8 +630,87 @@ final class TriageBotService
             }
 
             $selectedServiceKeys = array_values(array_unique(array_merge($selectedServiceKeys, $typedServices)));
+            $preFilterData['service_keys'] = $selectedServiceKeys;
+            $preFilterData['service_labels'] = $this->serviceLabels($selectedServiceKeys);
+            
+            $reply = $this->buildPreFilterServiceMaterialPromptMessage();
+            $updatedCollectedData = $this->mergeCollectedData($session, [
+                'prefilter' => $preFilterData,
+                'prefilter_progress' => 'service_material',
+                'last_prompt' => 'prefilter_service_material',
+            ]);
 
-            return $this->advanceToPreFilterAvailability($session, $messageBody, $preFilterData, $selectedServiceKeys);
+            return $this->advanceSession(
+                $session,
+                [
+                    'triage_status' => 'interested',
+                    'current_step' => 'prefilter',
+                    'automation_status' => 'active',
+                    'needs_operator' => false,
+                    'invalid_reply_count' => 0,
+                    'fallback_reason' => null,
+                    'collected_data' => $updatedCollectedData,
+                    'last_inbound_message' => $messageBody,
+                    'last_outbound_message' => $reply,
+                    'last_interaction_at' => date('Y-m-d H:i:s'),
+                ],
+                [
+                    'parsed_intent' => 'interested',
+                    'candidate_status' => 'interested',
+                    'auto_reply' => $reply,
+                    'metadata' => [
+                        'transition' => 'prefilter_service_material',
+                        'service_keys' => $selectedServiceKeys,
+                    ],
+                ]
+            );
+        }
+
+        if ($progress === 'service_material') {
+            $hasServiceMaterial = $this->parseYesNoOption($messageBody, $parsedIntent);
+
+            if ($hasServiceMaterial === null) {
+                return $this->handleInvalidStepReply(
+                    $session,
+                    $messageBody,
+                    'prefilter',
+                    $this->buildYesNoRetryMessage('material para prestar serviço'),
+                    'Resposta invalida para material de serviço.'
+                );
+            }
+
+            $preFilterData['has_service_material'] = $hasServiceMaterial;
+            $reply = $this->buildPreFilterAvailabilityPromptMessage();
+            $updatedCollectedData = $this->mergeCollectedData($session, [
+                'prefilter' => $preFilterData,
+                'prefilter_progress' => 'availability',
+                'last_prompt' => 'prefilter_availability',
+            ]);
+
+            return $this->advanceSession(
+                $session,
+                [
+                    'triage_status' => 'interested',
+                    'current_step' => 'prefilter',
+                    'automation_status' => 'active',
+                    'needs_operator' => false,
+                    'invalid_reply_count' => 0,
+                    'fallback_reason' => null,
+                    'collected_data' => $updatedCollectedData,
+                    'last_inbound_message' => $messageBody,
+                    'last_outbound_message' => $reply,
+                    'last_interaction_at' => date('Y-m-d H:i:s'),
+                ],
+                [
+                    'parsed_intent' => 'interested',
+                    'candidate_status' => 'interested',
+                    'auto_reply' => $reply,
+                    'metadata' => [
+                        'transition' => 'prefilter_availability',
+                        'has_service_material' => $hasServiceMaterial,
+                    ],
+                ]
+            );
         }
 
         if ($progress === 'availability') {
@@ -692,8 +727,7 @@ final class TriageBotService
             }
 
             $preFilterData['immediate_availability'] = $immediateAvailability;
-            $preFilterData['limited_profile'] = (($preFilterData['has_notebook'] ?? true) !== true)
-                || (($preFilterData['has_console_cable'] ?? true) !== true);
+            $preFilterData['limited_profile'] = (($preFilterData['has_tooling'] ?? true) !== true);
 
             if (($preFilterData['mei_active'] ?? null) !== true) {
                 $classification = $this->buildW13Classification($preFilterData, []);
@@ -1724,6 +1758,39 @@ final class TriageBotService
         return null;
     }
 
+    private function parseCnpjTypeOption(string $messageBody): ?string
+    {
+        $option = $this->parseMenuOption($messageBody, ['1', '2', '3']);
+
+        if ($option === '1') {
+            return 'MEI';
+        }
+
+        if ($option === '2') {
+            return 'MEL';
+        }
+
+        if ($option === '3') {
+            return 'LTDA';
+        }
+
+        $normalized = $this->normalizeFreeText($messageBody);
+
+        if (str_contains($normalized, 'mei')) {
+            return 'MEI';
+        }
+
+        if (str_contains($normalized, 'mel')) {
+            return 'MEL';
+        }
+
+        if (str_contains($normalized, 'ltda')) {
+            return 'LTDA';
+        }
+
+        return null;
+    }
+
     /**
      * @param array<string, mixed> $preFilterData
      * @param array<string, mixed> $fieldReadinessData
@@ -1739,25 +1806,24 @@ final class TriageBotService
         $fieldLevel = $this->resolveFieldLevel($fieldReadinessData);
         $status = $this->resolveClassificationStatus($preFilterData, $fieldReadinessData, $technicalLevel, $fieldLevel);
         $premiumCandidate = $this->isPremiumCandidate($preFilterData, $fieldReadinessData, $serviceKeys);
-        $limitedProfile = (($preFilterData['has_notebook'] ?? true) !== true)
-            || (($preFilterData['has_console_cable'] ?? true) !== true);
+        $limitedProfile = (($preFilterData['has_tooling'] ?? true) !== true);
 
         $missingRequirements = [];
 
         if (($preFilterData['mei_active'] ?? null) !== true) {
-            $missingRequirements[] = 'MEI ativo';
+            $missingRequirements[] = 'CNPJ ativo';
         }
 
         if (($preFilterData['immediate_availability'] ?? null) !== true) {
             $missingRequirements[] = 'disponibilidade imediata';
         }
 
-        if (($preFilterData['has_notebook'] ?? null) !== true) {
-            $missingRequirements[] = 'notebook';
+        if (($preFilterData['has_tooling'] ?? null) !== true) {
+            $missingRequirements[] = 'ferramental para atendimento';
         }
 
-        if (($preFilterData['has_console_cable'] ?? null) !== true) {
-            $missingRequirements[] = 'cabo console';
+        if (($preFilterData['has_service_material'] ?? null) !== true) {
+            $missingRequirements[] = 'material para prestar serviço';
         }
 
         if (($fieldReadinessData['has_aso'] ?? null) !== true) {
@@ -2061,23 +2127,24 @@ final class TriageBotService
 
     private function buildPreFilterMeiPromptMessage(): string
     {
-        return "Você possui MEI ativo?\n\n" .
+        return "Você possui CNPJ ativo?\n\n" .
+            "Digite:\n" .
+            "1 - MEI\n" .
+            "2 - MEL\n" .
+            "3 - LTDA";
+    }
+
+    private function buildPreFilterToolingPromptMessage(): string
+    {
+        return "Você possui ferramental para atendimento?\n\n" .
             "Digite:\n" .
             "1 - SIM\n" .
             "2 - NÃO";
     }
 
-    private function buildPreFilterNotebookPromptMessage(): string
+    private function buildPreFilterServiceMaterialPromptMessage(): string
     {
-        return "Você possui notebook próprio?\n\n" .
-            "Digite:\n" .
-            "1 - SIM\n" .
-            "2 - NÃO";
-    }
-
-    private function buildPreFilterConsolePromptMessage(): string
-    {
-        return "Você possui cabo console?\n\n" .
+        return "Você possui material para prestar esse serviço?\n\n" .
             "Digite:\n" .
             "1 - SIM\n" .
             "2 - NÃO";
@@ -2178,7 +2245,7 @@ final class TriageBotService
 
     private function buildRejectedMeiMessage(): string
     {
-        return "No momento, para atuar com a W13, é obrigatório possuir MEI ativo para formalização contratual e emissão de nota fiscal.\n\n" .
+        return "No momento, para atuar com a W13, é obrigatório possuir CNPJ ativo (MEI, MEL ou LTDA) para formalização contratual e emissão de nota fiscal.\n\n" .
             "Quando sua situação estiver regularizada, teremos prazer em retomar seu cadastro.";
     }
 
