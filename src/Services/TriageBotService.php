@@ -271,7 +271,7 @@ final class TriageBotService
     public function buildInitialOfferMessage(string $cityLabel): string
     {
         return trim(
-            "W13 Tecnologia - Cadastro de Técnicos de Campo\n\n" .
+            "W13 - Cadastro de Técnicos de Campo\n\n" .
             "Olá, tudo bem?\n\n" .
             "Estamos expandindo nossa operação nacional e buscamos técnicos parceiros para atendimentos em campo.\n" .
             "\nVocê tem interesse em prestar serviços para a W13?\n\n" .
@@ -2105,7 +2105,7 @@ final class TriageBotService
 
     private function buildInfoCompanyMessage(): string
     {
-        return "A W13 Tecnologia atua com atendimentos técnicos em campo em várias regiões do Brasil.\n\n" .
+        return "A W13 atua com atendimentos técnicos em campo em várias regiões do Brasil.\n\n" .
             "Buscamos parceiros para atividades como:\n" .
             "1 - VSAT\n" .
             "2 - Redes / Firewall\n" .
@@ -2276,7 +2276,7 @@ final class TriageBotService
     {
         return "Sem problemas. Agradecemos seu retorno.\n\n" .
             "Caso tenha interesse futuramente, estaremos à disposição.\n" .
-            "Equipe W13 Tecnologia";
+            "Equipe W13";
     }
 
     private function buildInitialOfferRetryMessage(): string

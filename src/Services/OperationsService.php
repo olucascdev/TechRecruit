@@ -543,9 +543,9 @@ final class OperationsService
 
         return trim(
             "Olá, {$firstName}.\n\n" .
-            "Seus documentos foram aprovados pela equipe da W13 Tecnologia.\n" .
+            "Seus documentos foram aprovados pela equipe da W13.\n" .
             "Seu cadastro avançou para a próxima etapa operacional.\n\n" .
-            "Equipe W13 Tecnologia"
+            "Equipe W13"
         );
     }
 
@@ -561,7 +561,7 @@ final class OperationsService
             "Olá, {$firstName}.\n\n" .
             "No momento seu cadastro foi reprovado na validação operacional da W13.\n" .
             "Se houver nova oportunidade ou necessidade de reavaliação, entraremos em contato.\n\n" .
-            "Equipe W13 Tecnologia"
+            "Equipe W13"
         );
     }
 

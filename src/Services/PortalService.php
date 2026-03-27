@@ -1042,7 +1042,7 @@ final class PortalService
         }
 
         return trim(sprintf(
-            "Olá, %s.\n\nSeu perfil foi pré-aprovado na W13 Tecnologia.\nPara finalizar seu cadastro, acesse o portal abaixo e envie os dados e documentos obrigatórios:\n\n%s\n\nDocumentos esperados:\n- Documento de identidade\n- Comprovante de residência\n- CNPJ / MEI\n- Comprovante bancário\n- ASO\n- NR10\n- NR35\n\nAssim que a validação for concluída, sua liberação operacional segue para a próxima etapa.\n\nEquipe W13 Tecnologia",
+            "Olá, %s.\n\nSeu perfil foi pré-aprovado na W13.\nPara finalizar seu cadastro, acesse o portal abaixo e envie os dados e documentos obrigatórios:\n\n%s\n\nDocumentos esperados:\n- Documento de identidade\n- Comprovante de residência\n- CNPJ / MEI\n- Comprovante bancário\n- ASO\n- NR10\n- NR35\n\nAssim que a validação for concluída, sua liberação operacional segue para a próxima etapa.\n\nEquipe W13",
             $firstName,
             $portalUrl
         ));
@@ -1071,7 +1071,7 @@ final class PortalService
             "Itens para ajuste:\n" .
             "{$pendingLine}\n\n" .
             "Assim que reenviar, nossa equipe faz uma nova análise.\n\n" .
-            "Equipe W13 Tecnologia"
+            "Equipe W13"
         );
     }
 
