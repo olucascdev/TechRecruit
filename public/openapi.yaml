@@ -5,13 +5,15 @@ info:
     API para consulta de candidatos do TechRecruit por sistemas externos.
 
     **Autenticação:** todas as rotas exigem o header `Authorization: Bearer <API_KEY>`.
-    A chave é configurada na variável de ambiente `API_KEY` do servidor.
+
+    A chave de API (`API_KEY`) é definida pelo administrador do sistema na variável de ambiente do servidor.
+    Para obter sua chave, entre em contato com o administrador da plataforma TechRecruit.
   version: 1.0.0
 
 servers:
-  - url: https://seudominio.com
+  - url: https://recruiter.w13.com.br
     description: Produção
-  - url: http://localhost:8090
+  - url: http://localhost:8080
     description: Local
 
 security:
