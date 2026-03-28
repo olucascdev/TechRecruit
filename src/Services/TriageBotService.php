@@ -529,7 +529,7 @@ final class TriageBotService
             }
 
             $preFilterData['cnpj_type'] = $cnpjType;
-            $preFilterData['mei_active'] = true; // Mantém compatibilidade com lógica existente
+            $preFilterData['mei_active'] = $cnpjType !== 'NAO'; // false se não possui CNPJ
             $reply = $this->buildPreFilterToolingPromptMessage();
             $updatedCollectedData = $this->mergeCollectedData($session, [
                 'prefilter' => $preFilterData,
@@ -1760,18 +1760,22 @@ final class TriageBotService
 
     private function parseCnpjTypeOption(string $messageBody): ?string
     {
-        $option = $this->parseMenuOption($messageBody, ['1', '2', '3']);
+        $option = $this->parseMenuOption($messageBody, ['1', '2', '3', '4']);
 
         if ($option === '1') {
             return 'MEI';
         }
 
         if ($option === '2') {
-            return 'MEL';
+            return 'ME';
         }
 
         if ($option === '3') {
             return 'LTDA';
+        }
+
+        if ($option === '4') {
+            return 'NAO';
         }
 
         $normalized = $this->normalizeFreeText($messageBody);
@@ -1780,8 +1784,12 @@ final class TriageBotService
             return 'MEI';
         }
 
-        if (str_contains($normalized, 'mel')) {
-            return 'MEL';
+        if (str_contains($normalized, 'nao') || str_contains($normalized, 'não')) {
+            return 'NAO';
+        }
+
+        if (str_contains($normalized, 'me')) {
+            return 'ME';
         }
 
         if (str_contains($normalized, 'ltda')) {
@@ -2130,8 +2138,9 @@ final class TriageBotService
         return "Você possui CNPJ ativo?\n\n" .
             "Digite:\n" .
             "1 - MEI\n" .
-            "2 - MEL\n" .
-            "3 - LTDA";
+            "2 - ME\n" .
+            "3 - LTDA\n" .
+            "4 - NÃO";
     }
 
     private function buildPreFilterToolingPromptMessage(): string
@@ -2188,7 +2197,7 @@ final class TriageBotService
 
     private function buildFieldReadinessNr10PromptMessage(): string
     {
-        return "Você possui NR10?\n\n" .
+        return "Você possui NR10 válido?\n\n" .
             "Digite:\n" .
             "1 - SIM\n" .
             "2 - NÃO";
@@ -2196,7 +2205,7 @@ final class TriageBotService
 
     private function buildFieldReadinessNr35PromptMessage(): string
     {
-        return "Você possui NR35?\n\n" .
+        return "Você possui NR35 válido?\n\n" .
             "Digite:\n" .
             "1 - SIM\n" .
             "2 - NÃO";
@@ -2245,7 +2254,7 @@ final class TriageBotService
 
     private function buildRejectedMeiMessage(): string
     {
-        return "No momento, para atuar com a W13, é obrigatório possuir CNPJ ativo (MEI, MEL ou LTDA) para formalização contratual e emissão de nota fiscal.\n\n" .
+        return "No momento, para atuar com a W13, é obrigatório possuir CNPJ ativo (MEI, ME ou LTDA) para formalização contratual e emissão de nota fiscal.\n\n" .
             "Quando sua situação estiver regularizada, teremos prazer em retomar seu cadastro.";
     }
 
