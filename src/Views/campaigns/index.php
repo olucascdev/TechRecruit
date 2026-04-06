@@ -182,7 +182,7 @@ $actionIcon = static function (string $name): string {
                             rows="7"
                             required
                         ><?= $escape($formData['message_template'] ?? '') ?></textarea>
-                        <div class="form-text">Placeholders disponíveis: <code>{first_name}</code> e <code>{full_name}</code>.</div>
+                        <div class="form-text">Mensagem inicial enviada ao lead. Ao responder "1", o bot envia o link do formulário automaticamente.</div>
                     </div>
                     <div class="col-12 d-grid">
                         <button type="submit" class="btn btn-primary">Criar campanha e montar fila</button>
