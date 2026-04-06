@@ -222,7 +222,8 @@ final class TriageBotService
         }
 
         if ($option === '1') {
-            $reply = "Ótimo! Acesse o formulário de cadastro pelo link abaixo:\n\nhttps://docs.google.com/forms/d/e/1FAIpQLSdQXERb1vW2LP9wCNRzrL4-8tPYzfaM2Ib3PjvSjKEEI_9RIQ/viewform";
+            $baseUrl = rtrim((string) ($_ENV['APP_URL'] ?? ''), '/');
+            $reply = "Ótimo! Acesse o formulário de cadastro pelo link abaixo:\n\n{$baseUrl}/cadastro-tecnico";
 
             return $this->closeSession(
                 $session,

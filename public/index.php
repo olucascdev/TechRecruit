@@ -15,6 +15,7 @@ use TechRecruit\Controllers\SetupController;
 use TechRecruit\Controllers\TriageController;
 use TechRecruit\Controllers\UserController;
 use TechRecruit\Controllers\Api\CandidateApiController;
+use TechRecruit\Controllers\FieldTechFormController;
 use TechRecruit\Router;
 use TechRecruit\Security\Csrf;
 use TechRecruit\Support\AppUrl;
@@ -191,6 +192,9 @@ try {
     $router->post('/campaigns/{id}/delete', [CampaignController::class, 'destroy']);
     $router->post('/campaigns/{id}/reply', [CampaignController::class, 'reply']);
     $router->post('/triage/inbound', [TriageController::class, 'inbound']);
+    $router->get('/cadastro-tecnico', [FieldTechFormController::class, 'show']);
+    $router->post('/cadastro-tecnico', [FieldTechFormController::class, 'store']);
+    $router->get('/cadastro-tecnico/obrigado', [FieldTechFormController::class, 'thanks']);
     $router->get('/operations', [OperationsController::class, 'index']);
     $router->get('/operations/{id}', [OperationsController::class, 'show']);
     $router->get('/faq', [FaqController::class, 'index']);
