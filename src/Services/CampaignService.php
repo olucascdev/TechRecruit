@@ -31,18 +31,22 @@ final class CampaignService
 
     private WhatsGwClient $whatsGwClient;
 
+    private PortalService $portalService;
+
     public function __construct(
         ?CandidateModel $candidateModel = null,
         ?CampaignModel $campaignModel = null,
         ?TriageBotService $triageBotService = null,
         ?WhatsGwClient $whatsGwClient = null,
-        ?PDO $pdo = null
+        ?PDO $pdo = null,
+        ?PortalService $portalService = null
     ) {
         $this->pdo = $pdo ?? Database::connect();
         $this->candidateModel = $candidateModel ?? new CandidateModel($this->pdo);
         $this->campaignModel = $campaignModel ?? new CampaignModel($this->pdo);
         $this->triageBotService = $triageBotService ?? new TriageBotService(null, $this->pdo);
         $this->whatsGwClient = $whatsGwClient ?? new WhatsGwClient();
+        $this->portalService = $portalService ?? new PortalService(null, null, $this->whatsGwClient, $this->pdo);
     }
 
     /**
@@ -710,6 +714,20 @@ final class CampaignService
 
             $this->pdo->commit();
 
+            $isTriage = $this->triageBotService->isTriageAutomationType((string) ($recipient['automation_type'] ?? 'broadcast'));
+
+            if (!$isTriage && $candidateStatus === 'interested') {
+                $portalReply = $this->buildPortalAutoReplyForInterestedCandidate(
+                    (int) $recipient['candidate_id'],
+                    (string) $recipient['candidate_name_snapshot'],
+                    $operator
+                );
+
+                if ($portalReply !== null) {
+                    $autoReply = $portalReply;
+                }
+            }
+
             $autoReplyDispatch = null;
 
             if ($autoReply !== '') {
@@ -741,6 +759,28 @@ final class CampaignService
             }
 
             throw $exception;
+        }
+    }
+
+    private function buildPortalAutoReplyForInterestedCandidate(
+        int $candidateId,
+        string $candidateName,
+        string $operator
+    ): ?string {
+        try {
+            $portal = $this->portalService->generatePortalForCandidate($candidateId, $operator);
+            $shortUrl = $this->portalService->buildPortalShortUrl($portal);
+            $fallbackUrl = $this->portalService->buildPortalPublicUrl($portal);
+            $firstName = trim(strtok($candidateName, ' ') ?: $candidateName);
+
+            return trim(
+                "Perfeito, {$firstName}! Para seguir no processo W13, finalize seu cadastro no link abaixo:\n\n" .
+                $shortUrl .
+                "\n\nSe precisar, use este link alternativo:\n" .
+                $fallbackUrl
+            );
+        } catch (Throwable $exception) {
+            return null;
         }
     }
 

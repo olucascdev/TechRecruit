@@ -34,6 +34,46 @@ if ($correctionMode && $correctionDocumentTypes === []) {
 
 $documentsForUpload = PortalModel::CHECKLIST_ITEMS;
 
+$equipmentOptions = [
+    'ALICATE DE CORTE',
+    'ALICATE DE CRIMPAGEM',
+    'CHAVES DE FENDA E PHILIPS',
+    'CONECTORES (RJ45)',
+    'CONECTORES KEYSTONE (Fêmea RJ45)',
+    'CABOS CONSOLE',
+    'TESTADOR DE CABO',
+    'MULTIMETRO',
+];
+
+$transportOptions = ['MOTO', 'CARRO', 'UBER', 'ÔNIBUS'];
+
+$availabilityDaysOptions = [
+    'DOMINGO',
+    'SEGUNDA-FEIRA',
+    'TERÇA-FEIRA',
+    'QUARTA-FEIRA',
+    'QUINTA-FEIRA',
+    'SEXTA-FEIRA',
+    'SÁBADO',
+];
+
+$selectedItems = static function (mixed $raw): array {
+    if (is_array($raw)) {
+        $values = $raw;
+    } else {
+        $values = preg_split('/\s*,\s*/u', (string) $raw) ?: [];
+    }
+
+    return array_values(array_unique(array_filter(array_map(
+        static fn (mixed $item): string => trim((string) $item),
+        $values
+    ), static fn (string $item): bool => $item !== '')));
+};
+
+$selectedEquipments = $selectedItems($profile['equipment_list'] ?? '');
+$selectedTransportModes = $selectedItems($profile['transport_modes'] ?? '');
+$selectedAvailabilityDays = $selectedItems($profile['availability_days'] ?? '');
+
 if ($correctionMode) {
     $documentsForUpload = array_filter(
         PortalModel::CHECKLIST_ITEMS,
@@ -54,6 +94,11 @@ $value = static function (string $key, array $profile, array $portal): string {
         'cpf' => (string) ($portal['candidate_cpf'] ?? ''),
         'cnpj' => (string) ($portal['cnpj'] ?? ''),
         'pix_key' => (string) ($portal['pix_key'] ?? ''),
+        'rg' => '',
+        'company_name' => '',
+        'issues_invoice' => '',
+        'full_address' => '',
+        'service_cities' => '',
         'whatsapp' => (string) ($portal['whatsapp'] ?? ''),
         'email' => (string) ($portal['email'] ?? ''),
         'secondary_phone' => '',
@@ -64,6 +109,8 @@ $value = static function (string $key, array $profile, array $portal): string {
         'bank_name' => '',
         'bank_agency' => '',
         'bank_account' => '',
+        'bank_holder_name' => '',
+        'bank_holder_doc' => '',
         default => '',
     };
 };
@@ -127,6 +174,23 @@ $statusClass = static function (string $status): string {
                                     <input type="date" class="form-control" id="birth_date" name="birth_date" value="<?= $escape((string) ($profile['birth_date'] ?? '')) ?>" <?= $isReadOnly ? 'disabled' : '' ?>>
                                 </div>
                                 <div class="col-md-4">
+                                    <label for="rg" class="form-label">RG / Órgão expedidor</label>
+                                    <input type="text" class="form-control" id="rg" name="rg" value="<?= $escape($value('rg', $profile, $portal)) ?>" <?= $isReadOnly ? 'disabled' : '' ?> required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="issues_invoice" class="form-label">Emite nota fiscal?</label>
+                                    <?php $invoiceValue = strtolower(trim($value('issues_invoice', $profile, $portal))); ?>
+                                    <select class="form-select" id="issues_invoice" name="issues_invoice" <?= $isReadOnly ? 'disabled' : '' ?> required>
+                                        <option value="">Selecione...</option>
+                                        <option value="sim" <?= in_array($invoiceValue, ['1', 'sim', 'yes', 'true'], true) ? 'selected' : '' ?>>Sim</option>
+                                        <option value="nao" <?= in_array($invoiceValue, ['0', 'nao', 'não', 'no', 'false'], true) ? 'selected' : '' ?>>Não</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="company_name" class="form-label">Nome da empresa (se houver)</label>
+                                    <input type="text" class="form-control" id="company_name" name="company_name" value="<?= $escape($value('company_name', $profile, $portal)) ?>" <?= $isReadOnly ? 'disabled' : '' ?>>
+                                </div>
+                                <div class="col-md-4">
                                     <label for="whatsapp" class="form-label">WhatsApp</label>
                                     <input type="text" class="form-control" id="whatsapp" name="whatsapp" value="<?= $escape($value('whatsapp', $profile, $portal)) ?>" <?= $isReadOnly ? 'disabled' : '' ?>>
                                 </div>
@@ -137,6 +201,10 @@ $statusClass = static function (string $status): string {
                                 <div class="col-md-4">
                                     <label for="email" class="form-label">E-mail</label>
                                     <input type="email" class="form-control" id="email" name="email" value="<?= $escape($value('email', $profile, $portal)) ?>" <?= $isReadOnly ? 'disabled' : '' ?>>
+                                </div>
+                                <div class="col-12">
+                                    <label for="full_address" class="form-label">Endereço completo</label>
+                                    <textarea class="form-control" id="full_address" name="full_address" rows="2" <?= $isReadOnly ? 'disabled' : '' ?> required><?= $escape($value('full_address', $profile, $portal)) ?></textarea>
                                 </div>
                                 <div class="col-md-4">
                                     <label for="pix_key" class="form-label">Chave Pix</label>
@@ -154,6 +222,14 @@ $statusClass = static function (string $status): string {
                                     <label for="bank_account" class="form-label">Conta</label>
                                     <input type="text" class="form-control" id="bank_account" name="bank_account" value="<?= $escape($value('bank_account', $profile, $portal)) ?>" <?= $isReadOnly ? 'disabled' : '' ?> required>
                                 </div>
+                                <div class="col-md-6">
+                                    <label for="bank_holder_name" class="form-label">Nome do favorecido</label>
+                                    <input type="text" class="form-control" id="bank_holder_name" name="bank_holder_name" value="<?= $escape($value('bank_holder_name', $profile, $portal)) ?>" <?= $isReadOnly ? 'disabled' : '' ?>>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="bank_holder_doc" class="form-label">CPF/CNPJ do favorecido</label>
+                                    <input type="text" class="form-control" id="bank_holder_doc" name="bank_holder_doc" value="<?= $escape($value('bank_holder_doc', $profile, $portal)) ?>" <?= $isReadOnly ? 'disabled' : '' ?> required>
+                                </div>
                                 <div class="col-md-2">
                                     <label for="state" class="form-label">UF</label>
                                     <input type="text" class="form-control" id="state" name="state" maxlength="2" value="<?= $escape($value('state', $profile, $portal)) ?>" <?= $isReadOnly ? 'disabled' : '' ?> required>
@@ -169,6 +245,47 @@ $statusClass = static function (string $status): string {
                                 <div class="col-12">
                                     <label for="service_region" class="form-label">Região de atendimento</label>
                                     <input type="text" class="form-control" id="service_region" name="service_region" value="<?= $escape($value('service_region', $profile, $portal)) ?>" placeholder="Ex.: Grande Vitória e cidades até 150km" <?= $isReadOnly ? 'disabled' : '' ?> required>
+                                </div>
+                                <div class="col-12">
+                                    <label for="service_cities" class="form-label">Cidades de atendimento (até 100km)</label>
+                                    <textarea class="form-control" id="service_cities" name="service_cities" rows="2" <?= $isReadOnly ? 'disabled' : '' ?> required><?= $escape($value('service_cities', $profile, $portal)) ?></textarea>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Equipamentos disponíveis</label>
+                                    <div class="row row-cols-1 row-cols-md-2 g-2">
+                                        <?php foreach ($equipmentOptions as $option): ?>
+                                            <div class="col">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="equipment_<?= $escape(md5($option)) ?>" name="equipment_list[]" value="<?= $escape($option) ?>" <?= in_array($option, $selectedEquipments, true) ? 'checked' : '' ?> <?= $isReadOnly ? 'disabled' : '' ?>>
+                                                    <label class="form-check-label" for="equipment_<?= $escape(md5($option)) ?>"><?= $escape($option) ?></label>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Forma de deslocamento</label>
+                                    <div class="d-flex flex-wrap gap-3">
+                                        <?php foreach ($transportOptions as $option): ?>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="transport_<?= $escape(md5($option)) ?>" name="transport_modes[]" value="<?= $escape($option) ?>" <?= in_array($option, $selectedTransportModes, true) ? 'checked' : '' ?> <?= $isReadOnly ? 'disabled' : '' ?>>
+                                                <label class="form-check-label" for="transport_<?= $escape(md5($option)) ?>"><?= $escape($option) ?></label>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Dias de disponibilidade</label>
+                                    <div class="row row-cols-1 row-cols-md-2 g-2">
+                                        <?php foreach ($availabilityDaysOptions as $option): ?>
+                                            <div class="col">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="availability_day_<?= $escape(md5($option)) ?>" name="availability_days[]" value="<?= $escape($option) ?>" <?= in_array($option, $selectedAvailabilityDays, true) ? 'checked' : '' ?> <?= $isReadOnly ? 'disabled' : '' ?>>
+                                                    <label class="form-check-label" for="availability_day_<?= $escape(md5($option)) ?>"><?= $escape($option) ?></label>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
                                 </div>
                                 <div class="col-12">
                                     <label for="availability" class="form-label">Disponibilidade</label>

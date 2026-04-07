@@ -116,6 +116,8 @@ mysql -u root -p techrecruit < database/migrations/008_expand_w13_flow.sql
 mysql -u root -p techrecruit < database/migrations/009_create_management_users.sql
 mysql -u root -p techrecruit < database/migrations/010_add_management_usernames.sql
 mysql -u root -p techrecruit < database/migrations/011_add_portal_banking_fields.sql
+mysql -u root -p techrecruit < database/migrations/012_add_field_tech_form_fields.sql
+mysql -u root -p techrecruit < database/migrations/013_add_portal_extended_form_fields.sql
 ```
 
 ## 4.1 Criar o primeiro usuário interno

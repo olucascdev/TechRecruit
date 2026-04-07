@@ -326,6 +326,14 @@ final class PortalService
                     cnpj,
                     pix_key,
                     birth_date,
+                    rg,
+                    company_name,
+                    issues_invoice,
+                    full_address,
+                    equipment_list,
+                    transport_modes,
+                    availability_days,
+                    service_cities,
                     whatsapp,
                     secondary_phone,
                     email,
@@ -336,6 +344,8 @@ final class PortalService
                     bank_name,
                     bank_agency,
                     bank_account,
+                    bank_holder_name,
+                    bank_holder_doc,
                     availability,
                     experience_summary,
                     notes
@@ -347,6 +357,14 @@ final class PortalService
                     :cnpj,
                     :pix_key,
                     :birth_date,
+                    :rg,
+                    :company_name,
+                    :issues_invoice,
+                    :full_address,
+                    :equipment_list,
+                    :transport_modes,
+                    :availability_days,
+                    :service_cities,
                     :whatsapp,
                     :secondary_phone,
                     :email,
@@ -357,6 +375,8 @@ final class PortalService
                     :bank_name,
                     :bank_agency,
                     :bank_account,
+                    :bank_holder_name,
+                    :bank_holder_doc,
                     :availability,
                     :experience_summary,
                     :notes
@@ -367,6 +387,14 @@ final class PortalService
                     cnpj = VALUES(cnpj),
                     pix_key = VALUES(pix_key),
                     birth_date = VALUES(birth_date),
+                    rg = VALUES(rg),
+                    company_name = VALUES(company_name),
+                    issues_invoice = VALUES(issues_invoice),
+                    full_address = VALUES(full_address),
+                    equipment_list = VALUES(equipment_list),
+                    transport_modes = VALUES(transport_modes),
+                    availability_days = VALUES(availability_days),
+                    service_cities = VALUES(service_cities),
                     whatsapp = VALUES(whatsapp),
                     secondary_phone = VALUES(secondary_phone),
                     email = VALUES(email),
@@ -377,6 +405,8 @@ final class PortalService
                     bank_name = VALUES(bank_name),
                     bank_agency = VALUES(bank_agency),
                     bank_account = VALUES(bank_account),
+                    bank_holder_name = VALUES(bank_holder_name),
+                    bank_holder_doc = VALUES(bank_holder_doc),
                     availability = VALUES(availability),
                     experience_summary = VALUES(experience_summary),
                     notes = VALUES(notes),
@@ -390,6 +420,14 @@ final class PortalService
                 'cnpj' => $profileData['cnpj'],
                 'pix_key' => $profileData['pix_key'],
                 'birth_date' => $profileData['birth_date'],
+                'rg' => $profileData['rg'],
+                'company_name' => $profileData['company_name'],
+                'issues_invoice' => $profileData['issues_invoice'],
+                'full_address' => $profileData['full_address'],
+                'equipment_list' => $profileData['equipment_list'],
+                'transport_modes' => $profileData['transport_modes'],
+                'availability_days' => $profileData['availability_days'],
+                'service_cities' => $profileData['service_cities'],
                 'whatsapp' => $profileData['whatsapp'],
                 'secondary_phone' => $profileData['secondary_phone'],
                 'email' => $profileData['email'],
@@ -400,6 +438,8 @@ final class PortalService
                 'bank_name' => $profileData['bank_name'],
                 'bank_agency' => $profileData['bank_agency'],
                 'bank_account' => $profileData['bank_account'],
+                'bank_holder_name' => $profileData['bank_holder_name'],
+                'bank_holder_doc' => $profileData['bank_holder_doc'],
                 'availability' => $profileData['availability'],
                 'experience_summary' => $profileData['experience_summary'],
                 'notes' => $profileData['notes'],
@@ -581,6 +621,20 @@ final class PortalService
         $cnpj = trim((string) ($formData['cnpj'] ?? ($portal['profile']['cnpj'] ?? '')));
         $pixKey = trim((string) ($formData['pix_key'] ?? ($portal['profile']['pix_key'] ?? '')));
         $birthDate = trim((string) ($formData['birth_date'] ?? ($portal['profile']['birth_date'] ?? '')));
+        $rg = trim((string) ($formData['rg'] ?? ($portal['profile']['rg'] ?? '')));
+        $companyName = trim((string) ($formData['company_name'] ?? ($portal['profile']['company_name'] ?? '')));
+        $issuesInvoice = $this->normalizeBooleanAnswer($formData['issues_invoice'] ?? ($portal['profile']['issues_invoice'] ?? null));
+        $fullAddress = trim((string) ($formData['full_address'] ?? ($portal['profile']['full_address'] ?? '')));
+        $equipmentList = $this->normalizeMultiselectText(
+            $formData['equipment_list'] ?? ($portal['profile']['equipment_list'] ?? null)
+        );
+        $transportModes = $this->normalizeMultiselectText(
+            $formData['transport_modes'] ?? ($portal['profile']['transport_modes'] ?? null)
+        );
+        $availabilityDays = $this->normalizeMultiselectText(
+            $formData['availability_days'] ?? ($portal['profile']['availability_days'] ?? null)
+        );
+        $serviceCities = trim((string) ($formData['service_cities'] ?? ($portal['profile']['service_cities'] ?? '')));
         $whatsapp = trim((string) ($formData['whatsapp'] ?? ($portal['profile']['whatsapp'] ?? $portal['whatsapp'] ?? '')));
         $secondaryPhone = trim((string) ($formData['secondary_phone'] ?? ($portal['profile']['secondary_phone'] ?? '')));
         $email = trim((string) ($formData['email'] ?? ($portal['profile']['email'] ?? $portal['email'] ?? '')));
@@ -591,6 +645,8 @@ final class PortalService
         $bankName = trim((string) ($formData['bank_name'] ?? ($portal['profile']['bank_name'] ?? '')));
         $bankAgency = trim((string) ($formData['bank_agency'] ?? ($portal['profile']['bank_agency'] ?? '')));
         $bankAccount = trim((string) ($formData['bank_account'] ?? ($portal['profile']['bank_account'] ?? '')));
+        $bankHolderName = trim((string) ($formData['bank_holder_name'] ?? ($portal['profile']['bank_holder_name'] ?? '')));
+        $bankHolderDoc = preg_replace('/\D+/', '', trim((string) ($formData['bank_holder_doc'] ?? ($portal['profile']['bank_holder_doc'] ?? '')))) ?: '';
         $availability = trim((string) ($formData['availability'] ?? ($portal['profile']['availability'] ?? '')));
         $experienceSummary = trim((string) ($formData['experience_summary'] ?? ($portal['profile']['experience_summary'] ?? '')));
         $notes = trim((string) ($formData['notes'] ?? ($portal['profile']['notes'] ?? '')));
@@ -598,6 +654,34 @@ final class PortalService
 
         if ($fullName === '') {
             throw new InvalidArgumentException('Informe seu nome completo.');
+        }
+
+        if ($rg === '') {
+            throw new InvalidArgumentException('Informe o RG / órgão expedidor.');
+        }
+
+        if ($issuesInvoice === null) {
+            throw new InvalidArgumentException('Informe se você emite nota fiscal.');
+        }
+
+        if ($fullAddress === '') {
+            throw new InvalidArgumentException('Informe o endereço completo.');
+        }
+
+        if ($equipmentList === '') {
+            throw new InvalidArgumentException('Informe ao menos um equipamento disponível.');
+        }
+
+        if ($transportModes === '') {
+            throw new InvalidArgumentException('Informe ao menos uma forma de deslocamento.');
+        }
+
+        if ($availabilityDays === '') {
+            throw new InvalidArgumentException('Informe os dias de disponibilidade.');
+        }
+
+        if ($serviceCities === '') {
+            throw new InvalidArgumentException('Informe as cidades de atendimento.');
         }
 
         if ($whatsapp === '' && $secondaryPhone === '' && $email === '') {
@@ -638,6 +722,14 @@ final class PortalService
             if ($bankAccount === '') {
                 throw new InvalidArgumentException('Informe a conta bancária.');
             }
+
+            if ($bankHolderDoc === '') {
+                throw new InvalidArgumentException('Informe o CPF/CNPJ do favorecido.');
+            }
+
+            if (!in_array(strlen($bankHolderDoc), [11, 14], true)) {
+                throw new InvalidArgumentException('CPF/CNPJ do favorecido inválido.');
+            }
         }
 
         if (!$isCorrectionRequested || $serviceRegion !== '') {
@@ -656,6 +748,14 @@ final class PortalService
             'cnpj' => $cnpj === '' ? null : $cnpj,
             'pix_key' => $pixKey === '' ? null : $pixKey,
             'birth_date' => $birthDate === '' ? null : $birthDate,
+            'rg' => $rg === '' ? null : $rg,
+            'company_name' => $companyName === '' ? null : $companyName,
+            'issues_invoice' => $issuesInvoice,
+            'full_address' => $fullAddress === '' ? null : $fullAddress,
+            'equipment_list' => $equipmentList === '' ? null : $equipmentList,
+            'transport_modes' => $transportModes === '' ? null : $transportModes,
+            'availability_days' => $availabilityDays === '' ? null : $availabilityDays,
+            'service_cities' => $serviceCities === '' ? null : $serviceCities,
             'whatsapp' => $whatsapp === '' ? null : $whatsapp,
             'secondary_phone' => $secondaryPhone === '' ? null : $secondaryPhone,
             'email' => $email === '' ? null : $email,
@@ -666,10 +766,41 @@ final class PortalService
             'bank_name' => $bankName === '' ? null : $bankName,
             'bank_agency' => $bankAgency === '' ? null : $bankAgency,
             'bank_account' => $bankAccount === '' ? null : $bankAccount,
+            'bank_holder_name' => $bankHolderName === '' ? null : $bankHolderName,
+            'bank_holder_doc' => $bankHolderDoc === '' ? null : $bankHolderDoc,
             'availability' => $availability === '' ? null : $availability,
             'experience_summary' => $experienceSummary === '' ? null : $experienceSummary,
             'notes' => $notes === '' ? null : $notes,
         ];
+    }
+
+    private function normalizeBooleanAnswer(mixed $value): ?int
+    {
+        if (is_bool($value)) {
+            return $value ? 1 : 0;
+        }
+
+        $normalized = strtolower(trim((string) $value));
+
+        return match ($normalized) {
+            '1', 'sim', 'yes', 'true' => 1,
+            '0', 'nao', 'não', 'no', 'false' => 0,
+            default => null,
+        };
+    }
+
+    private function normalizeMultiselectText(mixed $value): string
+    {
+        if (is_array($value)) {
+            $items = array_values(array_filter(array_map(
+                static fn (mixed $item): string => trim((string) $item),
+                $value
+            ), static fn (string $item): bool => $item !== ''));
+
+            return implode(', ', array_unique($items));
+        }
+
+        return trim((string) $value);
     }
 
     /**
@@ -848,13 +979,45 @@ final class PortalService
         $candidateStatement = $this->pdo->prepare(
             'UPDATE recruit_candidates
              SET full_name = :full_name,
-                 cpf = :cpf,
-                 updated_at = CURRENT_TIMESTAMP
+                  cpf = :cpf,
+                  birth_date = :birth_date,
+                  rg = :rg,
+                  cnpj = :cnpj,
+                  company_name = :company_name,
+                  issues_invoice = :issues_invoice,
+                  full_address = :full_address,
+                  equipment_list = :equipment_list,
+                  transport_modes = :transport_modes,
+                  availability_days = :availability_days,
+                  service_cities = :service_cities,
+                  bank_name = :bank_name,
+                  bank_agency = :bank_agency,
+                  bank_account = :bank_account,
+                  bank_holder_name = :bank_holder_name,
+                  bank_holder_doc = :bank_holder_doc,
+                  pix_key = :pix_key,
+                  updated_at = CURRENT_TIMESTAMP
              WHERE id = :id'
         );
         $candidateStatement->execute([
             'full_name' => $profileData['full_name'],
             'cpf' => $profileData['cpf'],
+            'birth_date' => $profileData['birth_date'],
+            'rg' => $profileData['rg'],
+            'cnpj' => $profileData['cnpj'],
+            'company_name' => $profileData['company_name'],
+            'issues_invoice' => $profileData['issues_invoice'],
+            'full_address' => $profileData['full_address'],
+            'equipment_list' => $profileData['equipment_list'],
+            'transport_modes' => $profileData['transport_modes'],
+            'availability_days' => $profileData['availability_days'],
+            'service_cities' => $profileData['service_cities'],
+            'bank_name' => $profileData['bank_name'],
+            'bank_agency' => $profileData['bank_agency'],
+            'bank_account' => $profileData['bank_account'],
+            'bank_holder_name' => $profileData['bank_holder_name'],
+            'bank_holder_doc' => $profileData['bank_holder_doc'],
+            'pix_key' => $profileData['pix_key'],
             'id' => $candidateId,
         ]);
 
