@@ -714,7 +714,9 @@ final class CampaignService
 
             $this->pdo->commit();
 
-            if ($candidateStatus === 'interested') {
+            $isTriage = $this->triageBotService->isTriageAutomationType((string) ($recipient['automation_type'] ?? 'broadcast'));
+
+            if (!$isTriage && $candidateStatus === 'interested') {
                 $portalReply = $this->buildPortalAutoReplyForInterestedCandidate(
                     (int) $recipient['candidate_id'],
                     (string) $recipient['candidate_name_snapshot'],

@@ -8,6 +8,7 @@ use PDO;
 use TechRecruit\Database;
 use TechRecruit\Models\CandidateModel;
 use TechRecruit\Models\TriageModel;
+use TechRecruit\Models\PortalModel;
 
 final class TriageBotService
 {
@@ -20,14 +21,18 @@ final class TriageBotService
 
     private CandidateModel $candidateModel;
 
+    private PortalService $portalService;
+
     public function __construct(
         ?TriageModel $triageModel = null,
         ?PDO $pdo = null,
-        ?CandidateModel $candidateModel = null
+        ?CandidateModel $candidateModel = null,
+        ?PortalService $portalService = null
     ) {
         $this->pdo = $pdo ?? Database::connect();
         $this->triageModel = $triageModel ?? new TriageModel($this->pdo);
         $this->candidateModel = $candidateModel ?? new CandidateModel($this->pdo);
+        $this->portalService = $portalService ?? new PortalService(null, new PortalModel($this->pdo), null, $this->pdo);
     }
 
     public function isTriageAutomationType(string $automationType): bool
@@ -222,8 +227,21 @@ final class TriageBotService
         }
 
         if ($option === '1') {
-            $baseUrl = rtrim((string) ($_ENV['APP_URL'] ?? ''), '/');
-            $reply = "Ótimo! Acesse o formulário de cadastro pelo link abaixo:\n\n{$baseUrl}/cadastro-tecnico";
+            $candidateId = (int) ($session['candidate_id'] ?? 0);
+            $portalUrl = null;
+
+            if ($candidateId > 0) {
+                try {
+                    $portal = $this->portalService->generatePortalForCandidate($candidateId, 'triage_bot');
+                    $portalUrl = $this->portalService->buildPortalShortUrl($portal);
+                } catch (\Throwable $e) {
+                    error_log('TriageBotService: falha ao gerar portal para candidato ' . $candidateId . ': ' . $e->getMessage());
+                }
+            }
+
+            $reply = $portalUrl !== null
+                ? "Ótimo! Acesse o formulário de cadastro pelo link abaixo:\n\n{$portalUrl}"
+                : "Ótimo! Em breve você receberá o link do formulário de cadastro.";
 
             return $this->closeSession(
                 $session,
@@ -234,7 +252,7 @@ final class TriageBotService
                 [
                     'parsed_intent' => 'interested',
                     'candidate_status' => 'interested',
-                    'metadata' => ['flow_status' => 'forms_link_sent'],
+                    'metadata' => ['flow_status' => 'forms_link_sent', 'portal_url' => $portalUrl],
                 ]
             );
         }
