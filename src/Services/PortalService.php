@@ -59,7 +59,11 @@ final class PortalService
 
         $token = bin2hex(random_bytes(32));
 
-        $this->pdo->beginTransaction();
+        $ownTransaction = !$this->pdo->inTransaction();
+
+        if ($ownTransaction) {
+            $this->pdo->beginTransaction();
+        }
 
         try {
             $existingPortalStatement = $this->pdo->prepare(
@@ -130,9 +134,11 @@ final class PortalService
                 );
             }
 
-            $this->pdo->commit();
+            if ($ownTransaction) {
+                $this->pdo->commit();
+            }
         } catch (Throwable $exception) {
-            if ($this->pdo->inTransaction()) {
+            if ($ownTransaction && $this->pdo->inTransaction()) {
                 $this->pdo->rollBack();
             }
 
