@@ -590,53 +590,118 @@ HTML;
             <div class="col-12">
                 <div class="card border-0 shadow-sm">
                     <div class="card-body">
-                        <h2 class="h5 mb-3">Ficha Técnico de Campo</h2>
-                        <div class="row g-3">
+                        <div class="d-flex align-items-center gap-2 mb-4">
+                            <h2 class="h5 mb-0">Ficha Técnico de Campo</h2>
+                            <span class="badge bg-primary">Formulário W13</span>
+                        </div>
+
+                        <div class="row g-4">
+
+                            <?php /* Identificação */ ?>
                             <div class="col-md-6">
-                                <dl class="row mb-0">
-                                    <dt class="col-sm-5">Data de nascimento</dt>
-                                    <dd class="col-sm-7"><?= $escape($candidate['birth_date'] ?? '-') ?></dd>
-                                    <dt class="col-sm-5">RG / Expedidor</dt>
-                                    <dd class="col-sm-7"><?= $escape($candidate['rg'] ?? '-') ?></dd>
-                                    <dt class="col-sm-5">CNPJ</dt>
-                                    <dd class="col-sm-7"><?= $escape($candidate['cnpj'] ?? '-') ?></dd>
-                                    <dt class="col-sm-5">Empresa</dt>
-                                    <dd class="col-sm-7"><?= $escape($candidate['company_name'] ?? '-') ?></dd>
-                                    <dt class="col-sm-5">Emite NF</dt>
-                                    <dd class="col-sm-7"><?= isset($candidate['issues_invoice']) ? ($candidate['issues_invoice'] ? 'Sim' : 'Não') : '-' ?></dd>
-                                    <dt class="col-sm-5">Endereço completo</dt>
-                                    <dd class="col-sm-7"><?= $escape($candidate['full_address'] ?? '-') ?></dd>
-                                </dl>
+                                <div class="border rounded p-3 h-100">
+                                    <h3 class="h6 text-muted text-uppercase mb-3" style="font-size:.7rem;letter-spacing:.06em">Identificação</h3>
+                                    <dl class="row mb-0" style="row-gap:.4rem">
+                                        <dt class="col-5 text-muted fw-normal small">Nascimento</dt>
+                                        <dd class="col-7 fw-semibold small mb-0"><?= $escape($candidate['birth_date'] ?? '-') ?></dd>
+                                        <dt class="col-5 text-muted fw-normal small">RG / Expedidor</dt>
+                                        <dd class="col-7 fw-semibold small mb-0"><?= $escape($candidate['rg'] ?? '-') ?></dd>
+                                        <dt class="col-5 text-muted fw-normal small">CNPJ</dt>
+                                        <dd class="col-7 fw-semibold small mb-0"><?= $escape($candidate['cnpj'] ?: '-') ?></dd>
+                                        <dt class="col-5 text-muted fw-normal small">Empresa</dt>
+                                        <dd class="col-7 fw-semibold small mb-0"><?= $escape($candidate['company_name'] ?: '-') ?></dd>
+                                        <dt class="col-5 text-muted fw-normal small">Emite NF</dt>
+                                        <dd class="col-7 small mb-0">
+                                            <?php if (isset($candidate['issues_invoice'])): ?>
+                                                <span class="badge bg-<?= $candidate['issues_invoice'] ? 'success' : 'secondary' ?>">
+                                                    <?= $candidate['issues_invoice'] ? 'Sim' : 'Não' ?>
+                                                </span>
+                                            <?php else: ?>-<?php endif; ?>
+                                        </dd>
+                                        <dt class="col-5 text-muted fw-normal small">Endereço</dt>
+                                        <dd class="col-7 fw-semibold small mb-0"><?= $escape($candidate['full_address'] ?? '-') ?></dd>
+                                    </dl>
+                                </div>
                             </div>
+
+                            <?php /* Operacional */ ?>
                             <div class="col-md-6">
-                                <dl class="row mb-0">
-                                    <dt class="col-sm-5">Equipamentos</dt>
-                                    <dd class="col-sm-7"><?= $escape($candidate['equipment_list'] ?? '-') ?></dd>
-                                    <dt class="col-sm-5">Deslocamento</dt>
-                                    <dd class="col-sm-7"><?= $escape($candidate['transport_modes'] ?? '-') ?></dd>
-                                    <dt class="col-sm-5">Disponibilidade</dt>
-                                    <dd class="col-sm-7"><?= $escape($candidate['availability_days'] ?? '-') ?></dd>
-                                    <dt class="col-sm-5">Cidades atendidas</dt>
-                                    <dd class="col-sm-7"><?= $escape($candidate['service_cities'] ?? '-') ?></dd>
-                                </dl>
+                                <div class="border rounded p-3 h-100">
+                                    <h3 class="h6 text-muted text-uppercase mb-3" style="font-size:.7rem;letter-spacing:.06em">Operacional</h3>
+
+                                    <div class="mb-3">
+                                        <div class="small text-muted mb-1">Deslocamento</div>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            <?php foreach (array_filter(array_map('trim', explode(',', (string) ($candidate['transport_modes'] ?? '')))) as $modo): ?>
+                                                <span class="badge text-bg-light border"><?= $escape($modo) ?></span>
+                                            <?php endforeach; ?>
+                                            <?php if (empty(trim((string) ($candidate['transport_modes'] ?? '')))): ?><span class="small text-muted">-</span><?php endif; ?>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <div class="small text-muted mb-1">Disponibilidade</div>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            <?php foreach (array_filter(array_map('trim', explode(',', (string) ($candidate['availability_days'] ?? '')))) as $dia): ?>
+                                                <span class="badge text-bg-light border"><?= $escape($dia) ?></span>
+                                            <?php endforeach; ?>
+                                            <?php if (empty(trim((string) ($candidate['availability_days'] ?? '')))): ?><span class="small text-muted">-</span><?php endif; ?>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <div class="small text-muted mb-1">Cidades atendidas (até 100 km)</div>
+                                        <div class="small fw-semibold"><?= $escape($candidate['service_cities'] ?? '-') ?></div>
+                                    </div>
+                                </div>
                             </div>
+
+                            <?php /* Equipamentos */ ?>
                             <div class="col-12">
-                                <h3 class="h6 mb-2">Dados bancários</h3>
-                                <dl class="row mb-0">
-                                    <dt class="col-sm-2">Banco</dt>
-                                    <dd class="col-sm-4"><?= $escape($candidate['bank_name'] ?? '-') ?></dd>
-                                    <dt class="col-sm-2">Agência</dt>
-                                    <dd class="col-sm-4"><?= $escape($candidate['bank_agency'] ?? '-') ?></dd>
-                                    <dt class="col-sm-2">Conta</dt>
-                                    <dd class="col-sm-4"><?= $escape($candidate['bank_account'] ?? '-') ?></dd>
-                                    <dt class="col-sm-2">Favorecido</dt>
-                                    <dd class="col-sm-4"><?= $escape($candidate['bank_holder_name'] ?? '-') ?></dd>
-                                    <dt class="col-sm-2">CPF/CNPJ fav.</dt>
-                                    <dd class="col-sm-4"><?= $escape($candidate['bank_holder_doc'] ?? '-') ?></dd>
-                                    <dt class="col-sm-2">PIX</dt>
-                                    <dd class="col-sm-4"><?= $escape($candidate['pix_key'] ?? '-') ?></dd>
-                                </dl>
+                                <div class="border rounded p-3">
+                                    <h3 class="h6 text-muted text-uppercase mb-3" style="font-size:.7rem;letter-spacing:.06em">Equipamentos</h3>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <?php foreach (array_filter(array_map('trim', explode(',', (string) ($candidate['equipment_list'] ?? '')))) as $eq): ?>
+                                            <span class="badge text-bg-light border px-2 py-1"><?= $escape($eq) ?></span>
+                                        <?php endforeach; ?>
+                                        <?php if (empty(trim((string) ($candidate['equipment_list'] ?? '')))): ?><span class="small text-muted">Nenhum informado</span><?php endif; ?>
+                                    </div>
+                                </div>
                             </div>
+
+                            <?php /* Dados bancários */ ?>
+                            <div class="col-12">
+                                <div class="border rounded p-3" style="background:#f8fafc">
+                                    <h3 class="h6 text-muted text-uppercase mb-3" style="font-size:.7rem;letter-spacing:.06em">Dados Bancários</h3>
+                                    <div class="row g-3">
+                                        <div class="col-sm-4">
+                                            <div class="small text-muted">Banco</div>
+                                            <div class="fw-semibold"><?= $escape($candidate['bank_name'] ?? '-') ?></div>
+                                        </div>
+                                        <div class="col-sm-4">
+                                            <div class="small text-muted">Agência</div>
+                                            <div class="fw-semibold"><?= $escape($candidate['bank_agency'] ?? '-') ?></div>
+                                        </div>
+                                        <div class="col-sm-4">
+                                            <div class="small text-muted">Conta</div>
+                                            <div class="fw-semibold"><?= $escape($candidate['bank_account'] ?? '-') ?></div>
+                                        </div>
+                                        <div class="col-sm-4">
+                                            <div class="small text-muted">Favorecido</div>
+                                            <div class="fw-semibold"><?= $escape($candidate['bank_holder_name'] ?: '-') ?></div>
+                                        </div>
+                                        <div class="col-sm-4">
+                                            <div class="small text-muted">CPF/CNPJ Favorecido</div>
+                                            <div class="fw-semibold"><?= $escape($candidate['bank_holder_doc'] ?? '-') ?></div>
+                                        </div>
+                                        <div class="col-sm-4">
+                                            <div class="small text-muted">PIX</div>
+                                            <div class="fw-semibold"><?= $escape($candidate['pix_key'] ?? '-') ?></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
                     </div>
                 </div>
