@@ -585,6 +585,64 @@ HTML;
                     </div>
                 </div>
             </div>
+
+            <?php if (($candidate['source'] ?? '') === 'field_tech_form'): ?>
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <h2 class="h5 mb-3">Ficha Técnico de Campo</h2>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <dl class="row mb-0">
+                                    <dt class="col-sm-5">Data de nascimento</dt>
+                                    <dd class="col-sm-7"><?= $escape($candidate['birth_date'] ?? '-') ?></dd>
+                                    <dt class="col-sm-5">RG / Expedidor</dt>
+                                    <dd class="col-sm-7"><?= $escape($candidate['rg'] ?? '-') ?></dd>
+                                    <dt class="col-sm-5">CNPJ</dt>
+                                    <dd class="col-sm-7"><?= $escape($candidate['cnpj'] ?? '-') ?></dd>
+                                    <dt class="col-sm-5">Empresa</dt>
+                                    <dd class="col-sm-7"><?= $escape($candidate['company_name'] ?? '-') ?></dd>
+                                    <dt class="col-sm-5">Emite NF</dt>
+                                    <dd class="col-sm-7"><?= isset($candidate['issues_invoice']) ? ($candidate['issues_invoice'] ? 'Sim' : 'Não') : '-' ?></dd>
+                                    <dt class="col-sm-5">Endereço completo</dt>
+                                    <dd class="col-sm-7"><?= $escape($candidate['full_address'] ?? '-') ?></dd>
+                                </dl>
+                            </div>
+                            <div class="col-md-6">
+                                <dl class="row mb-0">
+                                    <dt class="col-sm-5">Equipamentos</dt>
+                                    <dd class="col-sm-7"><?= $escape($candidate['equipment_list'] ?? '-') ?></dd>
+                                    <dt class="col-sm-5">Deslocamento</dt>
+                                    <dd class="col-sm-7"><?= $escape($candidate['transport_modes'] ?? '-') ?></dd>
+                                    <dt class="col-sm-5">Disponibilidade</dt>
+                                    <dd class="col-sm-7"><?= $escape($candidate['availability_days'] ?? '-') ?></dd>
+                                    <dt class="col-sm-5">Cidades atendidas</dt>
+                                    <dd class="col-sm-7"><?= $escape($candidate['service_cities'] ?? '-') ?></dd>
+                                </dl>
+                            </div>
+                            <div class="col-12">
+                                <h3 class="h6 mb-2">Dados bancários</h3>
+                                <dl class="row mb-0">
+                                    <dt class="col-sm-2">Banco</dt>
+                                    <dd class="col-sm-4"><?= $escape($candidate['bank_name'] ?? '-') ?></dd>
+                                    <dt class="col-sm-2">Agência</dt>
+                                    <dd class="col-sm-4"><?= $escape($candidate['bank_agency'] ?? '-') ?></dd>
+                                    <dt class="col-sm-2">Conta</dt>
+                                    <dd class="col-sm-4"><?= $escape($candidate['bank_account'] ?? '-') ?></dd>
+                                    <dt class="col-sm-2">Favorecido</dt>
+                                    <dd class="col-sm-4"><?= $escape($candidate['bank_holder_name'] ?? '-') ?></dd>
+                                    <dt class="col-sm-2">CPF/CNPJ fav.</dt>
+                                    <dd class="col-sm-4"><?= $escape($candidate['bank_holder_doc'] ?? '-') ?></dd>
+                                    <dt class="col-sm-2">PIX</dt>
+                                    <dd class="col-sm-4"><?= $escape($candidate['pix_key'] ?? '-') ?></dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
         </div>
     </div>
     <div class="col-lg-4">

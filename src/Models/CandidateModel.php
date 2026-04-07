@@ -184,7 +184,13 @@ SQL;
     public function findById(int $id): ?array
     {
         $statement = $this->pdo->prepare(
-            'SELECT id, full_name, cpf, status, source_batch_id, notes, created_at, updated_at
+            'SELECT id, full_name, cpf, status, source, source_batch_id, notes,
+                    birth_date, rg, cnpj, company_name, issues_invoice,
+                    full_address, equipment_list, transport_modes,
+                    availability_days, service_cities,
+                    bank_name, bank_agency, bank_account,
+                    bank_holder_name, bank_holder_doc, pix_key,
+                    created_at, updated_at
              FROM recruit_candidates
              WHERE id = :id
              LIMIT 1'
