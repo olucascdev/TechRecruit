@@ -66,7 +66,7 @@ $csrfToken = \TechRecruit\Security\Csrf::token();
 
         <?php if (!empty($errors)): ?>
         <div class="bg-red-50 border border-red-200 rounded-md p-4 mb-6 text-sm text-red-700">
-            Corrija os campos destacados antes de enviar.
+            <?= isset($errors['_global']) ? $escape($errors['_global']) : 'Corrija os campos destacados antes de enviar.' ?>
         </div>
         <?php endif; ?>
 
