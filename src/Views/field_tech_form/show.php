@@ -16,6 +16,23 @@ $errors  = $_SESSION['form_errors'] ?? [];
 $old     = $_SESSION['form_data']   ?? [];
 unset($_SESSION['form_errors'], $_SESSION['form_data']);
 
+$formSchema = is_array($formSchema ?? null) ? $formSchema : ['fields' => [], 'sections' => []];
+$fieldsSchema = is_array($formSchema['fields'] ?? null) ? $formSchema['fields'] : [];
+$sectionsSchema = is_array($formSchema['sections'] ?? null) ? $formSchema['sections'] : [];
+
+$fieldLabel = static fn (string $field, string $fallback): string => (string) (($fieldsSchema[$field]['label'] ?? '') !== ''
+    ? $fieldsSchema[$field]['label']
+    : $fallback);
+$isRequired = static fn (string $field, bool $fallback = false): bool => isset($fieldsSchema[$field])
+    ? (bool) ($fieldsSchema[$field]['required'] ?? false)
+    : $fallback;
+$sectionLabel = static fn (string $section, string $fallback): string => (string) (($sectionsSchema[$section] ?? '') !== ''
+    ? $sectionsSchema[$section]
+    : $fallback);
+$requiredMark = static fn (string $field, bool $fallback = false): string => $isRequired($field, $fallback)
+    ? ' <span class="text-red-500">*</span>'
+    : '';
+
 $hasError = static fn (string $f): string => isset($errors[$f]) ? 'border-red-500' : 'border-gray-300';
 $oldVal   = static fn (string $f): string => $escape($old[$f] ?? '');
 $errMsg   = static function (string $f) use ($errors, $escape): void {
@@ -70,46 +87,46 @@ $csrfToken = \TechRecruit\Security\Csrf::token();
         </div>
         <?php endif; ?>
 
-        <form method="POST" action="<?= \TechRecruit\Support\AppUrl::relative('/cadastro-tecnico') ?>" novalidate>
+        <form id="field-tech-form" method="POST" action="<?= \TechRecruit\Support\AppUrl::relative('/cadastro-tecnico') ?>" novalidate>
             <input type="hidden" name="_token" value="<?= $escape($csrfToken) ?>">
 
             <!-- Dados Pessoais -->
-            <p class="<?= $sectionHead ?>">Dados Pessoais</p>
+            <p class="<?= $sectionHead ?>"><?= $escape($sectionLabel('section_personal', 'Dados Pessoais')) ?></p>
 
             <div class="space-y-4">
                 <div>
-                    <label class="<?= $labelClass ?>">Nome completo <span class="text-red-500">*</span></label>
+                    <label class="<?= $labelClass ?>"><?= $escape($fieldLabel('nome_completo', 'Nome completo')) ?><?= $requiredMark('nome_completo', true) ?></label>
                     <input type="text" name="nome_completo" value="<?= $oldVal('nome_completo') ?>"
-                        class="<?= $inputClass ?> <?= $hasError('nome_completo') ?>" autocomplete="name">
+                        class="<?= $inputClass ?> <?= $hasError('nome_completo') ?>" autocomplete="name" <?= $isRequired('nome_completo', true) ? 'required' : '' ?>>
                     <?php $errMsg('nome_completo'); ?>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="<?= $labelClass ?>">Data de nascimento <span class="text-red-500">*</span></label>
+                        <label class="<?= $labelClass ?>"><?= $escape($fieldLabel('data_nascimento', 'Data de nascimento')) ?><?= $requiredMark('data_nascimento', true) ?></label>
                         <input type="date" name="data_nascimento" value="<?= $oldVal('data_nascimento') ?>"
-                            class="<?= $inputClass ?> <?= $hasError('data_nascimento') ?>">
+                            class="<?= $inputClass ?> <?= $hasError('data_nascimento') ?>" <?= $isRequired('data_nascimento', true) ? 'required' : '' ?>>
                         <?php $errMsg('data_nascimento'); ?>
                     </div>
                     <div>
-                        <label class="<?= $labelClass ?>">RG / Órgão Expedidor <span class="text-red-500">*</span></label>
+                        <label class="<?= $labelClass ?>"><?= $escape($fieldLabel('rg', 'RG / Órgão Expedidor')) ?><?= $requiredMark('rg', true) ?></label>
                         <input type="text" name="rg" value="<?= $oldVal('rg') ?>"
                             placeholder="Ex: 12.345.678-9 SSP/SP"
-                            class="<?= $inputClass ?> <?= $hasError('rg') ?>">
+                            class="<?= $inputClass ?> <?= $hasError('rg') ?>" <?= $isRequired('rg', true) ? 'required' : '' ?>>
                         <?php $errMsg('rg'); ?>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="<?= $labelClass ?>">CPF <span class="text-red-500">*</span></label>
+                        <label class="<?= $labelClass ?>"><?= $escape($fieldLabel('cpf', 'CPF')) ?><?= $requiredMark('cpf', true) ?></label>
                         <input type="text" name="cpf" value="<?= $oldVal('cpf') ?>"
                             placeholder="000.000.000-00" maxlength="14"
-                            class="<?= $inputClass ?> <?= $hasError('cpf') ?>" id="cpf">
+                            class="<?= $inputClass ?> <?= $hasError('cpf') ?>" id="cpf" <?= $isRequired('cpf', true) ? 'required' : '' ?>>
                         <?php $errMsg('cpf'); ?>
                     </div>
                     <div>
-                        <label class="<?= $labelClass ?>">CNPJ (se houver)</label>
+                        <label class="<?= $labelClass ?>"><?= $escape($fieldLabel('cnpj', 'CNPJ (se houver)')) ?><?= $requiredMark('cnpj') ?></label>
                         <input type="text" name="cnpj" value="<?= $oldVal('cnpj') ?>"
                             placeholder="00.000.000/0000-00" maxlength="18"
                             class="<?= $inputClass ?> <?= $hasError('cnpj') ?>" id="cnpj">
@@ -119,13 +136,13 @@ $csrfToken = \TechRecruit\Security\Csrf::token();
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="<?= $labelClass ?>">Nome da Empresa</label>
+                        <label class="<?= $labelClass ?>"><?= $escape($fieldLabel('nome_empresa', 'Nome da Empresa')) ?><?= $requiredMark('nome_empresa') ?></label>
                         <input type="text" name="nome_empresa" value="<?= $oldVal('nome_empresa') ?>"
                             class="<?= $inputClass ?> border-gray-300">
                     </div>
                     <div>
-                        <label class="<?= $labelClass ?>">Emite Nota Fiscal <span class="text-red-500">*</span></label>
-                        <select name="emite_nota_fiscal" class="<?= $inputClass ?> <?= $hasError('emite_nota_fiscal') ?>">
+                        <label class="<?= $labelClass ?>"><?= $escape($fieldLabel('emite_nota_fiscal', 'Emite Nota Fiscal')) ?><?= $requiredMark('emite_nota_fiscal', true) ?></label>
+                        <select name="emite_nota_fiscal" class="<?= $inputClass ?> <?= $hasError('emite_nota_fiscal') ?>" <?= $isRequired('emite_nota_fiscal', true) ? 'required' : '' ?>>
                             <option value="">Selecione...</option>
                             <option value="sim" <?= ($old['emite_nota_fiscal'] ?? '') === 'sim' ? 'selected' : '' ?>>Sim</option>
                             <option value="nao" <?= ($old['emite_nota_fiscal'] ?? '') === 'nao' ? 'selected' : '' ?>>Não</option>
@@ -135,32 +152,32 @@ $csrfToken = \TechRecruit\Security\Csrf::token();
                 </div>
 
                 <div>
-                    <label class="<?= $labelClass ?>">Telefones <span class="text-red-500">*</span></label>
+                    <label class="<?= $labelClass ?>"><?= $escape($fieldLabel('telefones', 'Telefones')) ?><?= $requiredMark('telefones', true) ?></label>
                     <input type="text" name="telefones" value="<?= $oldVal('telefones') ?>"
                         placeholder="(11) 99999-9999, (11) 98888-8888"
-                        class="<?= $inputClass ?> <?= $hasError('telefones') ?>">
+                        class="<?= $inputClass ?> <?= $hasError('telefones') ?>" <?= $isRequired('telefones', true) ? 'required' : '' ?>>
                     <?php $errMsg('telefones'); ?>
                 </div>
 
                 <div>
-                    <label class="<?= $labelClass ?>">E-mails <span class="text-red-500">*</span></label>
+                    <label class="<?= $labelClass ?>"><?= $escape($fieldLabel('emails', 'E-mails')) ?><?= $requiredMark('emails', true) ?></label>
                     <input type="text" name="emails" value="<?= $oldVal('emails') ?>"
                         placeholder="email@exemplo.com"
-                        class="<?= $inputClass ?> <?= $hasError('emails') ?>">
+                        class="<?= $inputClass ?> <?= $hasError('emails') ?>" <?= $isRequired('emails', true) ? 'required' : '' ?>>
                     <?php $errMsg('emails'); ?>
                 </div>
 
                 <div>
-                    <label class="<?= $labelClass ?>">Endereço completo (Rua, n.º, bairro, cidade, estado, CEP) <span class="text-red-500">*</span></label>
+                    <label class="<?= $labelClass ?>"><?= $escape($fieldLabel('endereco', 'Endereço completo (Rua, n.º, bairro, cidade, estado, CEP)')) ?><?= $requiredMark('endereco', true) ?></label>
                     <textarea name="endereco" rows="2"
-                        class="<?= $inputClass ?> <?= $hasError('endereco') ?>"><?= $oldVal('endereco') ?></textarea>
+                        class="<?= $inputClass ?> <?= $hasError('endereco') ?>" <?= $isRequired('endereco', true) ? 'required' : '' ?>><?= $oldVal('endereco') ?></textarea>
                     <?php $errMsg('endereco'); ?>
                 </div>
             </div>
 
             <!-- Equipamentos -->
-            <p class="<?= $sectionHead ?>">Equipamentos que você possui <span class="text-red-500">*</span></p>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <p class="<?= $sectionHead ?>"><?= $escape($sectionLabel('section_equipment', 'Equipamentos que você possui')) ?><?= $requiredMark('equipamentos', true) ?></p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2" data-required-group="equipamentos" data-required-label="<?= $escape($fieldLabel('equipamentos', 'Equipamentos')) ?>" <?= $isRequired('equipamentos', true) ? 'data-group-required="1"' : '' ?>>
                 <?php foreach ($equipamentos as $eq): ?>
                 <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
                     <input type="checkbox" name="equipamentos[]" value="<?= $escape($eq) ?>"
@@ -173,8 +190,8 @@ $csrfToken = \TechRecruit\Security\Csrf::token();
             <?php $errMsg('equipamentos'); ?>
 
             <!-- Deslocamento -->
-            <p class="<?= $sectionHead ?>">Forma de deslocamento <span class="text-red-500">*</span></p>
-            <div class="flex flex-wrap gap-4">
+            <p class="<?= $sectionHead ?>"><?= $escape($sectionLabel('section_transport', 'Forma de deslocamento')) ?><?= $requiredMark('deslocamento', true) ?></p>
+            <div class="flex flex-wrap gap-4" data-required-group="deslocamento" data-required-label="<?= $escape($fieldLabel('deslocamento', 'Forma de deslocamento')) ?>" <?= $isRequired('deslocamento', true) ? 'data-group-required="1"' : '' ?>>
                 <?php foreach ($deslocamentos as $d): ?>
                 <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
                     <input type="checkbox" name="deslocamento[]" value="<?= $escape($d) ?>"
@@ -187,8 +204,8 @@ $csrfToken = \TechRecruit\Security\Csrf::token();
             <?php $errMsg('deslocamento'); ?>
 
             <!-- Disponibilidade -->
-            <p class="<?= $sectionHead ?>">Disponibilidade de horário <span class="text-red-500">*</span></p>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <p class="<?= $sectionHead ?>"><?= $escape($sectionLabel('section_availability', 'Disponibilidade de horário')) ?><?= $requiredMark('disponibilidade', true) ?></p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2" data-required-group="disponibilidade" data-required-label="<?= $escape($fieldLabel('disponibilidade', 'Disponibilidade de horário')) ?>" <?= $isRequired('disponibilidade', true) ? 'data-group-required="1"' : '' ?>>
                 <?php foreach ($diasSemana as $dia): ?>
                 <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
                     <input type="checkbox" name="disponibilidade[]" value="<?= $escape($dia) ?>"
@@ -201,62 +218,62 @@ $csrfToken = \TechRecruit\Security\Csrf::token();
             <?php $errMsg('disponibilidade'); ?>
 
             <!-- Cidades -->
-            <p class="<?= $sectionHead ?>">Cidades de atendimento (até 100 km) <span class="text-red-500">*</span></p>
+            <p class="<?= $sectionHead ?>"><?= $escape($sectionLabel('section_service_cities', 'Cidades de atendimento (até 100 km)')) ?><?= $requiredMark('cidades_atendimento', true) ?></p>
             <textarea name="cidades_atendimento" rows="3"
                 placeholder="Ex: São Paulo, Guarulhos, Osasco..."
-                class="<?= $inputClass ?> <?= $hasError('cidades_atendimento') ?>"><?= $oldVal('cidades_atendimento') ?></textarea>
+                class="<?= $inputClass ?> <?= $hasError('cidades_atendimento') ?>" <?= $isRequired('cidades_atendimento', true) ? 'required' : '' ?>><?= $oldVal('cidades_atendimento') ?></textarea>
             <?php $errMsg('cidades_atendimento'); ?>
 
             <!-- Dados Bancários -->
-            <p class="<?= $sectionHead ?>">Dados Bancários</p>
+            <p class="<?= $sectionHead ?>"><?= $escape($sectionLabel('section_banking', 'Dados Bancários')) ?></p>
             <div class="space-y-4">
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
-                        <label class="<?= $labelClass ?>">Banco <span class="text-red-500">*</span></label>
+                        <label class="<?= $labelClass ?>"><?= $escape($fieldLabel('banco', 'Banco')) ?><?= $requiredMark('banco', true) ?></label>
                         <input type="text" name="banco" value="<?= $oldVal('banco') ?>"
-                            class="<?= $inputClass ?> <?= $hasError('banco') ?>">
+                            class="<?= $inputClass ?> <?= $hasError('banco') ?>" <?= $isRequired('banco', true) ? 'required' : '' ?>>
                         <?php $errMsg('banco'); ?>
                     </div>
                     <div>
-                        <label class="<?= $labelClass ?>">Agência <span class="text-red-500">*</span></label>
+                        <label class="<?= $labelClass ?>"><?= $escape($fieldLabel('agencia', 'Agência')) ?><?= $requiredMark('agencia', true) ?></label>
                         <input type="text" name="agencia" value="<?= $oldVal('agencia') ?>"
-                            class="<?= $inputClass ?> <?= $hasError('agencia') ?>">
+                            class="<?= $inputClass ?> <?= $hasError('agencia') ?>" <?= $isRequired('agencia', true) ? 'required' : '' ?>>
                         <?php $errMsg('agencia'); ?>
                     </div>
                     <div>
-                        <label class="<?= $labelClass ?>">Conta <span class="text-red-500">*</span></label>
+                        <label class="<?= $labelClass ?>"><?= $escape($fieldLabel('conta', 'Conta')) ?><?= $requiredMark('conta', true) ?></label>
                         <input type="text" name="conta" value="<?= $oldVal('conta') ?>"
-                            class="<?= $inputClass ?> <?= $hasError('conta') ?>">
+                            class="<?= $inputClass ?> <?= $hasError('conta') ?>" <?= $isRequired('conta', true) ? 'required' : '' ?>>
                         <?php $errMsg('conta'); ?>
                     </div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="<?= $labelClass ?>">Nome do Favorecido</label>
+                        <label class="<?= $labelClass ?>"><?= $escape($fieldLabel('nome_favorecido', 'Nome do Favorecido')) ?><?= $requiredMark('nome_favorecido') ?></label>
                         <input type="text" name="nome_favorecido" value="<?= $oldVal('nome_favorecido') ?>"
                             class="<?= $inputClass ?> border-gray-300">
                     </div>
                     <div>
-                        <label class="<?= $labelClass ?>">CPF/CNPJ do Favorecido <span class="text-red-500">*</span></label>
+                        <label class="<?= $labelClass ?>"><?= $escape($fieldLabel('cpf_cnpj_favorecido', 'CPF/CNPJ do Favorecido')) ?><?= $requiredMark('cpf_cnpj_favorecido', true) ?></label>
                         <input type="text" name="cpf_cnpj_favorecido" value="<?= $oldVal('cpf_cnpj_favorecido') ?>"
-                            class="<?= $inputClass ?> <?= $hasError('cpf_cnpj_favorecido') ?>">
+                            class="<?= $inputClass ?> <?= $hasError('cpf_cnpj_favorecido') ?>" <?= $isRequired('cpf_cnpj_favorecido', true) ? 'required' : '' ?>>
                         <?php $errMsg('cpf_cnpj_favorecido'); ?>
                     </div>
                 </div>
                 <div>
-                    <label class="<?= $labelClass ?>">PIX <span class="text-red-500">*</span></label>
+                    <label class="<?= $labelClass ?>"><?= $escape($fieldLabel('pix', 'PIX')) ?><?= $requiredMark('pix', true) ?></label>
                     <input type="text" name="pix" value="<?= $oldVal('pix') ?>"
                         placeholder="Chave PIX (CPF, e-mail, telefone ou aleatória)"
-                        class="<?= $inputClass ?> <?= $hasError('pix') ?>">
+                        class="<?= $inputClass ?> <?= $hasError('pix') ?>" <?= $isRequired('pix', true) ? 'required' : '' ?>>
                     <?php $errMsg('pix'); ?>
                 </div>
             </div>
 
             <!-- Conhecimentos -->
-            <p class="<?= $sectionHead ?>">Conhecimentos / Área de Atuação <span class="text-red-500">*</span></p>
+            <p class="<?= $sectionHead ?>"><?= $escape($sectionLabel('section_skills', 'Conhecimentos / Área de Atuação')) ?><?= $requiredMark('conhecimentos', true) ?></p>
             <textarea name="conhecimentos" rows="4"
                 placeholder="Descreva suas habilidades técnicas, certificações, experiências..."
-                class="<?= $inputClass ?> <?= $hasError('conhecimentos') ?>"><?= $oldVal('conhecimentos') ?></textarea>
+                class="<?= $inputClass ?> <?= $hasError('conhecimentos') ?>" <?= $isRequired('conhecimentos', true) ? 'required' : '' ?>><?= $oldVal('conhecimentos') ?></textarea>
             <?php $errMsg('conhecimentos'); ?>
 
             <!-- Aviso -->
@@ -295,6 +312,40 @@ if (cnpjEl) {
         v = v.replace(/(\d{3})(\d)/, '$1/$2');
         v = v.replace(/(\d{4})(\d{1,2})$/, '$1-$2');
         this.value = v;
+    });
+}
+
+const fieldTechForm = document.getElementById('field-tech-form');
+
+if (fieldTechForm) {
+    fieldTechForm.addEventListener('submit', function (event) {
+        const groups = Array.from(document.querySelectorAll('[data-group-required="1"]'));
+        let hasGroupError = false;
+
+        groups.forEach(function (group) {
+            const checked = group.querySelectorAll('input[type="checkbox"]:checked').length;
+            const label = group.getAttribute('data-required-label') || 'campo';
+
+            const nextElement = group.nextElementSibling;
+            const hasExistingError = nextElement && nextElement.classList.contains('js-group-error');
+
+            if (hasExistingError) {
+                nextElement.remove();
+            }
+
+            if (checked === 0) {
+                hasGroupError = true;
+
+                const errorNode = document.createElement('p');
+                errorNode.className = 'text-red-600 text-xs mt-1 js-group-error';
+                errorNode.textContent = 'O campo "' + label + '" é obrigatório.';
+                group.insertAdjacentElement('afterend', errorNode);
+            }
+        });
+
+        if (hasGroupError) {
+            event.preventDefault();
+        }
     });
 }
 </script>

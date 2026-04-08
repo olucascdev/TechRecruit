@@ -10,6 +10,7 @@ use TechRecruit\Models\CandidateModel;
 use TechRecruit\Models\OperationsModel;
 use TechRecruit\Models\PortalModel;
 use TechRecruit\Models\TriageModel;
+use TechRecruit\Services\CandidateExportService;
 use TechRecruit\Services\CandidateService;
 use Throwable;
 
@@ -27,11 +28,14 @@ final class CandidateController extends Controller
 
     private CandidateService $candidateService;
 
+    private CandidateExportService $candidateExportService;
+
     public function __construct(
         ?CandidateModel $candidateModel = null,
         ?PortalModel $portalModel = null,
         ?OperationsModel $operationsModel = null,
         ?CandidateService $candidateService = null,
+        ?CandidateExportService $candidateExportService = null,
         ?PDO $pdo = null
     )
     {
@@ -42,6 +46,7 @@ final class CandidateController extends Controller
         $this->operationsModel = $operationsModel ?? new OperationsModel($this->pdo);
         $this->triageModel = new TriageModel($this->pdo);
         $this->candidateService = $candidateService ?? new CandidateService($this->pdo);
+        $this->candidateExportService = $candidateExportService ?? new CandidateExportService();
     }
 
     public function index(): void
@@ -101,6 +106,28 @@ final class CandidateController extends Controller
             'operations' => $operations,
             'triageSession' => $triageSession,
         ], 'Candidato');
+    }
+
+    public function export(): void
+    {
+        $format = trim((string) ($_GET['format'] ?? 'csv'));
+
+        if (!in_array($format, ['csv', 'xlsx'], true)) {
+            $this->setFlash('error', 'Formato de exportação inválido. Use CSV ou XLSX.');
+            $this->redirectBack('/candidates');
+        }
+
+        $filters = array_filter([
+            'skill' => trim((string) ($_GET['skill'] ?? '')),
+            'status' => trim((string) ($_GET['status'] ?? '')),
+            'state' => trim((string) ($_GET['state'] ?? '')),
+            'search' => trim((string) ($_GET['search'] ?? '')),
+        ], static fn (string $value): bool => $value !== '');
+
+        $candidates = $this->candidateModel->findAllForExport($filters);
+        $fileNameBase = 'candidatos_' . date('Y-m-d_H-i-s');
+
+        $this->candidateExportService->download($format, $candidates, $fileNameBase);
     }
 
     public function updateStatus(): void
