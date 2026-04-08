@@ -55,6 +55,11 @@ if ($authUser !== null && ($authUser['role'] ?? null) === \TechRecruit\Models\Us
         'description' => 'Acesso, roles e gestão',
         'icon' => 'users',
     ];
+    $navItems['/management/forms/field-tech'] = [
+        'label' => 'Formulário técnico',
+        'description' => 'Campos, títulos e regras',
+        'icon' => 'forms',
+    ];
     $navItems['/api-docs/'] = [
         'label' => 'API Docs',
         'description' => 'Swagger / integração externa',
@@ -128,6 +133,16 @@ $renderNavIcon = static function (string $icon): void {
                 <path d="M7 8l-4 4 4 4"></path>
                 <path d="m17 8 4 4-4 4"></path>
                 <path d="m14 4-4 16"></path>
+            </svg>
+            <?php
+            return;
+        case 'forms':
+            ?>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="h-5 w-5">
+                <rect x="4" y="3" width="16" height="18" rx="2"></rect>
+                <path d="M8 8h8"></path>
+                <path d="M8 12h8"></path>
+                <path d="M8 16h5"></path>
             </svg>
             <?php
             return;

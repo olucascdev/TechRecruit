@@ -130,6 +130,17 @@ $buildPageUrl = static function (int $targetPage) use ($filters): string {
 
     return '/candidates' . ($query !== [] ? '?' . http_build_query($query) : '');
 };
+$buildExportUrl = static function (string $format) use ($filters): string {
+    $query = array_filter([
+        'skill' => $filters['skill'] ?? '',
+        'status' => $filters['status'] ?? '',
+        'state' => $filters['state'] ?? '',
+        'search' => $filters['search'] ?? '',
+        'format' => $format,
+    ], static fn (string $value): bool => $value !== '');
+
+    return '/candidates/export' . ($query !== [] ? '?' . http_build_query($query) : '');
+};
 ?>
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
     <div>
@@ -187,6 +198,8 @@ $buildPageUrl = static function (int $targetPage) use ($filters): string {
                 >
             </div>
             <div class="col-md-12 d-flex gap-2 justify-content-end">
+                <a href="<?= $escape($url($buildExportUrl('csv'))) ?>" class="btn btn-outline-success">Exportar CSV</a>
+                <a href="<?= $escape($url($buildExportUrl('xlsx'))) ?>" class="btn btn-outline-success">Exportar XLSX</a>
                 <a href="<?= $escape($url('/candidates')) ?>" class="btn btn-outline-secondary">Limpar</a>
                 <button type="submit" class="btn btn-primary">Filtrar</button>
             </div>

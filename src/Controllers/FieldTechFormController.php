@@ -6,19 +6,24 @@ namespace TechRecruit\Controllers;
 
 use PDO;
 use TechRecruit\Database;
+use TechRecruit\Models\FieldTechFormConfigModel;
 
 final class FieldTechFormController extends Controller
 {
     private PDO $pdo;
 
+    private FieldTechFormConfigModel $configModel;
+
     public function __construct(?PDO $pdo = null)
     {
         $this->pdo = $pdo ?? Database::connect();
+        $this->configModel = new FieldTechFormConfigModel($this->pdo);
     }
 
     public function show(): void
     {
         $currentPath = '/cadastro-tecnico';
+        $formSchema = $this->configModel->getResolvedSchema();
         require __DIR__ . '/../Views/field_tech_form/show.php';
     }
 
@@ -28,26 +33,8 @@ final class FieldTechFormController extends Controller
         $data   = $_POST;
 
         // --- Validação ---
-        $required = [
-            'nome_completo'       => 'Nome completo',
-            'data_nascimento'     => 'Data de nascimento',
-            'rg'                  => 'RG / Órgão Expedidor',
-            'cpf'                 => 'CPF',
-            'emite_nota_fiscal'   => 'Emite Nota Fiscal',
-            'telefones'           => 'Telefones',
-            'emails'              => 'E-mails',
-            'endereco'            => 'Endereço completo',
-            'equipamentos'        => 'Equipamentos',
-            'deslocamento'        => 'Forma de deslocamento',
-            'disponibilidade'     => 'Disponibilidade de horário',
-            'cidades_atendimento' => 'Cidades de atendimento',
-            'banco'               => 'Banco',
-            'agencia'             => 'Agência',
-            'conta'               => 'Conta',
-            'cpf_cnpj_favorecido' => 'CPF/CNPJ do favorecido',
-            'pix'                 => 'PIX',
-            'conhecimentos'       => 'Conhecimentos / área de atuação',
-        ];
+        $schema = $this->configModel->getResolvedSchema();
+        $required = $this->requiredFieldLabels($schema['fields'] ?? []);
 
         foreach ($required as $field => $label) {
             $value = $data[$field] ?? null;
@@ -232,5 +219,24 @@ final class FieldTechFormController extends Controller
             'skill'        => mb_strtoupper(trim($skill)),
             'level'        => 'nao_informado',
         ]);
+    }
+
+    /**
+     * @param array<string, array{label:string,required:bool,type:string}> $fields
+     * @return array<string, string>
+     */
+    private function requiredFieldLabels(array $fields): array
+    {
+        $required = [];
+
+        foreach ($fields as $fieldKey => $meta) {
+            if (!($meta['required'] ?? false)) {
+                continue;
+            }
+
+            $required[$fieldKey] = (string) ($meta['label'] ?? $fieldKey);
+        }
+
+        return $required;
     }
 }

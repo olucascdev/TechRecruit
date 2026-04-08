@@ -116,6 +116,67 @@ SQL;
 
     /**
      * @param array{skill?:string,status?:string,state?:string,search?:string} $filters
+     * @return array<int, array<string, mixed>>
+     */
+    public function findAllForExport(array $filters = []): array
+    {
+        [$whereSql, $params] = $this->buildFilterSql($filters);
+
+        $sql = <<<SQL
+SELECT
+    c.id,
+    c.full_name,
+    c.cpf,
+    c.status,
+    c.created_at,
+    c.updated_at,
+    COALESCE(contact_data.primary_phone, contact_data.any_phone) AS phone,
+    COALESCE(contact_data.primary_whatsapp, contact_data.any_whatsapp) AS whatsapp,
+    COALESCE(contact_data.primary_email, contact_data.any_email) AS email,
+    skill_data.skills,
+    address_data.state,
+    address_data.city
+FROM recruit_candidates c
+LEFT JOIN (
+    SELECT
+        candidate_id,
+        MAX(CASE WHEN type = 'phone' AND is_primary = 1 THEN value END) AS primary_phone,
+        MAX(CASE WHEN type = 'phone' THEN value END) AS any_phone,
+        MAX(CASE WHEN type = 'whatsapp' AND is_primary = 1 THEN value END) AS primary_whatsapp,
+        MAX(CASE WHEN type = 'whatsapp' THEN value END) AS any_whatsapp,
+        MAX(CASE WHEN type = 'email' AND is_primary = 1 THEN value END) AS primary_email,
+        MAX(CASE WHEN type = 'email' THEN value END) AS any_email
+    FROM recruit_candidate_contacts
+    GROUP BY candidate_id
+) AS contact_data ON contact_data.candidate_id = c.id
+LEFT JOIN (
+    SELECT
+        candidate_id,
+        GROUP_CONCAT(DISTINCT skill ORDER BY skill SEPARATOR ', ') AS skills
+    FROM recruit_candidate_skills
+    GROUP BY candidate_id
+) AS skill_data ON skill_data.candidate_id = c.id
+LEFT JOIN (
+    SELECT
+        candidate_id,
+        MAX(state) AS state,
+        MAX(city) AS city
+    FROM recruit_candidate_addresses
+    GROUP BY candidate_id
+) AS address_data ON address_data.candidate_id = c.id
+{$whereSql}
+ORDER BY c.created_at DESC, c.id DESC
+SQL;
+
+        $statement = $this->pdo->prepare($sql);
+        $this->bindParams($statement, $params);
+        $statement->execute();
+
+        return $statement->fetchAll();
+    }
+
+    /**
+     * @param array{skill?:string,status?:string,state?:string,search?:string} $filters
      */
     public function countEligibleForCampaign(array $filters = []): int
     {

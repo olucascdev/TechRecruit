@@ -16,6 +16,7 @@ use TechRecruit\Controllers\TriageController;
 use TechRecruit\Controllers\UserController;
 use TechRecruit\Controllers\Api\CandidateApiController;
 use TechRecruit\Controllers\FieldTechFormController;
+use TechRecruit\Controllers\FieldTechFormAdminController;
 use TechRecruit\Router;
 use TechRecruit\Security\Csrf;
 use TechRecruit\Support\AppUrl;
@@ -105,6 +106,10 @@ function techRecruitFallbackRedirect(string $requestPath): string
         return '/management/users';
     }
 
+    if (str_starts_with($requestPath, '/management/forms/field-tech')) {
+        return '/management/forms/field-tech';
+    }
+
     return '/candidates';
 }
 
@@ -173,6 +178,7 @@ try {
     $router->post('/logout', [AuthController::class, 'logout']);
     $router->get('/', [CandidateController::class, 'index']);
     $router->get('/candidates', [CandidateController::class, 'index']);
+    $router->get('/candidates/export', [CandidateController::class, 'export']);
     $router->get('/candidates/{id}', [CandidateController::class, 'show']);
     $router->post('/candidates/status', [CandidateController::class, 'updateStatus']);
     $router->post('/candidates/bulk-delete', [CandidateController::class, 'bulkDestroy']);
@@ -215,6 +221,8 @@ try {
     $router->get('/management/users', [UserController::class, 'index']);
     $router->post('/management/users', [UserController::class, 'store']);
     $router->post('/management/users/{id}/access', [UserController::class, 'updateAccess']);
+    $router->get('/management/forms/field-tech', [FieldTechFormAdminController::class, 'index']);
+    $router->post('/management/forms/field-tech', [FieldTechFormAdminController::class, 'update']);
 
     $router->dispatch();
 } catch (Throwable $exception) {
